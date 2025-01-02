@@ -1,14 +1,20 @@
 package org.dots.game
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -24,19 +30,10 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 private var start = true
 private val startRules = Rules(10, 10, captureEmptyBase = true, captureByBorder = true)
 
-private var moveMode = MoveMode.Next
 private lateinit var field: Field
 private lateinit var fieldHistory: FieldHistory
 private lateinit var fieldView: FieldView
 private lateinit var fieldHistoryView: FieldHistoryView
-
-fun getMoveColor(): Player? {
-    return when (moveMode) {
-        MoveMode.Next -> null
-        MoveMode.First -> Player.First
-        MoveMode.Second -> Player.Second
-    }
-}
 
 @Composable
 @Preview
@@ -51,6 +48,7 @@ fun App() {
         var player2Score by remember { mutableStateOf("0") }
         var fieldHistorySize by remember { mutableStateOf(DpSize(0.dp, 0.dp)) }
         val showNewGameDialog = remember { mutableStateOf(false) }
+        var moveMode by remember { mutableStateOf(MoveMode.Next) }
 
         fun updateFieldAndHistory() {
             player1Score = field.player1Score.toString()
@@ -85,7 +83,7 @@ fun App() {
         }
 
         Row {
-            Column(Modifier.width(with(LocalDensity.current) { fieldView.fieldGraphicsWidth.toDp() })) {
+            Column(Modifier.width(with(LocalDensity.current) { fieldView.fieldGraphicsWidth.toDp() }).padding(5.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     Text(player1Score, color = uiSettings.playerFirstColor)
                     Text(" : ")
@@ -96,7 +94,7 @@ fun App() {
                         Modifier.fillMaxSize().pointerInput(Unit) {
                                 detectTapGestures(
                                     onPress = { tapOffset ->
-                                        if (fieldView.handleTap(tapOffset, getMoveColor())) {
+                                        if (fieldView.handleTap(tapOffset, moveMode.getMovePlayer())) {
                                             fieldHistory.add(field.lastMove!!)
                                             updateFieldAndHistory()
                                         }
@@ -112,12 +110,51 @@ fun App() {
                 }
             }
             Column {
-                Button(onClick = { showNewGameDialog.value = true }) {
-                    Text("New Game")
+                val playerButtonModifier = Modifier.padding(5.dp)
+                val playerColorIconModifier = Modifier.size(16.dp).border(1.dp, Color.White, CircleShape).clip(CircleShape)
+                val selectedModeButtonColor = Color.Magenta
+
+                Row {
+                    Button(onClick = { showNewGameDialog.value = true }, playerButtonModifier) {
+                        Text("New")
+                    }
+                    Button(onClick = { initializeFieldAndHistory(field.rules) },playerButtonModifier) {
+                        Text("Reset")
+                    }
                 }
-                Button(onClick = { initializeFieldAndHistory(field.rules) }) {
-                    Text("Reset")
+                Row {
+                    Button(
+                        onClick = { moveMode = MoveMode.Next },
+                        playerButtonModifier,
+                        colors = if (moveMode == MoveMode.Next) ButtonDefaults.buttonColors(selectedModeButtonColor) else ButtonDefaults.buttonColors(),
+                    ) {
+                        Box(
+                            modifier = playerColorIconModifier.background(uiSettings.playerFirstColor)
+                        )
+                        Box(
+                            modifier = playerColorIconModifier.clip(CircleShape).background(uiSettings.playerSecondColor)
+                        )
+                    }
+                    Button(
+                        onClick = { moveMode = MoveMode.First },
+                        playerButtonModifier,
+                        colors = if (moveMode == MoveMode.First) ButtonDefaults.buttonColors(selectedModeButtonColor) else ButtonDefaults.buttonColors(),
+                    ) {
+                        Box(
+                            modifier = playerColorIconModifier.background(uiSettings.playerFirstColor)
+                        )
+                    }
+                    Button(
+                        onClick = { moveMode = MoveMode.Second },
+                        playerButtonModifier,
+                        colors = if (moveMode == MoveMode.Second) ButtonDefaults.buttonColors(selectedModeButtonColor) else ButtonDefaults.buttonColors(),
+                    ) {
+                        Box(
+                            modifier = playerColorIconModifier.background(uiSettings.playerSecondColor)
+                        )
+                    }
                 }
+
                 Canvas(
                     Modifier.size(fieldHistorySize).focusable().onKeyEvent { keyEvent ->
                         if (fieldHistoryView.handleKey(keyEvent)) {
