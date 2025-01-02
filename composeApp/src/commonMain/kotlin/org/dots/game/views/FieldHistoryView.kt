@@ -16,11 +16,11 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.dots.game.UiSettings
 import org.dots.game.core.FieldHistory
+import org.dots.game.core.FieldHistoryNodeIndex
 import org.dots.game.core.Node
+import org.dots.game.core.getNodeIndexes
 import kotlin.collections.iterator
 import kotlin.math.round
-
-private typealias NodePosition = Pair<Int, Int>
 
 class FieldHistoryView(
     val fieldHistory: FieldHistory,
@@ -37,14 +37,15 @@ class FieldHistoryView(
     val padding = stepSize
     val nodeRadius = stepSize * nodeRatio
 
-    private val nodeToPositionMap = mutableMapOf<NodePosition, Node>()
-    private val positionToNode = mutableMapOf<Node, NodePosition>()
+    private var nodeToIndexMap: Map<Node, FieldHistoryNodeIndex> = emptyMap()
+    private var indexToNodeMap: Map<FieldHistoryNodeIndex, Node> = emptyMap()
 
     fun calculateSize(): DpSize {
-        recalculateMaps()
+        nodeToIndexMap = fieldHistory.getNodeIndexes(mainBranchIsAlwaysStraight = false)
+        indexToNodeMap = buildMap { nodeToIndexMap.forEach { this[it.value] = it.key } }
 
-        val maxXIndex = positionToNode.values.maxOf { it.first }
-        val maxYIndex = positionToNode.values.maxOf { it.second }
+        val maxXIndex = nodeToIndexMap.values.maxOf { it.x }
+        val maxYIndex = nodeToIndexMap.values.maxOf { it.y }
 
         //return Size(maxXIndex * stepSize + padding * 2, maxYIndex * stepSize + padding * 2)
         return DpSize((maxXIndex * stepSize + padding * 2).dp, (maxYIndex * stepSize + padding * 2).dp)
@@ -56,8 +57,8 @@ class FieldHistoryView(
     }
 
     private fun DrawScope.drawConnections() {
-        for ((position, node) in nodeToPositionMap) {
-            val (xIndex, yIndex) = position
+        for ((node, index) in nodeToIndexMap) {
+            val (xIndex, yIndex) = index
 
             val centerOffsetX = xIndex * stepSize + padding
             val centerOffsetY = yIndex * stepSize + padding
@@ -68,8 +69,8 @@ class FieldHistoryView(
 
             drawLine(lineColor, Offset(xLineOffset, centerOffsetY), Offset(centerOffsetX, centerOffsetY))
 
-            val previousPosition = positionToNode.getValue(node.previousNode!!)
-            val verticalConnectionLinesCount = yIndex - previousPosition.second
+            val previousIndex = nodeToIndexMap.getValue(node.previousNode!!)
+            val verticalConnectionLinesCount = yIndex - previousIndex.y
 
             if (verticalConnectionLinesCount > 0) {
                 drawLine(
@@ -82,8 +83,8 @@ class FieldHistoryView(
     }
 
     private fun DrawScope.drawNodes() {
-        for ((position, node) in nodeToPositionMap) {
-            val (xIndex, yIndex) = position
+        for ((node, index) in nodeToIndexMap) {
+            val (xIndex, yIndex) = index
 
             val color: Color
             val moveNumber: Int
@@ -120,42 +121,11 @@ class FieldHistoryView(
         }
     }
 
-    private fun recalculateMaps() {
-        nodeToPositionMap.clear()
-        positionToNode.clear()
-
-        val yOffset = mutableListOf<Int>(0)
-
-        fun walk(node: Node, xIndex: Int, yIndex: Int) {
-            val xyPair = xIndex to yIndex
-            nodeToPositionMap[xyPair] = node
-            positionToNode[node] = xyPair
-
-            var nextYIndex: Int
-            val values = node.nextNodes.values
-            val lastNode = values.lastOrNull()
-            for (nextNode in values) {
-                val nextXIndex = xIndex + 1
-                if (nextXIndex >= yOffset.size) {
-                    yOffset.add(-1)
-                }
-                nextYIndex = maxOf(yOffset[nextXIndex] + 1, yOffset[xIndex])
-                yOffset[nextXIndex] = nextYIndex
-                if (nextNode == lastNode) { // Space is needed for drawing connection lines
-                    yOffset[xIndex] = nextYIndex
-                }
-                walk(nextNode, nextXIndex, nextYIndex)
-            }
-        }
-
-        walk(fieldHistory.firstNode, 0, 0)
-    }
-
     fun handleTap(tapOffset: Offset): Boolean {
         val xIndex = round((tapOffset.x - padding) / stepSize).toInt()
         val yIndex = round((tapOffset.y - padding) / stepSize).toInt()
 
-        nodeToPositionMap[xIndex to yIndex]?.let {
+        indexToNodeMap[FieldHistoryNodeIndex(xIndex, yIndex)]?.let {
             return fieldHistory.switch(it)
         }
 
