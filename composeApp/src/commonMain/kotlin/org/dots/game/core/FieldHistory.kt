@@ -1,13 +1,14 @@
 package org.dots.game.core
 
 class FieldHistory(val field: Field) {
-    val firstNode: Node = Node(null, null, 0, mutableMapOf())
-    var currentNode: Node = firstNode
+    val rootNode: Node = Node(null, null, 0, mutableMapOf())
+    val allNodes: MutableSet<Node> = mutableSetOf(rootNode)
+    var currentNode: Node = rootNode
         private set
 
     /**
-     * Returns `false` if such a node with the current @param[move] already exists,
-     * otherwise returns `true`
+     * @return `false` if such a node with the current @param[move] already exists,
+     * otherwise add the new passed node and returns `true`
      */
     fun add(move: MoveResult): Boolean {
         val position = move.position
@@ -16,7 +17,10 @@ class FieldHistory(val field: Field) {
         var result: Boolean
         currentNode = if (existingNode == null) {
             result = true
-            Node(move, previousNode = currentNode, move.number - field.initialMovesCount + 1).also { currentNode.nextNodes[position] = it }
+            Node(move, previousNode = currentNode, move.number - field.initialMovesCount + 1).also {
+                currentNode.nextNodes[position] = it
+                allNodes.add(it)
+            }
         } else {
             result = false
             existingNode
@@ -26,7 +30,7 @@ class FieldHistory(val field: Field) {
     }
 
     /**
-     * Returns `false` if the @property[currentNode] is root, otherwise returns `true`
+     * @return `false` if the @property[currentNode] is root, otherwise move it to the previous node and returns `true`
      */
     fun back(): Boolean {
         val previousNode = currentNode.previousNode ?: return false
@@ -36,7 +40,7 @@ class FieldHistory(val field: Field) {
     }
 
     /**
-     * Returns `false` is there are no next nodes, otherwise returns `true`
+     * @return `false` if there are no next nodes, otherwise move it to the next node on the main line returns `true`
      */
     fun next(): Boolean {
         val nextNode = currentNode.nextNodes.values.firstOrNull() ?: return false
@@ -46,22 +50,26 @@ class FieldHistory(val field: Field) {
         return true
     }
 
+    /**
+     * @return `false` if @param[targetNode] is a @property[currentNode] or it's an unrelated node,
+     * otherwise perform switching to the passed node and returns `true`
+     */
     fun switch(targetNode: Node): Boolean {
         if (targetNode == currentNode) return false
 
-        val reversedCurrentNodes = buildMap {
-            currentNode.walkMovesReversed { node, distance ->
-                this[node] = distance
+        val reversedCurrentNodes = buildSet {
+            currentNode.walkMovesReversed { node ->
+                add(node)
+                // Optimization: it's not necessary to walk up until the root node, if the `targetNode` is on the way
                 return@walkMovesReversed node != targetNode
             }
         }
 
-        var numberOrMovesToRollback: Int? = null
+        var commonRootNode: Node? = null
         val nextNodes = buildList {
-            targetNode.walkMovesReversed { node, _ ->
-                val potentialNumberOfMovesToRollback = reversedCurrentNodes[node]
-                if (potentialNumberOfMovesToRollback != null) {
-                    numberOrMovesToRollback = potentialNumberOfMovesToRollback
+            targetNode.walkMovesReversed { node ->
+                if (reversedCurrentNodes.contains(node)) {
+                    commonRootNode = node
                     false
                 } else {
                     add(node)
@@ -70,9 +78,10 @@ class FieldHistory(val field: Field) {
             }
         }.reversed()
 
-        if (numberOrMovesToRollback == null) return false // No common root -> the `targetNode` is unrelated
+        if (commonRootNode == null) return false // No common root -> the `targetNode` is unrelated
 
-        (0 until numberOrMovesToRollback).forEach { i ->
+        val numberOfNodesToRollback = currentNode.number - commonRootNode.number
+        (0 until numberOfNodesToRollback).forEach { i ->
             requireNotNull(field.unmakeMoveInternal())
             currentNode = currentNode.previousNode!!
         }
@@ -89,11 +98,36 @@ class FieldHistory(val field: Field) {
         return true
     }
 
-    private inline fun Node.walkMovesReversed(action: (Node, Int) -> Boolean) {
+    /**
+     * @return `false` if the @property[currentNode] is root,
+     * otherwise removes the passed node with related branches and returns `true`
+     */
+    fun remove(): Boolean {
+        if (currentNode == rootNode) return false
+
+        fun removeRecursively(node: Node) {
+            require(allNodes.remove(node))
+            for (nextNode in node.nextNodes.values) {
+                removeRecursively(nextNode)
+            }
+            node.nextNodes.clear()
+        }
+
+        val currentNodePosition = currentNode.moveResult!!.position
+
+        removeRecursively(currentNode)
+        require(back())
+
+        requireNotNull(currentNode.nextNodes.remove(currentNodePosition))
+
+        return true
+    }
+
+    private inline fun Node.walkMovesReversed(action: (Node) -> Boolean) {
         var move = this
         var distance = 0
         do {
-            if (!action(move, distance)) return
+            if (!action(move)) return
             distance++
             move = move.previousNode ?: break
         }
