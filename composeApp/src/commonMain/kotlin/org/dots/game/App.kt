@@ -9,6 +9,7 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -32,6 +33,10 @@ private lateinit var fieldHistory: FieldHistory
 @Preview
 fun App() {
     MaterialTheme {
+        var start by rememberSaveable { mutableStateOf(true) }
+        var field: Field by rememberSaveable {  mutableStateOf(Field(startRules)) }
+        var fieldHistory: FieldHistory by rememberSaveable { mutableStateOf(FieldHistory(field)) }
+
         var lastMove: MoveResult? by remember { mutableStateOf<MoveResult?>(null) }
         var currentNode by remember { mutableStateOf<Node?>(null) }
         var player1Score by remember { mutableStateOf("0") }
