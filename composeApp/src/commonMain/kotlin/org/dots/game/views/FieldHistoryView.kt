@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.dots.game.UiSettings
 import org.dots.game.core.FieldHistory
-import org.dots.game.core.FieldHistoryNodeIndex
 import org.dots.game.core.Node
 import org.dots.game.core.getNodeIndexes
 import kotlin.collections.iterator
@@ -31,21 +30,27 @@ class FieldHistoryView(
     val nodeRatio = 0.33f
     val rootNodeColor = Color.LightGray
     val selectedNodeRectColor = Color.Black
-    val lineColor = Color.Black
+    val lineColor = Color(0f, 0f, 0f, 0.8f)
     val textColor = Color.White
 
     val padding = stepSize
     val nodeRadius = stepSize * nodeRatio
 
-    private var nodeToIndexMap: Map<Node, FieldHistoryNodeIndex> = emptyMap()
-    private var indexToNodeMap: Map<FieldHistoryNodeIndex, Node> = emptyMap()
+    private var indexToNodeMap: List<LinkedHashMap<Int, Node>> = emptyList()
+    private var nodeToIndexMap: Map<Node, Pair<Int, Int>> = emptyMap()
 
     fun calculateSize(): DpSize {
-        nodeToIndexMap = fieldHistory.getNodeIndexes(mainBranchIsAlwaysStraight = false)
-        indexToNodeMap = buildMap { nodeToIndexMap.forEach { this[it.value] = it.key } }
+        indexToNodeMap = fieldHistory.getNodeIndexes(mainBranchIsAlwaysStraight = true)
+        nodeToIndexMap = buildMap {
+            for (xIndex in indexToNodeMap.indices) {
+                for ((yIndex, node) in indexToNodeMap[xIndex]) {
+                    this[node] = xIndex to yIndex
+                }
+            }
+        }
 
-        val maxXIndex = nodeToIndexMap.values.maxOf { it.x }
-        val maxYIndex = nodeToIndexMap.values.maxOf { it.y }
+        val maxXIndex = indexToNodeMap.size - 1
+        val maxYIndex = indexToNodeMap.maxOf { yIndexes -> yIndexes.maxOf { it.key } }
 
         //return Size(maxXIndex * stepSize + padding * 2, maxYIndex * stepSize + padding * 2)
         return DpSize((maxXIndex * stepSize + padding * 2).dp, (maxYIndex * stepSize + padding * 2).dp)
@@ -57,79 +62,90 @@ class FieldHistoryView(
     }
 
     private fun DrawScope.drawConnections() {
-        for ((node, index) in nodeToIndexMap) {
-            val (xIndex, yIndex) = index
+        for (xIndex in indexToNodeMap.indices) {
+            var previousYIndex = 0
+            var previousYNode: Node? = null
+            for ((yIndex, node) in indexToNodeMap[xIndex]) {
+                val centerOffsetX = xIndex * stepSize + padding
+                val centerOffsetY = yIndex * stepSize + padding
 
-            val centerOffsetX = xIndex * stepSize + padding
-            val centerOffsetY = yIndex * stepSize + padding
+                if (node.isRoot) continue // No connection for the root node
 
-            if (node.isRoot) continue // No connection for the root node
+                val xLineOffset = (xIndex - 1) * stepSize + padding
 
-            val xLineOffset = (xIndex - 1) * stepSize + padding
+                drawLine(lineColor, Offset(xLineOffset, centerOffsetY), Offset(centerOffsetX, centerOffsetY))
 
-            drawLine(lineColor, Offset(xLineOffset, centerOffsetY), Offset(centerOffsetX, centerOffsetY))
+                val parentNode = node.previousNode!!
+                val parentNodeYIndex = if (previousYNode?.previousNode == parentNode) {
+                    // Avoid drawing the line multiple times in case of the previous sibling node is already processed
+                    previousYIndex
+                } else {
+                    nodeToIndexMap.getValue(parentNode).second
+                }
 
-            val previousIndex = nodeToIndexMap.getValue(node.previousNode!!)
-            val verticalConnectionLinesCount = yIndex - previousIndex.y
+                val verticalConnectionLinesCount = yIndex - parentNodeYIndex
+                if (verticalConnectionLinesCount > 0) {
+                    drawLine(
+                        lineColor,
+                        Offset(xLineOffset, centerOffsetY),
+                        Offset(xLineOffset, centerOffsetY - stepSize * verticalConnectionLinesCount)
+                    )
+                }
 
-            if (verticalConnectionLinesCount > 0) {
-                drawLine(
-                    lineColor,
-                    Offset(xLineOffset, centerOffsetY),
-                    Offset(xLineOffset, centerOffsetY - stepSize * verticalConnectionLinesCount)
-                )
+                previousYIndex = yIndex
+                previousYNode = node
             }
         }
     }
 
     private fun DrawScope.drawNodes() {
-        for ((node, index) in nodeToIndexMap) {
-            val (xIndex, yIndex) = index
+        for (xIndex in indexToNodeMap.indices) {
+            for ((yIndex, node) in indexToNodeMap[xIndex]) {
+                val color: Color
+                val moveNumber: Int
+                if (node.isRoot) {
+                    color = rootNodeColor
+                    moveNumber = 0
+                } else {
+                    color = uiSettings.toColor(node.moveResult!!.player)
+                    moveNumber = node.number
+                }
 
-            val color: Color
-            val moveNumber: Int
-            if (node.isRoot) {
-                color = rootNodeColor
-                moveNumber = 0
-            } else {
-                color = uiSettings.toColor(node.moveResult!!.player)
-                moveNumber = node.number
-            }
+                val centerOffsetX = xIndex * stepSize + padding
+                val centerOffsetY = yIndex * stepSize + padding
 
-            val centerOffsetX = xIndex * stepSize + padding
-            val centerOffsetY = yIndex * stepSize + padding
+                drawCircle(color, nodeRadius, Offset(centerOffsetX, centerOffsetY))
 
-            drawCircle(color, nodeRadius, Offset(centerOffsetX, centerOffsetY))
-
-            val textLayoutResult = textMeasurer.measure(moveNumber.toString())
-            drawText(
-                textLayoutResult,
-                textColor,
-                Offset(
-                    centerOffsetX - textLayoutResult.size.width / 2, centerOffsetY - textLayoutResult.size.height / 2
+                val textLayoutResult = textMeasurer.measure(moveNumber.toString())
+                drawText(
+                    textLayoutResult,
+                    textColor,
+                    Offset(
+                        centerOffsetX - textLayoutResult.size.width / 2,
+                        centerOffsetY - textLayoutResult.size.height / 2
+                    )
                 )
-            )
 
-            if (node == fieldHistory.currentNode) {
-                drawRect(
-                    selectedNodeRectColor,
-                    Offset(centerOffsetX - nodeRadius, centerOffsetY - nodeRadius),
-                    Size(nodeRadius * 2, nodeRadius * 2),
-                    style = Stroke(2.0f)
-                )
+                if (node == fieldHistory.currentNode) {
+                    drawRect(
+                        selectedNodeRectColor,
+                        Offset(centerOffsetX - nodeRadius, centerOffsetY - nodeRadius),
+                        Size(nodeRadius * 2, nodeRadius * 2),
+                        style = Stroke(2.0f)
+                    )
+                }
             }
         }
     }
 
     fun handleTap(tapOffset: Offset): Boolean {
         val xIndex = round((tapOffset.x - padding) / stepSize).toInt()
+        val yIndexes = indexToNodeMap.getOrNull(xIndex) ?: return false
+
         val yIndex = round((tapOffset.y - padding) / stepSize).toInt()
+        val node = yIndexes[yIndex] ?: return false
 
-        indexToNodeMap[FieldHistoryNodeIndex(xIndex, yIndex)]?.let {
-            return fieldHistory.switch(it)
-        }
-
-        return false
+        return fieldHistory.switch(node)
     }
 
     fun handleKey(keyEvent: KeyEvent): Boolean {

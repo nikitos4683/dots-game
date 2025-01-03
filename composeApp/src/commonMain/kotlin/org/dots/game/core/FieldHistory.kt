@@ -144,6 +144,6 @@ class Node(
     val isRoot = moveResult == null
 
     override fun toString(): String {
-        return moveResult?.toString() ?: "root"
+        return "#$number: " + (moveResult?.position?.toString() ?: "root")
     }
 }

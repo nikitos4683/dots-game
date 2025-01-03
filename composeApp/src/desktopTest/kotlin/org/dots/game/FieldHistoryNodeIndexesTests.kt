@@ -2,13 +2,14 @@ package org.dots.game
 
 import org.dots.game.core.Field
 import org.dots.game.core.FieldHistory
-import org.dots.game.core.FieldHistoryNodeIndex
 import org.dots.game.core.InitialPosition
+import org.dots.game.core.Node
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
 import org.dots.game.core.getNodeIndexes
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class FieldHistoryNodeIndexesTests {
     /**
@@ -23,14 +24,19 @@ class FieldHistoryNodeIndexesTests {
     @Test
     fun simple() {
         with (initializeFieldHistory()) {
-            makeMove(1, 1)
+            val node0 = rootNode
+            val node1 = makeMove(1, 1)
             back()
-            makeMove(2, 2)
-            makeMove(3, 3)
+            val node2 = makeMove(2, 2)
+            val node3 = makeMove(3, 3)
 
             assertEquals(
-                listOf(FieldHistoryNodeIndex(0, 0), FieldHistoryNodeIndex(1, 0), FieldHistoryNodeIndex(1, 1), FieldHistoryNodeIndex(2, 1)),
-                getNodeIndexes().values.toList()
+                listOf(
+                    mapOf(0 to node0), // x0
+                    mapOf(0 to node1, 1 to node2), // x1
+                    mapOf(1 to node3) // x2
+                ),
+                getNodeIndexes()
             )
         }
     }
@@ -49,23 +55,18 @@ class FieldHistoryNodeIndexesTests {
     @Test
     fun mainBranchIsAlwaysStraightIsDisables() {
         with (initializeFieldHistory()) {
-            setUpHistoryForTestsThatShowAffectionOfMainBranchIsAlwaysStraight()
+            val expectedNodes = setUpHistoryForTestsThatShowAffectionOfMainBranchIsAlwaysStraight()
 
             assertEquals(
                 listOf(
-                    FieldHistoryNodeIndex(0, 0),
-                    FieldHistoryNodeIndex(1, 0),
-                    FieldHistoryNodeIndex(2, 0),
-                    FieldHistoryNodeIndex(3, 0),
-                    FieldHistoryNodeIndex(4, 0),
-                    FieldHistoryNodeIndex(5, 0),
-                    FieldHistoryNodeIndex(5, 1),
-                    FieldHistoryNodeIndex(2, 1),
-                    FieldHistoryNodeIndex(3, 1),
-                    FieldHistoryNodeIndex(4, 2),
-                    FieldHistoryNodeIndex(1, 2),
+                    mapOf(0 to expectedNodes[0]), // x0
+                    mapOf(0 to expectedNodes[1], 2 to expectedNodes[10]), // x1
+                    mapOf(0 to expectedNodes[2], 1 to expectedNodes[7]), // x2
+                    mapOf(0 to expectedNodes[3], 1 to expectedNodes[8]), // x3
+                    mapOf(0 to expectedNodes[4], 2 to expectedNodes[9]), // x4
+                    mapOf(0 to expectedNodes[5], 1 to expectedNodes[6]), // x4
                 ),
-                getNodeIndexes().values.toList()
+                getNodeIndexes()
             )
         }
     }
@@ -86,46 +87,44 @@ class FieldHistoryNodeIndexesTests {
     @Test
     fun mainBranchIsAlwaysStraightIsEnabled() {
         with (initializeFieldHistory()) {
-            setUpHistoryForTestsThatShowAffectionOfMainBranchIsAlwaysStraight()
+            val expectedNodes = setUpHistoryForTestsThatShowAffectionOfMainBranchIsAlwaysStraight()
 
             assertEquals(
                 listOf(
-                    FieldHistoryNodeIndex(0, 0),
-                    FieldHistoryNodeIndex(1, 0),
-                    FieldHistoryNodeIndex(2, 0),
-                    FieldHistoryNodeIndex(3, 0),
-                    FieldHistoryNodeIndex(4, 0),
-                    FieldHistoryNodeIndex(5, 0),
-                    FieldHistoryNodeIndex(5, 1),
-                    FieldHistoryNodeIndex(2, 2),
-                    FieldHistoryNodeIndex(3, 2),
-                    FieldHistoryNodeIndex(4, 2),
-                    FieldHistoryNodeIndex(1, 3),
+                    mapOf(0 to expectedNodes[0]), // x0
+                    mapOf(0 to expectedNodes[1], 3 to expectedNodes[10]), // x1
+                    mapOf(0 to expectedNodes[2], 2 to expectedNodes[7]), // x2
+                    mapOf(0 to expectedNodes[3], 2 to expectedNodes[8]), // x3
+                    mapOf(0 to expectedNodes[4], 2 to expectedNodes[9]), // x4
+                    mapOf(0 to expectedNodes[5], 1 to expectedNodes[6]), // x4
                 ),
-                getNodeIndexes(mainBranchIsAlwaysStraight = true).values.toList()
+                getNodeIndexes(mainBranchIsAlwaysStraight = true)
             )
         }
     }
 
-    private fun FieldHistory.setUpHistoryForTestsThatShowAffectionOfMainBranchIsAlwaysStraight() {
-        makeMove(1, 1) // 1
-        makeMove(2, 1) // 2
-        makeMove(3, 1) // 3
-        makeMove(4, 1) // 4
-        makeMove(5, 1) // 5
+    private fun FieldHistory.setUpHistoryForTestsThatShowAffectionOfMainBranchIsAlwaysStraight(): List<Node> {
+        return buildList {
+            add(rootNode)       // 0
+            add(makeMove(1, 1)) // 1
+            add(makeMove(2, 1)) // 2
+            add(makeMove(3, 1)) // 3
+            add(makeMove(4, 1)) // 4
+            add(makeMove(5, 1)) // 5
 
-        back()
-        makeMove(1, 2) // 6
+            back()
+            add(makeMove(1, 2)) // 6
 
-        switch(rootNode)
-        next()
+            switch(rootNode)
+            next()
 
-        makeMove(1, 3) // 7
-        makeMove(2, 3) // 8
-        makeMove(3, 3) // 9
+            add(makeMove(1, 3)) // 7
+            add(makeMove(2, 3)) // 8
+            add(makeMove(3, 3)) // 9
 
-        switch(rootNode)
-        makeMove(1, 4) // 10
+            switch(rootNode)
+            add(makeMove(1, 4)) // 10
+        }
     }
 
     private fun initializeFieldHistory(): FieldHistory {
@@ -133,7 +132,8 @@ class FieldHistoryNodeIndexesTests {
         return FieldHistory(field)
     }
 
-    private fun FieldHistory.makeMove(x: Int, y: Int): Boolean {
-        return add(field.makeMoveInternal(Position(x, y))!!)
+    private fun FieldHistory.makeMove(x: Int, y: Int): Node {
+        assertTrue(add(field.makeMoveInternal(Position(x, y))!!))
+        return currentNode
     }
 }
