@@ -53,7 +53,7 @@ fun FieldHistoryView(
     }
 
     Canvas(
-        Modifier.size(calculateSize(indexToNodeMap)).pointerInput(indexToNodeMap) {
+        Modifier.size(calculateSize(indexToNodeMap)).pointerInput(indexToNodeMap, fieldHistory) {
             detectTapGestures(
                 onPress = { tapOffset ->
                     if (handleTap(tapOffset, fieldHistory, indexToNodeMap)) {

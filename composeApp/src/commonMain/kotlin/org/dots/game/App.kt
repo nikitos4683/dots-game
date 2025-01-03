@@ -1,9 +1,7 @@
 package org.dots.game
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Button
@@ -14,14 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import org.dots.game.core.*
 import org.dots.game.views.FieldHistoryView
 import org.dots.game.views.FieldView
 import org.dots.game.views.NewGameDialog
+import org.dots.game.views.calculateFieldSize
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 private var start = true
@@ -30,12 +27,10 @@ private val uiSettings = UiSettings.Standard
 
 private lateinit var field: Field
 private lateinit var fieldHistory: FieldHistory
-private lateinit var fieldView: FieldView
 
 @Composable
 @Preview
 fun App() {
-    val textMeasurer = rememberTextMeasurer()
     MaterialTheme {
         var lastMove: MoveResult? by remember { mutableStateOf<MoveResult?>(null) }
         var currentNode by remember { mutableStateOf<Node?>(null) }
@@ -54,7 +49,6 @@ fun App() {
         fun initializeFieldAndHistory(rules: Rules) {
             field = Field(rules)
             fieldHistory = FieldHistory(field)
-            fieldView = FieldView(field, textMeasurer, uiSettings)
 
             updateFieldAndHistory()
         }
@@ -75,29 +69,16 @@ fun App() {
         }
 
         Row {
-            Column(Modifier.width(with(LocalDensity.current) { fieldView.fieldGraphicsWidth.toDp() }).padding(5.dp)) {
+            Column(Modifier.width(with(LocalDensity.current) { calculateFieldSize(field).width.toDp() }).padding(5.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     Text(player1Score, color = uiSettings.playerFirstColor)
                     Text(" : ")
                     Text(player2Score, color = uiSettings.playerSecondColor)
                 }
                 Row {
-                    Canvas(
-                        Modifier.fillMaxSize().pointerInput(Unit) {
-                                detectTapGestures(
-                                    onPress = { tapOffset ->
-                                        if (fieldView.handleTap(tapOffset, moveMode.getMovePlayer())) {
-                                            fieldHistory.add(field.lastMove!!)
-                                            updateFieldAndHistory()
-                                        }
-                                    },
-                                )
-                            },
-                        contentDescription = "Field"
-                    ) {
-                        lastMove
-                        currentNode
-                        fieldView.draw(this)
+                    FieldView(lastMove, moveMode, field, uiSettings) {
+                        fieldHistory.add(it)
+                        updateFieldAndHistory()
                     }
                 }
             }
