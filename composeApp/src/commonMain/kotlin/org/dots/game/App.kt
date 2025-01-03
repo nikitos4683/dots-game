@@ -3,7 +3,6 @@ package org.dots.game
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,11 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.dots.game.core.*
 import org.dots.game.views.FieldHistoryView
@@ -29,24 +26,21 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 
 private var start = true
 private val startRules = Rules(10, 10, captureEmptyBase = true, captureByBorder = true)
+private val uiSettings = UiSettings.Standard
 
 private lateinit var field: Field
 private lateinit var fieldHistory: FieldHistory
 private lateinit var fieldView: FieldView
-private lateinit var fieldHistoryView: FieldHistoryView
 
 @Composable
 @Preview
 fun App() {
-    val uiSettings = UiSettings.Standard
     val textMeasurer = rememberTextMeasurer()
-
     MaterialTheme {
         var lastMove: MoveResult? by remember { mutableStateOf<MoveResult?>(null) }
         var currentNode by remember { mutableStateOf<Node?>(null) }
         var player1Score by remember { mutableStateOf("0") }
         var player2Score by remember { mutableStateOf("0") }
-        var fieldHistorySize by remember { mutableStateOf(DpSize(0.dp, 0.dp)) }
         val showNewGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
 
@@ -55,14 +49,12 @@ fun App() {
             player2Score = field.player2Score.toString()
             lastMove = field.lastMove
             currentNode = fieldHistory.currentNode
-            fieldHistorySize = fieldHistoryView.calculateSize()
         }
 
         fun initializeFieldAndHistory(rules: Rules) {
             field = Field(rules)
             fieldHistory = FieldHistory(field)
             fieldView = FieldView(field, textMeasurer, uiSettings)
-            fieldHistoryView = FieldHistoryView(fieldHistory, textMeasurer, uiSettings)
 
             updateFieldAndHistory()
         }
@@ -155,28 +147,8 @@ fun App() {
                     }
                 }
 
-                Canvas(
-                    Modifier.size(fieldHistorySize).focusable().onKeyEvent { keyEvent ->
-                        if (fieldHistoryView.handleKey(keyEvent)) {
-                            updateFieldAndHistory()
-                            true
-                        } else {
-                            false
-                        }
-                    }.pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = { tapOffset ->
-                                if (fieldHistoryView.handleTap(tapOffset)) {
-                                    updateFieldAndHistory()
-                                }
-                            }
-                        )
-                    },
-                    contentDescription = "Field Tree"
-                ) {
-                    lastMove
-                    currentNode
-                    fieldHistoryView.draw(this)
+                FieldHistoryView(currentNode, fieldHistory, uiSettings) {
+                    updateFieldAndHistory()
                 }
             }
         }
