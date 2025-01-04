@@ -17,12 +17,13 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.dots.game.UiSettings
+import org.dots.game.core.EmptyHistoryElement
 import org.dots.game.core.FieldHistory
+import org.dots.game.core.FieldHistoryElements
 import org.dots.game.core.Node
-import org.dots.game.core.getNodeIndexes
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.iterator
+import org.dots.game.core.NodeHistoryElement
+import org.dots.game.core.VerticalLineHistoryElement
+import org.dots.game.core.getHistoryElements
 import kotlin.math.round
 
 private val stepSize = 50.0f
@@ -43,20 +44,21 @@ fun FieldHistoryView(
     onChangeCurrentNode: () -> Unit
 ) {
     val textMeasurer = rememberTextMeasurer()
-    val indexToNodeMap= fieldHistory.getNodeIndexes(mainBranchIsAlwaysStraight = true)
+    val fieldHistoryElements= fieldHistory.getHistoryElements(mainBranchIsAlwaysStraight = true)
     val nodeToIndexMap = buildMap {
-        for (xIndex in indexToNodeMap.indices) {
-            for ((yIndex, node) in indexToNodeMap[xIndex]) {
+        for (xIndex in fieldHistoryElements.indices) {
+            for ((yIndex, element) in fieldHistoryElements[xIndex].withIndex()) {
+                val node = (element as? NodeHistoryElement)?.node ?: continue
                 this[node] = xIndex to yIndex
             }
         }
     }
 
     Canvas(
-        Modifier.size(calculateSize(indexToNodeMap)).pointerInput(indexToNodeMap, fieldHistory) {
+        Modifier.size(calculateSize(fieldHistoryElements)).pointerInput(fieldHistoryElements, fieldHistory) {
             detectTapGestures(
                 onPress = { tapOffset ->
-                    if (handleTap(tapOffset, fieldHistory, indexToNodeMap)) {
+                    if (handleTap(tapOffset, fieldHistory, fieldHistoryElements)) {
                         onChangeCurrentNode()
                     }
                 }
@@ -64,60 +66,56 @@ fun FieldHistoryView(
         },
         contentDescription = "Field History Tree"
     ) {
-        drawConnections(indexToNodeMap, nodeToIndexMap)
-        drawNodes(indexToNodeMap, textMeasurer, uiSettings)
+        drawConnections(fieldHistoryElements)
+        drawNodes(fieldHistoryElements, textMeasurer, uiSettings)
         drawCurrentNode(currentNode, nodeToIndexMap)
     }
 }
 
-private fun calculateSize(indexToNodeMap: List<LinkedHashMap<Int, Node>>): DpSize {
-    val maxXIndex = indexToNodeMap.size - 1
-    val maxYIndex = indexToNodeMap.maxOf { yIndexes -> yIndexes.maxOf { it.key } }
+private fun calculateSize(fieldHistoryElements: FieldHistoryElements): DpSize {
+    val maxXIndex = fieldHistoryElements.size - 1
+    val maxYIndex = fieldHistoryElements.maxOf { yLine -> yLine.size } - 1
 
     //return Size(maxXIndex * stepSize + padding * 2, maxYIndex * stepSize + padding * 2)
     return DpSize((maxXIndex * stepSize + padding * 2).dp, (maxYIndex * stepSize + padding * 2).dp)
 }
 
-private fun DrawScope.drawConnections(indexToNodeMap: List<LinkedHashMap<Int, Node>>, nodeToIndexMap: Map<Node, Pair<Int, Int>>) {
-    for (xIndex in indexToNodeMap.indices) {
-        var previousYIndex = 0
-        var previousYNode: Node? = null
-        for ((yIndex, node) in indexToNodeMap[xIndex]) {
+private fun DrawScope.drawConnections(fieldHistoryElements: FieldHistoryElements) {
+    for (xIndex in fieldHistoryElements.indices) {
+        for ((yIndex, element) in fieldHistoryElements[xIndex].withIndex()) {
             val centerOffsetX = xIndex * stepSize + padding
             val centerOffsetY = yIndex * stepSize + padding
 
-            if (node.isRoot) continue // No connection for the root node
+            when (element) {
+                is NodeHistoryElement -> {
+                    val node = element.node
 
-            val xLineOffset = (xIndex - 1) * stepSize + padding
+                    if (node.isRoot) continue // No connection for the root node
 
-            drawLine(lineColor, Offset(xLineOffset, centerOffsetY), Offset(centerOffsetX, centerOffsetY))
+                    val xLineOffset = (xIndex - 1) * stepSize + padding
 
-            val parentNode = node.previousNode!!
-            val parentNodeYIndex = if (previousYNode?.previousNode == parentNode) {
-                // Avoid drawing the line multiple times in case of the previous sibling node is already processed
-                previousYIndex
-            } else {
-                nodeToIndexMap.getValue(parentNode).second
+                    drawLine(lineColor, Offset(xLineOffset, centerOffsetY), Offset(centerOffsetX, centerOffsetY))
+                }
+                is VerticalLineHistoryElement -> {
+                    val xLineOffset = xIndex * stepSize + padding
+
+                    drawLine(
+                        lineColor,
+                        Offset(xLineOffset, centerOffsetY),
+                        Offset(xLineOffset, centerOffsetY - stepSize)
+                    )
+                }
+                is EmptyHistoryElement -> {}
             }
-
-            val verticalConnectionLinesCount = yIndex - parentNodeYIndex
-            if (verticalConnectionLinesCount > 0) {
-                drawLine(
-                    lineColor,
-                    Offset(xLineOffset, centerOffsetY),
-                    Offset(xLineOffset, centerOffsetY - stepSize * verticalConnectionLinesCount)
-                )
-            }
-
-            previousYIndex = yIndex
-            previousYNode = node
         }
     }
 }
 
-private fun DrawScope.drawNodes(indexToNodeMap: List<LinkedHashMap<Int, Node>>, textMeasurer: TextMeasurer, uiSettings: UiSettings) {
-    for (xIndex in indexToNodeMap.indices) {
-        for ((yIndex, node) in indexToNodeMap[xIndex]) {
+private fun DrawScope.drawNodes(fieldHistoryElements: FieldHistoryElements, textMeasurer: TextMeasurer, uiSettings: UiSettings) {
+    for (xIndex in fieldHistoryElements.indices) {
+        for ((yIndex, element) in fieldHistoryElements[xIndex].withIndex()) {
+            val node = (element as? NodeHistoryElement)?.node ?: continue
+
             val color: Color
             val moveNumber: Int
             if (node.isRoot) {
@@ -159,12 +157,12 @@ private fun DrawScope.drawCurrentNode(currentNode: Node?, nodeToIndexMap: Map<No
     )
 }
 
-private fun handleTap(tapOffset: Offset, fieldHistory: FieldHistory, indexToNodeMap: List<LinkedHashMap<Int, Node>>): Boolean {
+private fun handleTap(tapOffset: Offset, fieldHistory: FieldHistory, fieldHistoryElements: FieldHistoryElements): Boolean {
     val xIndex = round((tapOffset.x - padding) / stepSize).toInt()
-    val yIndexes = indexToNodeMap.getOrNull(xIndex) ?: return false
+    val yLine = fieldHistoryElements.getOrNull(xIndex) ?: return false
 
     val yIndex = round((tapOffset.y - padding) / stepSize).toInt()
-    val node = yIndexes[yIndex] ?: return false
+    val node = (yLine.getOrNull(yIndex) as? NodeHistoryElement)?.node ?: return false
 
     return fieldHistory.switch(node)
 }
