@@ -14,20 +14,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import org.dots.game.core.*
-import org.dots.game.views.FieldHistoryView
-import org.dots.game.views.FieldView
-import org.dots.game.views.NewGameDialog
-import org.dots.game.views.calculateFieldSize
+import org.dots.game.views.*
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-private var start = true
 private val startRules = Rules(10, 10, captureEmptyBase = true, captureByBorder = true)
 private val uiSettings = UiSettings.Standard
-
-private lateinit var field: Field
-private lateinit var fieldHistory: FieldHistory
 
 @Composable
 @Preview
@@ -36,6 +30,7 @@ fun App() {
         var start by rememberSaveable { mutableStateOf(true) }
         var field: Field by rememberSaveable {  mutableStateOf(Field(startRules)) }
         var fieldHistory: FieldHistory by rememberSaveable { mutableStateOf(FieldHistory(field)) }
+        var fieldHistoryViewData: FieldHistoryViewData by rememberSaveable { mutableStateOf(FieldHistoryViewData(fieldHistory)) }
 
         var lastMove: MoveResult? by remember { mutableStateOf<MoveResult?>(null) }
         var currentNode by remember { mutableStateOf<Node?>(null) }
@@ -44,11 +39,19 @@ fun App() {
         val showNewGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
 
-        fun updateFieldAndHistory() {
+        val textMeasurer = rememberTextMeasurer()
+
+        fun updateCurrentNode() {
             player1Score = field.player1Score.toString()
             player2Score = field.player2Score.toString()
             lastMove = field.lastMove
             currentNode = fieldHistory.currentNode
+        }
+
+        fun updateFieldAndHistory() {
+            updateCurrentNode()
+
+            fieldHistoryViewData = FieldHistoryViewData(fieldHistory)
         }
 
         fun initializeFieldAndHistory(rules: Rules) {
@@ -106,12 +109,14 @@ fun App() {
                         playerButtonModifier,
                         colors = if (moveMode == MoveMode.Next) ButtonDefaults.buttonColors(selectedModeButtonColor) else ButtonDefaults.buttonColors(),
                     ) {
-                        Box(
-                            modifier = playerColorIconModifier.background(uiSettings.playerFirstColor)
-                        )
-                        Box(
-                            modifier = playerColorIconModifier.clip(CircleShape).background(uiSettings.playerSecondColor)
-                        )
+                        Box {
+                            Box(
+                                modifier = Modifier.offset(-5.dp).size(16.dp).border(1.dp, Color.White, CircleShape).clip(CircleShape).background(uiSettings.playerFirstColor)
+                            )
+                            Box(
+                                modifier = Modifier.offset(5.dp).size(16.dp).border(1.dp, Color.White, CircleShape).clip(CircleShape).background(uiSettings.playerSecondColor)
+                            )
+                        }
                     }
                     Button(
                         onClick = { moveMode = MoveMode.First },
@@ -133,8 +138,8 @@ fun App() {
                     }
                 }
 
-                FieldHistoryView(currentNode, fieldHistory, uiSettings) {
-                    updateFieldAndHistory()
+                FieldHistoryView(currentNode, fieldHistory, fieldHistoryViewData, uiSettings, textMeasurer) {
+                    updateCurrentNode()
                 }
             }
         }

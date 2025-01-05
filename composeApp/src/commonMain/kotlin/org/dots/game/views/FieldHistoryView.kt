@@ -1,19 +1,30 @@
 package org.dots.game.views
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.dots.game.UiSettings
@@ -23,7 +34,6 @@ import org.dots.game.core.FieldHistoryElements
 import org.dots.game.core.Node
 import org.dots.game.core.NodeHistoryElement
 import org.dots.game.core.VerticalLineHistoryElement
-import org.dots.game.core.getHistoryElements
 import kotlin.math.round
 
 private val stepSize = 50.0f
@@ -40,39 +50,47 @@ private val nodeRadius = stepSize * nodeRatio
 fun FieldHistoryView(
     currentNode: Node?,
     fieldHistory: FieldHistory,
+    fieldHistoryViewData: FieldHistoryViewData,
     uiSettings: UiSettings,
+    textMeasurer: TextMeasurer,
     onChangeCurrentNode: () -> Unit
 ) {
-    val textMeasurer = rememberTextMeasurer()
-    val fieldHistoryElements= fieldHistory.getHistoryElements(mainBranchIsAlwaysStraight = true)
-    val nodeToIndexMap = buildMap {
-        for (xIndex in fieldHistoryElements.indices) {
-            for ((yIndex, element) in fieldHistoryElements[xIndex].withIndex()) {
-                val node = (element as? NodeHistoryElement)?.node ?: continue
-                this[node] = xIndex to yIndex
+    val requester = remember { FocusRequester() }
+    Box(Modifier.size(calculateSize(fieldHistoryViewData.fieldHistoryElements))
+        .focusRequester(requester).focusable()
+        .onKeyEvent { keyEvent -> handleKeyEvent(keyEvent, fieldHistory).also {
+            if (it) {
+                onChangeCurrentNode()
             }
+        } }
+        .pointerInput(fieldHistory, fieldHistoryViewData) {
+        detectTapGestures(
+            onPress = { tapOffset ->
+                if (handleTap(tapOffset, fieldHistory, fieldHistoryViewData.fieldHistoryElements)) {
+                    onChangeCurrentNode()
+                }
+            }
+        ) }
+    ) {
+        Canvas(
+            Modifier,
+            contentDescription = "Field History Tree"
+        ) {
+            drawConnections(fieldHistoryViewData.fieldHistoryElements)
+            drawNodes(fieldHistoryViewData.fieldHistoryElements, textMeasurer, uiSettings)
+        }
+        Canvas(Modifier,
+            contentDescription = "Current Node"
+        ) {
+            drawCurrentNode(currentNode, fieldHistoryViewData.nodeToIndexMap)
         }
     }
-
-    Canvas(
-        Modifier.size(calculateSize(fieldHistoryElements)).pointerInput(fieldHistoryElements, fieldHistory) {
-            detectTapGestures(
-                onPress = { tapOffset ->
-                    if (handleTap(tapOffset, fieldHistory, fieldHistoryElements)) {
-                        onChangeCurrentNode()
-                    }
-                }
-            )
-        },
-        contentDescription = "Field History Tree"
-    ) {
-        drawConnections(fieldHistoryElements)
-        drawNodes(fieldHistoryElements, textMeasurer, uiSettings)
-        drawCurrentNode(currentNode, nodeToIndexMap)
+    LaunchedEffect(fieldHistory) {
+        requester.requestFocus()
     }
 }
 
-private fun calculateSize(fieldHistoryElements: FieldHistoryElements): DpSize {
+fun calculateSize(fieldHistoryElements: FieldHistoryElements): DpSize {
     val maxXIndex = fieldHistoryElements.size - 1
     val maxYIndex = fieldHistoryElements.maxOf { yLine -> yLine.size } - 1
 
@@ -165,4 +183,16 @@ private fun handleTap(tapOffset: Offset, fieldHistory: FieldHistory, fieldHistor
     val node = (yLine.getOrNull(yIndex) as? NodeHistoryElement)?.node ?: return false
 
     return fieldHistory.switch(node)
+}
+
+private fun handleKeyEvent(keyEvent: KeyEvent, fieldHistory: FieldHistory): Boolean {
+    if (keyEvent.type == KeyEventType.KeyDown) {
+        if (keyEvent.key == Key.DirectionLeft) {
+            return fieldHistory.back()
+        } else if (keyEvent.key == Key.DirectionRight) {
+            return fieldHistory.next()
+        }
+    }
+
+    return false
 }
