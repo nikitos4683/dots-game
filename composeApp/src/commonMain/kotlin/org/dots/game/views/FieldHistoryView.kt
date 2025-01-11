@@ -6,6 +6,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
@@ -17,28 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import org.dots.game.UiSettings
-import org.dots.game.core.EmptyHistoryElement
-import org.dots.game.core.FieldHistory
-import org.dots.game.core.FieldHistoryElements
-import org.dots.game.core.Node
-import org.dots.game.core.NodeHistoryElement
-import org.dots.game.core.VerticalLineHistoryElement
-import kotlin.math.round
+import org.dots.game.core.*
 
 private val stepSize = 40.dp
 private val nodeRatio = 0.33f
@@ -51,7 +37,6 @@ private val linesZIndex = 0f
 private val nodesZIndex = 1f
 private val selectedNodeZIndex = 2f
 
-private val padding = stepSize
 private val nodeRadius = stepSize * nodeRatio
 private val nodeSize = nodeRadius * 2
 
@@ -64,24 +49,18 @@ fun FieldHistoryView(
     onChangeCurrentNode: () -> Unit
 ) {
     val requester = remember { FocusRequester() }
-    val currentDensity = LocalDensity.current
-    Box(Modifier.size(calculateSize(fieldHistoryViewData.fieldHistoryElements))
-        .focusRequester(requester).focusable()
-        .onKeyEvent { keyEvent -> handleKeyEvent(keyEvent, fieldHistory).also {
-            if (it) {
-                onChangeCurrentNode()
-            }
-        } }
-        .pointerInput(fieldHistory, fieldHistoryViewData) {
-        detectTapGestures(
-            onPress = { tapOffset ->
-                if (handleTap(tapOffset, fieldHistory, fieldHistoryViewData.fieldHistoryElements, currentDensity)) {
+    Box(Modifier.size(300.dp, 300.dp).padding(stepSize)
+        .focusRequester(requester)
+        .focusable()
+        .onKeyEvent { keyEvent ->
+            handleKeyEvent(keyEvent, fieldHistory).also {
+                if (it) {
                     onChangeCurrentNode()
                 }
             }
-        ) }
+        }
     ) {
-        ConnectionsAndNodes(fieldHistoryViewData.fieldHistoryElements, uiSettings)
+        ConnectionsAndNodes(fieldHistory, fieldHistoryViewData.fieldHistoryElements, onChangeCurrentNode, uiSettings)
         CurrentNode(currentNode, fieldHistoryViewData.nodeToIndexMap)
     }
     LaunchedEffect(fieldHistory) {
@@ -89,20 +68,18 @@ fun FieldHistoryView(
     }
 }
 
-fun calculateSize(fieldHistoryElements: FieldHistoryElements): DpSize {
-    val maxXIndex = fieldHistoryElements.size - 1
-    val maxYIndex = fieldHistoryElements.maxOf { yLine -> yLine.size } - 1
-
-    return DpSize(stepSize * maxXIndex + padding * 2, stepSize * maxYIndex + padding * 2)
-}
-
 @Composable
-private fun ConnectionsAndNodes(fieldHistoryElements: FieldHistoryElements, uiSettings: UiSettings) {
+private fun ConnectionsAndNodes(
+    fieldHistory: FieldHistory,
+    fieldHistoryElements: FieldHistoryElements,
+    onChangeCurrentNode: () -> Unit,
+    uiSettings: UiSettings
+) {
     for (xIndex in fieldHistoryElements.indices) {
         for ((yIndex, element) in fieldHistoryElements[xIndex].withIndex()) {
 
-            val centerOffsetX = stepSize * xIndex + padding
-            val centerOffsetY = stepSize * yIndex + padding
+            val centerOffsetX = stepSize * xIndex
+            val centerOffsetY = stepSize * yIndex
 
             when (element) {
                 is NodeHistoryElement -> {
@@ -120,7 +97,7 @@ private fun ConnectionsAndNodes(fieldHistoryElements: FieldHistoryElements, uiSe
                         // Render horizontal connection line
                         Box(
                             Modifier
-                                .offset(stepSize * (xIndex - 1) + padding, centerOffsetY - lineThickness / 2)
+                                .offset(stepSize * (xIndex - 1), centerOffsetY - lineThickness / 2)
                                 .size(stepSize, lineThickness)
                                 .background(lineColor)
                                 .zIndex(linesZIndex)
@@ -135,6 +112,13 @@ private fun ConnectionsAndNodes(fieldHistoryElements: FieldHistoryElements, uiSe
                             .clip(CircleShape)
                             .background(color)
                             .zIndex(nodesZIndex)
+                            .pointerInput(Unit) {
+                                detectTapGestures(onPress = {
+                                    if (fieldHistory.switch(node)) {
+                                        onChangeCurrentNode()
+                                    }
+                                })
+                            }
                     ) {
                         Text(moveNumber.toString(), Modifier.align(Alignment.Center), textColor)
                     }
@@ -144,7 +128,7 @@ private fun ConnectionsAndNodes(fieldHistoryElements: FieldHistoryElements, uiSe
                     // Render vertical connection line
                     Box(
                         Modifier
-                            .offset(stepSize * xIndex - lineThickness / 2 + padding, centerOffsetY - stepSize)
+                            .offset(stepSize * xIndex - lineThickness / 2, centerOffsetY - stepSize)
                             .size(lineThickness, stepSize)
                             .background(lineColor)
                             .zIndex(linesZIndex)
@@ -162,8 +146,8 @@ private fun CurrentNode(currentNode: Node?, nodeToIndexMap: Map<Node, Pair<Int, 
     if (currentNode == null) return
     val (xIndex, yIndex) = nodeToIndexMap.getValue(currentNode)
 
-    val centerOffsetX = stepSize * xIndex + padding - nodeRadius
-    val centerOffsetY = stepSize * yIndex + padding - nodeRadius
+    val centerOffsetX = stepSize * xIndex - nodeRadius
+    val centerOffsetY = stepSize * yIndex - nodeRadius
     val size = nodeRadius * 2
 
     Box(
@@ -173,18 +157,6 @@ private fun CurrentNode(currentNode: Node?, nodeToIndexMap: Map<Node, Pair<Int, 
             .border(1.dp, selectedNodeRectColor)
             .zIndex(selectedNodeZIndex)
     )
-}
-
-private fun handleTap(tapOffset: Offset, fieldHistory: FieldHistory, fieldHistoryElements: FieldHistoryElements, currentDensity: Density): Boolean {
-    with (currentDensity) {
-        val xIndex = round((tapOffset.x.toDp() - padding) / stepSize).toInt()
-        val yLine = fieldHistoryElements.getOrNull(xIndex) ?: return false
-
-        val yIndex = round((tapOffset.y.toDp() - padding) / stepSize).toInt()
-        val node = (yLine.getOrNull(yIndex) as? NodeHistoryElement)?.node ?: return false
-
-        return fieldHistory.switch(node)
-    }
 }
 
 private fun handleKeyEvent(keyEvent: KeyEvent, fieldHistory: FieldHistory): Boolean {
