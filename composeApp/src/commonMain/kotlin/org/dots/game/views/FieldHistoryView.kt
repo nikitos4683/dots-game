@@ -32,16 +32,32 @@ import org.dots.game.core.*
 private val stepSize = 40.dp
 private val nodeRatio = 0.33f
 private val rootNodeColor = Color.LightGray
-private val selectedNodeRectColor = Color.Black
 private val lineColor = Color(0f, 0f, 0f, 0.8f)
 private val textColor: Color = Color.White
 private val lineThickness = 1.dp
-private val linesZIndex = 0f
-private val nodesZIndex = 1f
-private val selectedNodeZIndex = 2f
 
 private val nodeRadius = stepSize * nodeRatio
 private val nodeSize = nodeRadius * 2
+
+private val horizontalLineModifier = Modifier
+    .size(stepSize, lineThickness)
+    .background(lineColor)
+    .zIndex(0f)
+
+private val verticalLineModifier = Modifier
+    .size(lineThickness, stepSize)
+    .background(lineColor)
+    .zIndex( 0f)
+
+private val nodeModifier = Modifier
+    .size(nodeSize, nodeSize)
+    .clip(CircleShape)
+    .zIndex(1f)
+
+private val selectedNodeModifier = Modifier
+    .size(nodeSize, nodeSize)
+    .border(lineThickness, Color.Black)
+    .zIndex( 2f)
 
 @Composable
 fun FieldHistoryView(
@@ -128,11 +144,10 @@ private fun ConnectionsAndNodes(
 
                         // Render horizontal connection line
                         Box(
-                            Modifier
-                                .offset(stepSize * (xIndex - 1) + nodeRadius, offsetY - lineThickness / 2 + nodeRadius)
-                                .size(stepSize, lineThickness)
-                                .background(lineColor)
-                                .zIndex(linesZIndex)
+                            Modifier.offset(
+                                stepSize * (xIndex - 1) + nodeRadius,
+                                offsetY - lineThickness / 2 + nodeRadius
+                            ).then(horizontalLineModifier)
                         )
                     }
 
@@ -140,10 +155,8 @@ private fun ConnectionsAndNodes(
                     Box(
                         Modifier
                             .offset(offsetX, offsetY)
-                            .size(nodeSize, nodeSize)
-                            .clip(CircleShape)
+                            .then(nodeModifier)
                             .background(color)
-                            .zIndex(nodesZIndex)
                             .pointerInput(Unit) {
                                 detectTapGestures(onPress = {
                                     if (fieldHistory.switch(node)) {
@@ -161,9 +174,7 @@ private fun ConnectionsAndNodes(
                     Box(
                         Modifier
                             .offset(stepSize * xIndex - lineThickness / 2 + nodeRadius, offsetY - stepSize + nodeRadius)
-                            .size(lineThickness, stepSize)
-                            .background(lineColor)
-                            .zIndex(linesZIndex)
+                            .then(verticalLineModifier)
                     )
                 }
 
@@ -179,11 +190,7 @@ private fun CurrentNode(currentNode: Node?, fieldHistoryViewData: FieldHistoryVi
     val (xIndex, yIndex) = fieldHistoryViewData.nodeToIndexMap.getValue(currentNode)
 
     Box(
-        Modifier
-            .offset(stepSize * xIndex, stepSize * yIndex)
-            .size(nodeSize, nodeSize)
-            .border(1.dp, selectedNodeRectColor)
-            .zIndex(selectedNodeZIndex)
+        Modifier.offset(stepSize * xIndex, stepSize * yIndex).then(selectedNodeModifier)
     )
 }
 
