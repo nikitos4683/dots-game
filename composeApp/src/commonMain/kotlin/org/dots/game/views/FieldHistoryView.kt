@@ -1,21 +1,24 @@
 package org.dots.game.views
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -23,8 +26,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.dots.game.UiSettings
@@ -36,12 +40,13 @@ import org.dots.game.core.NodeHistoryElement
 import org.dots.game.core.VerticalLineHistoryElement
 import kotlin.math.round
 
-private val stepSize = 50.0f
+private val stepSize = 40.dp
 private val nodeRatio = 0.33f
 private val rootNodeColor = Color.LightGray
 private val selectedNodeRectColor = Color.Black
 private val lineColor = Color(0f, 0f, 0f, 0.8f)
 private val textColor: Color = Color.White
+private val lineThickness = 1.dp
 
 private val padding = stepSize
 private val nodeRadius = stepSize * nodeRatio
@@ -56,6 +61,7 @@ fun FieldHistoryView(
     onChangeCurrentNode: () -> Unit
 ) {
     val requester = remember { FocusRequester() }
+    val currentDensity = LocalDensity.current
     Box(Modifier.size(calculateSize(fieldHistoryViewData.fieldHistoryElements))
         .focusRequester(requester).focusable()
         .onKeyEvent { keyEvent -> handleKeyEvent(keyEvent, fieldHistory).also {
@@ -66,24 +72,15 @@ fun FieldHistoryView(
         .pointerInput(fieldHistory, fieldHistoryViewData) {
         detectTapGestures(
             onPress = { tapOffset ->
-                if (handleTap(tapOffset, fieldHistory, fieldHistoryViewData.fieldHistoryElements)) {
+                if (handleTap(tapOffset, fieldHistory, fieldHistoryViewData.fieldHistoryElements, currentDensity)) {
                     onChangeCurrentNode()
                 }
             }
         ) }
     ) {
-        Canvas(
-            Modifier,
-            contentDescription = "Field History Tree"
-        ) {
-            drawConnections(fieldHistoryViewData.fieldHistoryElements)
-            drawNodes(fieldHistoryViewData.fieldHistoryElements, textMeasurer, uiSettings)
-        }
-        Canvas(Modifier,
-            contentDescription = "Current Node"
-        ) {
-            drawCurrentNode(currentNode, fieldHistoryViewData.nodeToIndexMap)
-        }
+        Connections(fieldHistoryViewData.fieldHistoryElements)
+        Nodes(fieldHistoryViewData.fieldHistoryElements, textMeasurer, uiSettings)
+        CurrentNode(currentNode, fieldHistoryViewData.nodeToIndexMap)
     }
     LaunchedEffect(fieldHistory) {
         requester.requestFocus()
@@ -94,42 +91,42 @@ fun calculateSize(fieldHistoryElements: FieldHistoryElements): DpSize {
     val maxXIndex = fieldHistoryElements.size - 1
     val maxYIndex = fieldHistoryElements.maxOf { yLine -> yLine.size } - 1
 
-    //return Size(maxXIndex * stepSize + padding * 2, maxYIndex * stepSize + padding * 2)
-    return DpSize((maxXIndex * stepSize + padding * 2).dp, (maxYIndex * stepSize + padding * 2).dp)
+    return DpSize(stepSize * maxXIndex + padding * 2, stepSize * maxYIndex + padding * 2)
 }
 
-private fun DrawScope.drawConnections(fieldHistoryElements: FieldHistoryElements) {
+@Composable
+private fun Connections(fieldHistoryElements: FieldHistoryElements) {
     for (xIndex in fieldHistoryElements.indices) {
         for ((yIndex, element) in fieldHistoryElements[xIndex].withIndex()) {
-            val centerOffsetX = xIndex * stepSize + padding
-            val centerOffsetY = yIndex * stepSize + padding
+            with(LocalDensity.current) {
+                val centerOffsetY = stepSize * yIndex + padding
 
-            when (element) {
-                is NodeHistoryElement -> {
-                    val node = element.node
+                when (element) {
+                    is NodeHistoryElement -> {
+                        val node = element.node
 
-                    if (node.isRoot) continue // No connection for the root node
+                        if (node.isRoot) continue // No connection for the root node
 
-                    val xLineOffset = (xIndex - 1) * stepSize + padding
+                        val xLineOffset = stepSize * (xIndex - 1)  + padding
 
-                    drawLine(lineColor, Offset(xLineOffset, centerOffsetY), Offset(centerOffsetX, centerOffsetY))
+                        Box(Modifier.offset(xLineOffset, centerOffsetY - lineThickness / 2).size(stepSize, lineThickness).background(lineColor))
+                    }
+
+                    is VerticalLineHistoryElement -> {
+                        val xLineOffset = stepSize * xIndex + padding
+
+                        Box(Modifier.offset(xLineOffset - lineThickness / 2, centerOffsetY - stepSize).size(lineThickness, stepSize).background(lineColor))
+                    }
+
+                    is EmptyHistoryElement -> {}
                 }
-                is VerticalLineHistoryElement -> {
-                    val xLineOffset = xIndex * stepSize + padding
-
-                    drawLine(
-                        lineColor,
-                        Offset(xLineOffset, centerOffsetY),
-                        Offset(xLineOffset, centerOffsetY - stepSize)
-                    )
-                }
-                is EmptyHistoryElement -> {}
             }
         }
     }
 }
 
-private fun DrawScope.drawNodes(fieldHistoryElements: FieldHistoryElements, textMeasurer: TextMeasurer, uiSettings: UiSettings) {
+@Composable
+private fun Nodes(fieldHistoryElements: FieldHistoryElements, textMeasurer: TextMeasurer, uiSettings: UiSettings) {
     for (xIndex in fieldHistoryElements.indices) {
         for ((yIndex, element) in fieldHistoryElements[xIndex].withIndex()) {
             val node = (element as? NodeHistoryElement)?.node ?: continue
@@ -144,45 +141,43 @@ private fun DrawScope.drawNodes(fieldHistoryElements: FieldHistoryElements, text
                 moveNumber = node.number
             }
 
-            val centerOffsetX = xIndex * stepSize + padding
-            val centerOffsetY = yIndex * stepSize + padding
+            with(LocalDensity.current) {
+                val centerOffsetX = stepSize * xIndex + padding - nodeRadius
+                val centerOffsetY = stepSize * yIndex + padding - nodeRadius
+                val size = nodeRadius * 2
 
-            drawCircle(color, nodeRadius, Offset(centerOffsetX, centerOffsetY))
-
-            val textLayoutResult = textMeasurer.measure(moveNumber.toString())
-            drawText(
-                textLayoutResult,
-                textColor,
-                Offset(
-                    centerOffsetX - textLayoutResult.size.width / 2,
-                    centerOffsetY - textLayoutResult.size.height / 2
-                )
-            )
+                Box(Modifier.offset(centerOffsetX, centerOffsetY).size( size, size).clip(CircleShape).background(color)) {
+                    Text(moveNumber.toString(), Modifier.align(Alignment.Center), textColor)
+                }
+            }
         }
     }
 }
 
-private fun DrawScope.drawCurrentNode(currentNode: Node?, nodeToIndexMap: Map<Node, Pair<Int, Int>>) {
+@Composable
+private fun CurrentNode(currentNode: Node?, nodeToIndexMap: Map<Node, Pair<Int, Int>>) {
     if (currentNode == null) return
     val (xIndex, yIndex) = nodeToIndexMap.getValue(currentNode)
-    val centerOffsetX = xIndex * stepSize + padding
-    val centerOffsetY = yIndex * stepSize + padding
-    drawRect(
-        selectedNodeRectColor,
-        Offset(centerOffsetX - nodeRadius, centerOffsetY - nodeRadius),
-        Size(nodeRadius * 2, nodeRadius * 2),
-        style = Stroke(2.0f)
-    )
+
+    with(LocalDensity.current) {
+        val centerOffsetX = stepSize * xIndex  + padding - nodeRadius
+        val centerOffsetY = stepSize * yIndex + padding - nodeRadius
+        val size = nodeRadius * 2
+
+        Box(Modifier.offset(centerOffsetX, centerOffsetY).size(size, size).border(width = 2.0f.toDp(), selectedNodeRectColor))
+    }
 }
 
-private fun handleTap(tapOffset: Offset, fieldHistory: FieldHistory, fieldHistoryElements: FieldHistoryElements): Boolean {
-    val xIndex = round((tapOffset.x - padding) / stepSize).toInt()
-    val yLine = fieldHistoryElements.getOrNull(xIndex) ?: return false
+private fun handleTap(tapOffset: Offset, fieldHistory: FieldHistory, fieldHistoryElements: FieldHistoryElements, currentDensity: Density): Boolean {
+    with (currentDensity) {
+        val xIndex = round((tapOffset.x.toDp() - padding) / stepSize).toInt()
+        val yLine = fieldHistoryElements.getOrNull(xIndex) ?: return false
 
-    val yIndex = round((tapOffset.y - padding) / stepSize).toInt()
-    val node = (yLine.getOrNull(yIndex) as? NodeHistoryElement)?.node ?: return false
+        val yIndex = round((tapOffset.y.toDp() - padding) / stepSize).toInt()
+        val node = (yLine.getOrNull(yIndex) as? NodeHistoryElement)?.node ?: return false
 
-    return fieldHistory.switch(node)
+        return fieldHistory.switch(node)
+    }
 }
 
 private fun handleKeyEvent(keyEvent: KeyEvent, fieldHistory: FieldHistory): Boolean {
