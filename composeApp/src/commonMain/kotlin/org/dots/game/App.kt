@@ -138,7 +138,7 @@ fun App() {
                     }
                 }
 
-                FieldHistoryView(currentNode, fieldHistory, fieldHistoryViewData, uiSettings, textMeasurer) {
+                FieldHistoryView(currentNode, fieldHistory, fieldHistoryViewData, uiSettings) {
                     updateCurrentNode()
                 }
             }
