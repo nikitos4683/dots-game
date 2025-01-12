@@ -59,10 +59,14 @@ class Field(val rules: Rules = Rules.Standard) {
         private set
 
     fun makeMove(x: Int, y: Int, player: Player? = null): MoveResult? {
-        if (x < 0 || x >= width || y < 0 || y >= height) return null
+        val position = positionIfWithinBoundsAndFree(x, y) ?: return null
+        return makeMoveInternal(position, player)?.denormalize()
+    }
 
-        // normalize position to get rid of range checks
-        return makeMoveInternal(Position(x, y).normalize(), player)?.denormalize()
+    fun positionIfWithinBoundsAndFree(x: Int, y: Int): Position? {
+        return if (x < 0 || x >= width || y < 0 || y >= height) null else Position(x, y).normalize().takeIf {
+            it.getState().checkValidMove()
+        }
     }
 
     fun getCurrentPlayer(player: Player?): Player {
@@ -107,9 +111,6 @@ class Field(val rules: Rules = Rules.Standard) {
 
     internal fun makeMoveInternal(position: Position, player: Player? = null): MoveResult? {
         val currentPlayer = getCurrentPlayer(player)
-
-        val currentState = position.getState()
-        if (!currentState.checkValidMove()) return null
 
         val originalState = position.getState()
 

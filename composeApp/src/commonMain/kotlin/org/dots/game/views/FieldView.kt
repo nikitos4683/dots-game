@@ -1,7 +1,6 @@
 package org.dots.game.views
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -10,9 +9,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -25,7 +30,6 @@ import org.dots.game.UiSettings
 import org.dots.game.core.Field
 import org.dots.game.core.MoveMode
 import org.dots.game.core.MoveResult
-import org.dots.game.core.Player
 import org.dots.game.core.Position
 import kotlin.math.round
 
@@ -56,17 +60,38 @@ private val linesThickness = 0.75.dp
 fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: FieldViewData, uiSettings: UiSettings, onMovePlaced: (MoveResult) -> Unit) {
     val field = fieldViewData.field
     val currentDensity = LocalDensity.current
-    Box(Modifier.size(fieldViewData.fieldSize).pointerInput(moveMode, field) {
-        detectTapGestures(
-            onPress = { tapOffset ->
-                if (handleTap(tapOffset, moveMode.getMovePlayer(), field, currentDensity)) {
-                    onMovePlaced(field.lastMove!!)
+    var pointerFieldPosition: Position? by remember { mutableStateOf(null) }
+
+    Box(
+        Modifier
+            .size(fieldViewData.fieldSize)
+            .pointerInput(moveMode, field) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        when (event.type) {
+                            PointerEventType.Move -> {
+                                pointerFieldPosition = event.toFieldPositionIfFree(field, currentDensity)
+                            }
+                            PointerEventType.Press -> {
+                                val fieldPosition = event.toFieldPositionIfFree(field, currentDensity)
+                                if (fieldPosition != null &&
+                                    field.makeMoveInternal(fieldPosition, field.getCurrentPlayer(moveMode.getMovePlayer())) != null
+                                ) {
+                                    onMovePlaced(field.lastMove!!)
+                                }
+                            }
+                            PointerEventType.Exit -> {
+                                pointerFieldPosition = null
+                            }
+                        }
+                    }
                 }
-            },
-        )
-    }) {
+            }
+    ) {
         Grid(field)
         Moves(currentMove, field, uiSettings)
+        Pointer(pointerFieldPosition, moveMode, field, uiSettings)
     }
 }
 
@@ -170,9 +195,9 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             val yCount = (maxY - minY).toFloat()
 
             val polygonShape = GenericShape { size, _ ->
-                for ((index, position) in denormalizedPositions.withIndex()) {
-                    val x = (position.x - minX) / xCount * size.width
-                    val y = (position.y - minY) / yCount * size.height
+                for ((index, denormalizedPosition) in denormalizedPositions.withIndex()) {
+                    val x = (denormalizedPosition.x - minX) / xCount * size.width
+                    val y = (denormalizedPosition.y - minY) / yCount * size.height
                     if (index == 0) {
                         moveTo(x, y)
                     } else {
@@ -194,29 +219,44 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
     }
 
     currentMove?.let {
-        val offset = it.position.toDpOffset(field)
+        val dpOffset = it.position.toDpOffset(field)
         Box(Modifier
-            .offset(offset.x - lastMoveRadius, offset.y - lastMoveRadius)
+            .offset(dpOffset.x - lastMoveRadius, dpOffset.y - lastMoveRadius)
             .size(lastMoveDotSize)
             .background(lastMoveColor, CircleShape)
         )
     }
 }
 
+@Composable
+private fun Pointer(position: Position?, moveMode: MoveMode, field: Field, uiSettings: UiSettings) {
+    if (position == null) return
+
+    val dpOffset = position.toDpOffset(field)
+    val currentPlayer = field.getCurrentPlayer(moveMode.getMovePlayer())
+    Box(Modifier
+        .offset(dpOffset.x - dotRadius, dpOffset.y - dotRadius)
+        .size(dotSize)
+        .background(uiSettings.toColor(currentPlayer).copy(alpha = 0.5f), CircleShape)
+    )
+}
+
 private fun Position.toDpOffset(field: Field): DpOffset {
-    val denormalized = with (field) {
+    val denormalized = with(field) {
         this@toDpOffset.denormalize()
     }
-    return DpOffset( denormalized.x.toGraphical(),  denormalized.y.toGraphical())
+    return DpOffset(denormalized.x.toGraphical(), denormalized.y.toGraphical())
 }
 
 private fun Int.toGraphical(): Dp = cellSize * this + fieldPadding
 
-private fun handleTap(tapOffset: Offset, currentPlayer: Player?, field: Field, currentDensity: Density): Boolean {
-    with (currentDensity) {
-        val x = round((tapOffset.x.toDp() - fieldPadding) / cellSize).toInt()
-        val y = round((tapOffset.y.toDp() - fieldPadding) / cellSize).toInt()
+private fun PointerEvent.toFieldPositionIfFree(field: Field, currentDensity: Density): Position? {
+    val offset = changes.first().position
 
-        return field.makeMove(x, y, field.getCurrentPlayer(currentPlayer)) != null
+    with (currentDensity) {
+        val x = round((offset.x.toDp() - fieldPadding) / cellSize).toInt()
+        val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt()
+
+        return field.positionIfWithinBoundsAndFree(x, y)
     }
 }
