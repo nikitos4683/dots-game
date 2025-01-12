@@ -1,17 +1,12 @@
 package org.dots.game.views
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,7 +21,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import org.dots.game.HorizontalScrollbar
 import org.dots.game.UiSettings
+import org.dots.game.VerticalScrollbar
 import org.dots.game.core.*
 
 private val stepSize = 40.dp
@@ -38,6 +35,10 @@ private val lineThickness = 1.dp
 
 private val nodeRadius = stepSize * nodeRatio
 private val nodeSize = nodeRadius * 2
+
+private val fieldHistoryViewWidth = 300.dp
+private val fieldHistoryViewHeight = 200.dp
+private val scrollbarSize = 10.dp
 
 private val horizontalLineModifier = Modifier
     .size(stepSize, lineThickness)
@@ -67,22 +68,29 @@ fun FieldHistoryView(
     onChangeCurrentNode: () -> Unit
 ) {
     val requester = remember { FocusRequester() }
-    Box(Modifier
-        .padding(top = 10.dp)
-        .size(300.dp, 200.dp)
-        .horizontalScroll(rememberScrollState())
-        .verticalScroll(rememberScrollState())
-        .focusRequester(requester)
-        .focusable()
-        .onKeyEvent { keyEvent ->
-            handleKeyEvent(keyEvent, fieldHistory).also {
-                if (it) {
-                    onChangeCurrentNode()
+
+    Box(
+        Modifier
+            .padding(top = 10.dp)
+            .size(fieldHistoryViewWidth, fieldHistoryViewHeight)
+            .focusRequester(requester)
+            .focusable()
+            .onKeyEvent { keyEvent ->
+                handleKeyEvent(keyEvent, fieldHistory).also {
+                    if (it) {
+                        onChangeCurrentNode()
+                    }
                 }
             }
-        }
     ) {
-        Box(Modifier.size(fieldHistoryViewData.size)) {
+        val horizontalScrollState = rememberScrollState()
+        val verticalScrollState = rememberScrollState()
+        Box(Modifier
+            .horizontalScroll(horizontalScrollState)
+            .verticalScroll(verticalScrollState)
+            .padding(end = scrollbarSize, bottom = scrollbarSize)
+            .size(fieldHistoryViewData.size)
+        ) {
             ConnectionsAndNodes(
                 fieldHistory,
                 fieldHistoryViewData.fieldHistoryElements,
@@ -91,6 +99,15 @@ fun FieldHistoryView(
             )
             CurrentNode(currentNode, fieldHistoryViewData)
         }
+
+        HorizontalScrollbar(horizontalScrollState, Modifier
+            .align(Alignment.BottomStart)
+            .size(fieldHistoryViewWidth - scrollbarSize, scrollbarSize)
+        )
+        VerticalScrollbar(verticalScrollState, Modifier
+            .align(Alignment.TopEnd)
+            .size(scrollbarSize, fieldHistoryViewHeight - scrollbarSize)
+        )
     }
     LaunchedEffect(fieldHistory) {
         requester.requestFocus()
@@ -101,8 +118,8 @@ class FieldHistoryViewData(fieldHistory: FieldHistory) {
     val fieldHistoryElements: FieldHistoryElements = fieldHistory.getHistoryElements(mainBranchIsAlwaysStraight = true)
 
     val size: DpSize = DpSize(
-        stepSize * fieldHistoryElements.size + nodeSize,
-        stepSize * fieldHistoryElements.maxOf { yLine -> yLine.size } + nodeSize
+        stepSize * (fieldHistoryElements.size - 1) + nodeSize,
+        stepSize * (fieldHistoryElements.maxOf { yLine -> yLine.size } - 1) + nodeSize
     )
 
     val nodeToIndexMap: Map<Node, Pair<Int, Int>> by lazy {
