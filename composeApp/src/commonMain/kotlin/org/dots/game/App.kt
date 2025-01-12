@@ -13,8 +13,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import org.dots.game.core.*
 import org.dots.game.views.*
@@ -29,6 +27,7 @@ fun App() {
     MaterialTheme {
         var start by rememberSaveable { mutableStateOf(true) }
         var field: Field by rememberSaveable {  mutableStateOf(Field(startRules)) }
+        var fieldViewData: FieldViewData by rememberSaveable { mutableStateOf<FieldViewData>(FieldViewData(field)) }
         var fieldHistory: FieldHistory by rememberSaveable { mutableStateOf(FieldHistory(field)) }
         var fieldHistoryViewData: FieldHistoryViewData by rememberSaveable { mutableStateOf(FieldHistoryViewData(fieldHistory)) }
 
@@ -38,8 +37,6 @@ fun App() {
         var player2Score by remember { mutableStateOf("0") }
         val showNewGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
-
-        val textMeasurer = rememberTextMeasurer()
 
         fun updateCurrentNode() {
             player1Score = field.player1Score.toString()
@@ -56,6 +53,7 @@ fun App() {
 
         fun initializeFieldAndHistory(rules: Rules) {
             field = Field(rules)
+            fieldViewData = FieldViewData(field)
             fieldHistory = FieldHistory(field)
 
             updateFieldAndHistory()
@@ -77,33 +75,35 @@ fun App() {
         }
 
         Row {
-            Column(Modifier.width(with(LocalDensity.current) { calculateFieldSize(field).width.toDp() }).padding(5.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Column(Modifier.padding(5.dp)) {
+                Row(Modifier.width(fieldViewData.fieldSize.width), horizontalArrangement = Arrangement.Center) {
                     Text(player1Score, color = uiSettings.playerFirstColor)
                     Text(" : ")
                     Text(player2Score, color = uiSettings.playerSecondColor)
                 }
                 Row {
-                    FieldView(lastMove, moveMode, field, uiSettings) {
+                    FieldView(lastMove, moveMode, fieldViewData, uiSettings) {
                         fieldHistory.add(it)
                         updateFieldAndHistory()
                     }
                 }
             }
-            Column {
-                val playerButtonModifier = Modifier.padding(5.dp)
+            Column(Modifier.padding(start = 5.dp)) {
+                val playerButtonModifier = Modifier.padding(end = 5.dp)
+                val rowModifier = Modifier.padding(bottom = 5.dp)
                 val playerColorIconModifier = Modifier.size(16.dp).border(1.dp, Color.White, CircleShape).clip(CircleShape)
                 val selectedModeButtonColor = Color.Magenta
 
-                Row {
+                Row(rowModifier) {
                     Button(onClick = { showNewGameDialog.value = true }, playerButtonModifier) {
                         Text("New")
                     }
-                    Button(onClick = { initializeFieldAndHistory(field.rules) },playerButtonModifier) {
+                    Button(onClick = { initializeFieldAndHistory(field.rules) }, playerButtonModifier) {
                         Text("Reset")
                     }
                 }
-                Row {
+
+                Row(rowModifier) {
                     Button(
                         onClick = { moveMode = MoveMode.Next },
                         playerButtonModifier,

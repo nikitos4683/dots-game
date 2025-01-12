@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,7 +18,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -51,7 +51,6 @@ private val verticalLineModifier = Modifier
 
 private val nodeModifier = Modifier
     .size(nodeSize, nodeSize)
-    .clip(CircleShape)
     .zIndex(1f)
 
 private val selectedNodeModifier = Modifier
@@ -68,7 +67,9 @@ fun FieldHistoryView(
     onChangeCurrentNode: () -> Unit
 ) {
     val requester = remember { FocusRequester() }
-    Box(Modifier.size(300.dp, 200.dp)
+    Box(Modifier
+        .padding(top = 10.dp)
+        .size(300.dp, 200.dp)
         .horizontalScroll(rememberScrollState())
         .verticalScroll(rememberScrollState())
         .focusRequester(requester)
@@ -156,8 +157,8 @@ private fun ConnectionsAndNodes(
                         Modifier
                             .offset(offsetX, offsetY)
                             .then(nodeModifier)
-                            .background(color)
-                            .pointerInput(Unit) {
+                            .background(color, CircleShape)
+                            .pointerInput(fieldHistory) {
                                 detectTapGestures(onPress = {
                                     if (fieldHistory.switch(node)) {
                                         onChangeCurrentNode()
