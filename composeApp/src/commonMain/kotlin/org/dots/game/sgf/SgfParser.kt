@@ -1,7 +1,7 @@
 package org.dots.game.sgf
 
 /**
- * Reference: https://homepages.cwi.nl/~aeb/go/misc/sgfnotes.html
+ * Reference: https://homepages.cwi.nl/~aeb/go/misc/sgf.html
  *
  * Grammar:
  *
@@ -11,8 +11,7 @@ package org.dots.game.sgf
  * Node       = ';' Property*
  * Property   = UcLetter+ PropertyValue+
  * PropertyValue  = '[' PropertyValueType? ']'
- * PropertyValueType = ValueType composePart=(':' ValueType?)?
- * ValueType  = '~[:\\\]]+'
+ * PropertyValueType = '~[:\\\]]+'
  * UcLetter   = 'A'..'Z'
  * ```
  */
@@ -123,7 +122,7 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
         val propertyValueString = buildString {
             do {
                 when (val currentChar = text[currentIndex]) {
-                    ':', ']' -> break
+                    ']' -> break
                     '\\' -> {
                         currentIndex++
                         if (checkBounds()) {
@@ -142,8 +141,6 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
 
     private fun Char.checkIdentifierChar(): Boolean = this >= 'A' && this <= 'Z'
 
-    private fun checkBounds(): Boolean = currentIndex >= 0 && currentIndex < text.length
-
     private fun matchChar(char: Char): TextSpan {
         require(text[currentIndex] == char)
         return TextSpan(currentIndex, 1).also { currentIndex++ }
@@ -160,9 +157,9 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
         return TextSpan(initialIndex, length)
     }
 
-    private fun expect(char: Char): Boolean {
-        return checkBounds() && text[currentIndex] == char
-    }
+    private fun expect(char: Char): Boolean = checkBounds() && text[currentIndex] == char
+
+    private fun checkBounds(): Boolean = currentIndex >= 0 && currentIndex < text.length
 
     private fun SgfToken.reportIfError() {
         if (isError) {
