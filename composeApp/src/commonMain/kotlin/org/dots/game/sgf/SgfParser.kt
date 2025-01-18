@@ -18,10 +18,6 @@ package org.dots.game.sgf
  */
 class SgfParser private constructor(val text: CharSequence, val errorReporter: (SgfToken) -> Unit) {
     companion object {
-        private const val IDENTIFIER_START: Char = 'A'
-        private const val IDENTIFIER_END: Char = 'Z'
-        private val notPropertyValueTypeChars: Set<Char> = setOf(':', ']')
-
         fun parse(sgfText: String, errorReporter: (SgfToken) -> Unit = {}): SgfRoot {
             return SgfParser(sgfText, errorReporter).parse()
         }
@@ -37,7 +33,10 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
             }
         }
         val unparsedText = if (currentIndex < text.length) {
-            UnparsedText(text.substring(currentIndex), TextSpan(currentIndex, text.length - currentIndex)).also { it.reportIfError() }
+            UnparsedText(
+                text.substring(currentIndex),
+                TextSpan(currentIndex, text.length - currentIndex)
+            ).also { it.reportIfError() }
         } else {
             null
         }
@@ -55,7 +54,7 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
             }
         }
 
-        val childGameTrees = buildList {
+        val childrenGameTrees = buildList {
             while (expect('(')) {
                 add(parseGameTree())
             }
@@ -63,21 +62,21 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
 
         val rParen = RParenToken(tryMatchChar(')')).also { it.reportIfError() }
 
-        return GameTree(lParen, nodes, childGameTrees, rParen, getCurrentTextSpan(initialIndex))
+        return GameTree(lParen, nodes, childrenGameTrees, rParen, getCurrentTextSpan(initialIndex))
     }
 
     private fun parseNode(): Node {
         val initialIndex = currentIndex
 
-        val semicolonToken = SemicolonToken(matchChar(';'))
+        val semicolon = SemicolonToken(matchChar(';'))
 
         val properties = buildList {
-            while (expectIdentifier()) {
+            while (checkBounds() && text[currentIndex].checkIdentifierChar()) {
                 add(parseProperty())
             }
         }
 
-        return Node(semicolonToken, properties, getCurrentTextSpan(initialIndex))
+        return Node(semicolon, properties, getCurrentTextSpan(initialIndex))
     }
 
     private fun parseProperty(): Property {
@@ -105,48 +104,24 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
     private fun parsePropertyValue(): PropertyValue {
         val initialIndex = currentIndex
 
-        val lSquareBracketToken = LSquareBracketToken(matchChar('['))
+        val lSquareBracket = LSquareBracketToken(matchChar('['))
 
-        val propertyValueType = if (expectPropertyValueType()) {
-            parsePropertyValueType()
+        val propertyValueToken = if (checkBounds() && text[currentIndex] != ']') {
+            parsePropertyValueToken()
         } else {
             null
         }
 
-        val rSquareBracketToken = RSquareBracketToken(tryMatchChar(']')).also { it.reportIfError() }
+        val rSquareBracket = RSquareBracketToken(tryMatchChar(']')).also { it.reportIfError() }
 
-        return PropertyValue(lSquareBracketToken, propertyValueType, rSquareBracketToken, getCurrentTextSpan(initialIndex))
+        return PropertyValue(lSquareBracket, propertyValueToken, rSquareBracket, getCurrentTextSpan(initialIndex))
     }
 
-    private fun parsePropertyValueType(): PropertyValueType {
+    private fun parsePropertyValueToken(): PropertyValueToken {
         val initialIndex = currentIndex
 
-        val propertyValueTypeToken = parsePropertyValueTypeToken()
-
-        val propertyValueComposeType = if (expect(':')) {
-            parsePropertyValueTypeComposePart()
-        } else {
-            null
-        }
-
-        return PropertyValueType(propertyValueTypeToken, propertyValueComposeType, getCurrentTextSpan(initialIndex))
-    }
-
-    private fun parsePropertyValueTypeComposePart(): PropertyValueComposeType {
-        val initialIndex = currentIndex
-
-        val colonToken = ColonToken(matchChar(':'))
-
-        val valueTypeToken = parsePropertyValueTypeToken()
-
-        return PropertyValueComposeType(colonToken, valueTypeToken, getCurrentTextSpan(initialIndex))
-    }
-
-    private fun parsePropertyValueTypeToken(): ValueTypeToken {
-        val initialIndex = currentIndex
-
-        val propertyValueTypeString = buildString {
-            while (checkBounds()) {
+        val propertyValueString = buildString {
+            do {
                 when (val currentChar = text[currentIndex]) {
                     ':', ']' -> break
                     '\\' -> {
@@ -156,23 +131,16 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
                             currentIndex++
                         }
                     }
+
                     else -> append(currentChar).also { currentIndex++ }
                 }
-            }
+            } while (checkBounds())
         }
 
-        return ValueTypeToken(propertyValueTypeString, getCurrentTextSpan(initialIndex))
+        return PropertyValueToken(propertyValueString, getCurrentTextSpan(initialIndex))
     }
 
-    private fun expectIdentifier(): Boolean {
-        return checkBounds() && text[currentIndex].checkIdentifierChar()
-    }
-
-    private fun Char.checkIdentifierChar(): Boolean = this >= IDENTIFIER_START && this <= IDENTIFIER_END
-
-    private fun expectPropertyValueType(): Boolean {
-        return checkBounds() && text[currentIndex] !in notPropertyValueTypeChars
-    }
+    private fun Char.checkIdentifierChar(): Boolean = this >= 'A' && this <= 'Z'
 
     private fun checkBounds(): Boolean = currentIndex >= 0 && currentIndex < text.length
 

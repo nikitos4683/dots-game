@@ -18,7 +18,7 @@ class SgfRoot(
 class GameTree(
     val lParen: LParenToken,
     val nodes: List<Node>,
-    val children: List<GameTree>,
+    val childrenGameTrees: List<GameTree>,
     val rParen: RParenToken,
     textSpan: TextSpan,
 ) : SgfNode(textSpan)
@@ -36,21 +36,9 @@ class Property(
 ) : SgfNode(textSpan)
 
 class PropertyValue(
-    val lSquareBracketToken: LSquareBracketToken,
-    val valueType: PropertyValueType?,
-    val rSquareBracketToken: RSquareBracketToken,
-    textSpan: TextSpan,
-) : SgfNode(textSpan)
-
-class PropertyValueType(
-    val valueTypeToken: ValueTypeToken,
-    val valueComposeType: PropertyValueComposeType?,
-    textSpan: TextSpan,
-) : SgfNode(textSpan)
-
-class PropertyValueComposeType(
-    val colonToken: ColonToken,
-    val valueTypeToken: ValueTypeToken?,
+    val lSquareBracket: LSquareBracketToken,
+    val propertyValueToken: PropertyValueToken?,
+    val rSquareBracket: RSquareBracketToken,
     textSpan: TextSpan,
 ) : SgfNode(textSpan)
 
@@ -66,9 +54,7 @@ class LSquareBracketToken(textSpan: TextSpan) : SgfToken(textSpan, "[")
 
 class RSquareBracketToken(textSpan: TextSpan) : SgfToken(textSpan, "]")
 
-class ColonToken(textSpan: TextSpan) : SgfToken(textSpan, ":")
-
-class ValueTypeToken(value: String, textSpan: TextSpan) : SgfToken(textSpan, value)
+class PropertyValueToken(value: String, textSpan: TextSpan) : SgfToken(textSpan, value)
 
 class UnparsedText(value: String, textSpan: TextSpan) : SgfToken(textSpan, value) {
     override val isError: Boolean = true
