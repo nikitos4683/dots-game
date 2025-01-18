@@ -7,7 +7,16 @@ sealed class SgfToken(textSpan: TextSpan, val value: String) : SgfNode(textSpan)
         get() = textSpan.size == 0
 }
 
-data class TextSpan(val start: Int, val size: Int)
+data class TextSpan(val start: Int, val size: Int) {
+    companion object {
+        val Empty = TextSpan(0, 0)
+
+        fun fromBounds(start: Int, end: Int): TextSpan = TextSpan(start, end - start)
+    }
+
+    val end
+        get() = start + size
+}
 
 class SgfRoot(
     val gameTree: List<GameTree>,

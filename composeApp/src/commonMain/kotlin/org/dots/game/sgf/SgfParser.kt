@@ -17,6 +17,8 @@ package org.dots.game.sgf
  */
 class SgfParser private constructor(val text: CharSequence, val errorReporter: (SgfToken) -> Unit) {
     companion object {
+        val whitespaceChars = setOf(' ', '\n', '\r', '\t')
+
         fun parse(sgfText: String, errorReporter: (SgfToken) -> Unit = {}): SgfRoot {
             return SgfParser(sgfText, errorReporter).parse()
         }
@@ -25,12 +27,15 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
     private var currentIndex = 0
 
     private fun parse(): SgfRoot {
-        val initialIndex = currentIndex
+        skipWhitespaces()
+
         val gameTrees = buildList {
             while (expect('(')) {
                 add(parseGameTree())
+                skipWhitespaces()
             }
         }
+
         val unparsedText = if (currentIndex < text.length) {
             UnparsedText(
                 text.substring(currentIndex),
@@ -39,13 +44,19 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
         } else {
             null
         }
-        return SgfRoot(gameTrees, unparsedText, getCurrentTextSpan(initialIndex))
+
+        val textSpan = TextSpan.fromBounds(
+            (gameTrees.firstOrNull() ?: unparsedText)?.textSpan?.start ?: text.length,
+            (unparsedText ?: gameTrees.lastOrNull())?.textSpan?.end ?: text.length,
+        )
+
+        return SgfRoot(gameTrees, unparsedText, textSpan)
     }
 
     private fun parseGameTree(): GameTree {
-        val initialIndex = currentIndex
-
         val lParen = LParenToken(matchChar('('))
+
+        skipWhitespaces()
 
         val nodes = buildList {
             while (expect(';')) {
@@ -61,13 +72,15 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
 
         val rParen = RParenToken(tryMatchChar(')')).also { it.reportIfError() }
 
-        return GameTree(lParen, nodes, childrenGameTrees, rParen, getCurrentTextSpan(initialIndex))
+        skipWhitespaces()
+
+        return GameTree(lParen, nodes, childrenGameTrees, rParen, textSpanFromNodes(lParen, rParen))
     }
 
     private fun parseNode(): Node {
-        val initialIndex = currentIndex
-
         val semicolon = SemicolonToken(matchChar(';'))
+
+        skipWhitespaces()
 
         val properties = buildList {
             while (checkBounds() && text[currentIndex].checkIdentifierChar()) {
@@ -75,21 +88,20 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
             }
         }
 
-        return Node(semicolon, properties, getCurrentTextSpan(initialIndex))
+        return Node(semicolon, properties, textSpanFromNodes(semicolon, properties.lastOrNull() ?: semicolon))
     }
 
     private fun parseProperty(): Property {
         val initialIndex = currentIndex
+        currentIndex++
 
-        do {
-            if (text[currentIndex].checkIdentifierChar()) {
-                currentIndex++
-            } else {
-                break
-            }
-        } while (checkBounds())
+        while (checkBounds() && text[currentIndex].checkIdentifierChar()) {
+            currentIndex++
+        }
 
         val identifier = IdentifierToken(text.substring(initialIndex, currentIndex), getCurrentTextSpan(initialIndex))
+
+        skipWhitespaces()
 
         val values = buildList {
             while (expect('[')) {
@@ -97,12 +109,10 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
             }
         }
 
-        return Property(identifier, values, getCurrentTextSpan(initialIndex))
+        return Property(identifier, values, textSpanFromNodes(identifier, values.lastOrNull() ?: identifier))
     }
 
     private fun parsePropertyValue(): PropertyValue {
-        val initialIndex = currentIndex
-
         val lSquareBracket = LSquareBracketToken(matchChar('['))
 
         val propertyValueToken = if (checkBounds() && text[currentIndex] != ']') {
@@ -113,7 +123,9 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
 
         val rSquareBracket = RSquareBracketToken(tryMatchChar(']')).also { it.reportIfError() }
 
-        return PropertyValue(lSquareBracket, propertyValueToken, rSquareBracket, getCurrentTextSpan(initialIndex))
+        skipWhitespaces()
+
+        return PropertyValue(lSquareBracket, propertyValueToken, rSquareBracket, textSpanFromNodes(lSquareBracket, rSquareBracket))
     }
 
     private fun parsePropertyValueToken(): PropertyValueToken {
@@ -165,6 +177,16 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
         if (isError) {
             errorReporter(this)
         }
+    }
+
+    private fun skipWhitespaces() {
+        while (checkBounds() && text[currentIndex] in whitespaceChars) {
+            currentIndex++
+        }
+    }
+
+    private fun textSpanFromNodes(startNode: SgfNode, endNode: SgfNode): TextSpan {
+        return TextSpan.fromBounds(startNode.textSpan.start, endNode.textSpan.end)
     }
 
     private fun getCurrentTextSpan(initialIndex: Int): TextSpan = TextSpan(initialIndex, currentIndex - initialIndex)

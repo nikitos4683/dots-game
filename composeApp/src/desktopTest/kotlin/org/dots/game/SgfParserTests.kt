@@ -18,8 +18,15 @@ import kotlin.test.assertNull
 
 class SgfParserTests {
     @Test
-    fun spaces() {
-        // TDOO
+    fun emptyOrWhitespace() {
+        val emptySgf = SgfParser.parse("")
+        assertEquals(TextSpan(0, 0), emptySgf.textSpan)
+
+        val whitespaceSgf = SgfParser.parse("    ")
+        assertEquals(TextSpan(4, 0), whitespaceSgf.textSpan)
+
+        val incorrectSgf = SgfParser.parse("  ---")
+        assertEquals(TextSpan(2, 3), incorrectSgf.textSpan)
     }
 
     @Test
@@ -50,6 +57,8 @@ class SgfParserTests {
         check(UnparsedText("---", TextSpan(1, 3)), "(---")
         check(UnparsedText("---", TextSpan(2, 3)), "(;---")
         check(UnparsedText("---", TextSpan(4, 3)), "(;GM---")
+
+        check(UnparsedText("---", TextSpan(2, 3)), "  ---")
     }
 
     @Test
@@ -116,6 +125,27 @@ class SgfParserTests {
             ),
             """(;GC[\"""
         )
+    }
+
+    @Test
+    fun whitespaces() {
+        val sgf = SgfParser.parse(" ( ;\nGC [info1 info2 ] ) ---")
+        assertEquals(TextSpan(25, 3), sgf.unparsedText!!.textSpan)
+
+        val gameTree = sgf.gameTree.single()
+        assertEquals(TextSpan(1, 23), gameTree.textSpan)
+
+        val node = gameTree.nodes.single()
+        assertEquals(TextSpan(3, 19), node.textSpan)
+
+        val property = node.properties.single()
+        assertEquals(TextSpan(5, 17), property.textSpan)
+
+        val propertyValue = property.value.single()
+        assertEquals(TextSpan(8, 14), propertyValue.textSpan)
+
+        val propertyValueToken = propertyValue.propertyValueToken!!
+        checkTokens(PropertyValueToken("info1 info2 ", TextSpan(9, 12)), propertyValueToken)
     }
 
     private fun parseAndGetPropertyValue(input: String): PropertyValue {
