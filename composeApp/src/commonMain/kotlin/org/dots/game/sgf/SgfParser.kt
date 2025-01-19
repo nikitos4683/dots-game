@@ -32,7 +32,6 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
         val gameTrees = buildList {
             while (expect('(')) {
                 add(parseGameTree())
-                skipWhitespaces()
             }
         }
 
@@ -131,24 +130,20 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
     private fun parsePropertyValueToken(): PropertyValueToken {
         val initialIndex = currentIndex
 
-        val propertyValueString = buildString {
-            do {
-                when (val currentChar = text[currentIndex]) {
-                    ']' -> break
-                    '\\' -> {
+        do {
+            when (text[currentIndex]) {
+                ']' -> break
+                '\\' -> {
+                    currentIndex++
+                    if (checkBounds()) {
                         currentIndex++
-                        if (checkBounds()) {
-                            append(text[currentIndex])
-                            currentIndex++
-                        }
                     }
-
-                    else -> append(currentChar).also { currentIndex++ }
                 }
-            } while (checkBounds())
-        }
+                else -> currentIndex++
+            }
+        } while (checkBounds())
 
-        return PropertyValueToken(propertyValueString, getCurrentTextSpan(initialIndex))
+        return PropertyValueToken(text.substring(initialIndex, currentIndex), getCurrentTextSpan(initialIndex))
     }
 
     private fun Char.checkIdentifierChar(): Boolean = this >= 'A' && this <= 'Z'

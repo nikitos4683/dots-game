@@ -94,11 +94,11 @@ class SgfParserTests {
         checkValue(PropertyValueToken("text", TextSpan(5, 4)), """(;GC[text])""")
         checkValue(PropertyValueToken("a:b", TextSpan(5, 3)), """(;GC[a:b])""")
         checkValue(PropertyValueToken("a\nb", TextSpan(5, 3)), "(;GC[a\nb])")
-        checkValue(PropertyValueToken("]", TextSpan(5, 2)), """(;GC[\]])""")
-        checkValue(PropertyValueToken("\\", TextSpan(5, 2)), """(;GC[\\])""")
+        checkValue(PropertyValueToken("""\]""", TextSpan(5, 2)), """(;GC[\]])""")
+        checkValue(PropertyValueToken("""\\""", TextSpan(5, 2)), """(;GC[\\])""")
 
         // Check escaping at the end
-        checkValue(PropertyValueToken("", TextSpan(5, 1)), """(;GC[\""")
+        checkValue(PropertyValueToken("""\""", TextSpan(5, 1)), """(;GC[\""")
     }
 
     @Test
