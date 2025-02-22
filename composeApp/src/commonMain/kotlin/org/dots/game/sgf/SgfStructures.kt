@@ -2,9 +2,11 @@ package org.dots.game.sgf
 
 import org.dots.game.core.Player
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_ADD_DOTS_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER1_MOVE
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_RATING_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_TEAM_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER2_MOVE
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_ADD_DOTS_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_RATING_KEY
@@ -78,17 +80,24 @@ enum class SgfPropertyType {
     Position,
 }
 
+enum class SgfPropertyScope {
+    Root,
+    Move,
+    Both,
+}
+
 data class SgfPropertyInfo(
     val name: String,
     val type: SgfPropertyType = SgfPropertyType.SimpleText,
     val multipleValues: Boolean = false,
+    val scope: SgfPropertyScope = SgfPropertyScope.Root,
     val isKnown: Boolean = true,
 )
 
 fun SgfPropertyInfo.getPlayer(): Player {
     return when (val key = propertyInfoToKey[this]) {
-        PLAYER1_NAME_KEY, PLAYER1_RATING_KEY, PLAYER1_TEAM_KEY, PLAYER1_ADD_DOTS_KEY -> Player.First
-        PLAYER2_NAME_KEY, PLAYER2_RATING_KEY, PLAYER2_TEAM_KEY, PLAYER2_ADD_DOTS_KEY -> Player.Second
+        PLAYER1_NAME_KEY, PLAYER1_RATING_KEY, PLAYER1_TEAM_KEY, PLAYER1_ADD_DOTS_KEY, PLAYER1_MOVE -> Player.First
+        PLAYER2_NAME_KEY, PLAYER2_RATING_KEY, PLAYER2_TEAM_KEY, PLAYER2_ADD_DOTS_KEY, PLAYER2_MOVE -> Player.Second
         else -> error("The function should be called only for player-related properties but not for `${key ?: name}`")
     }
 }
@@ -127,26 +136,29 @@ object SgfMetaInfo {
     const val PLAYER1_ADD_DOTS_KEY = "A${PLAYER1_MARKER}"
     const val PLAYER2_ADD_DOTS_KEY = "A${PLAYER2_MARKER}"
 
+    const val PLAYER1_MOVE = PLAYER1_MARKER.toString()
+    const val PLAYER2_MOVE = PLAYER2_MARKER.toString()
+
     val propertyInfos: Map<String, SgfPropertyInfo> = mapOf(
         GAME_MODE_KEY to SgfPropertyInfo("Game Mode", SgfPropertyType.Number),
         FILE_FORMAT_KEY to SgfPropertyInfo("File Format", SgfPropertyType.Number),
-        CHARSET_KEY to SgfPropertyInfo( "Charset"),
-        SIZE_KEY to SgfPropertyInfo( "Size", SgfPropertyType.Size),
-        RULES_KEY to SgfPropertyInfo( "Rules"),
-        RESULT_KEY to SgfPropertyInfo( "Result"),
-        GAME_NAME_KEY to SgfPropertyInfo( "Game Name"),
-        PLAYER1_NAME_KEY to SgfPropertyInfo( "Player1 Name"),
+        CHARSET_KEY to SgfPropertyInfo("Charset"),
+        SIZE_KEY to SgfPropertyInfo("Size", SgfPropertyType.Size),
+        RULES_KEY to SgfPropertyInfo("Rules"),
+        RESULT_KEY to SgfPropertyInfo("Result"),
+        GAME_NAME_KEY to SgfPropertyInfo("Game Name"),
+        PLAYER1_NAME_KEY to SgfPropertyInfo("Player1 Name"),
         PLAYER1_RATING_KEY to SgfPropertyInfo( "Player1 Rating", SgfPropertyType.Double),
-        PLAYER1_TEAM_KEY to SgfPropertyInfo( "Player1 Team"),
-        PLAYER2_NAME_KEY to SgfPropertyInfo( "Player2 Name"),
-        PLAYER2_RATING_KEY to SgfPropertyInfo( "Player2 Rating", SgfPropertyType.Double),
-        PLAYER2_TEAM_KEY to SgfPropertyInfo( "Player2 Team"),
-        KOMI_KEY to SgfPropertyInfo( "Komi", SgfPropertyType.Double),
-        DATE_KEY to SgfPropertyInfo( "Date"),
-        GAME_COMMENT_KEY to SgfPropertyInfo( "Game Comment", SgfPropertyType.Text),
-        COMMENT_KEY to SgfPropertyInfo( "Comment", SgfPropertyType.Text),
-        PLACE_KEY to SgfPropertyInfo( "Place"),
-        EVENT_KEY to SgfPropertyInfo( "Event"),
+        PLAYER1_TEAM_KEY to SgfPropertyInfo("Player1 Team"),
+        PLAYER2_NAME_KEY to SgfPropertyInfo("Player2 Name"),
+        PLAYER2_RATING_KEY to SgfPropertyInfo("Player2 Rating", SgfPropertyType.Double),
+        PLAYER2_TEAM_KEY to SgfPropertyInfo("Player2 Team"),
+        KOMI_KEY to SgfPropertyInfo("Komi", SgfPropertyType.Double),
+        DATE_KEY to SgfPropertyInfo("Date"),
+        GAME_COMMENT_KEY to SgfPropertyInfo("Game Comment", SgfPropertyType.Text),
+        COMMENT_KEY to SgfPropertyInfo("Comment", SgfPropertyType.Text),
+        PLACE_KEY to SgfPropertyInfo("Place"),
+        EVENT_KEY to SgfPropertyInfo("Event"),
         OPENING_KEY to SgfPropertyInfo("Opening"),
         ANNOTATOR_KEY to SgfPropertyInfo("Annotator"),
         COPYRIGHT_KEY to SgfPropertyInfo("Copyright"),
@@ -157,6 +169,9 @@ object SgfMetaInfo {
 
         PLAYER1_ADD_DOTS_KEY to SgfPropertyInfo("Player1 initial dots", SgfPropertyType.Position, multipleValues = true),
         PLAYER2_ADD_DOTS_KEY to SgfPropertyInfo("Player2 initial dots", SgfPropertyType.Position, multipleValues = true),
+
+        PLAYER1_MOVE to SgfPropertyInfo("Player1 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
+        PLAYER2_MOVE to SgfPropertyInfo("Player2 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
     )
 
     val propertyInfoToKey: Map<SgfPropertyInfo, String> = propertyInfos.entries.associateBy({ it.value }) { it.key }.also {
