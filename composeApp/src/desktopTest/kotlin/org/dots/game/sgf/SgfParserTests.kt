@@ -1,17 +1,5 @@
-package org.dots.game
+package org.dots.game.sgf
 
-import org.dots.game.sgf.IdentifierToken
-import org.dots.game.sgf.LParenToken
-import org.dots.game.sgf.LSquareBracketToken
-import org.dots.game.sgf.SgfPropertyValueNode
-import org.dots.game.sgf.UnparsedTextToken
-import org.dots.game.sgf.RParenToken
-import org.dots.game.sgf.RSquareBracketToken
-import org.dots.game.sgf.SgfParser
-import org.dots.game.sgf.SgfToken
-import org.dots.game.sgf.TextSpan
-import org.dots.game.sgf.PropertyValueToken
-import org.dots.game.sgf.SemicolonToken
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

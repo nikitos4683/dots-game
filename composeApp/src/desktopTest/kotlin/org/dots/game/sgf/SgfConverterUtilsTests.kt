@@ -1,12 +1,6 @@
-package org.dots.game
+package org.dots.game.sgf
 
 import org.dots.game.core.AppInfo
-import org.dots.game.sgf.LineColumn
-import org.dots.game.sgf.buildLineOffsets
-import org.dots.game.sgf.convertAppInfo
-import org.dots.game.sgf.convertSimpleText
-import org.dots.game.sgf.convertText
-import org.dots.game.sgf.getLineColumn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
