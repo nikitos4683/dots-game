@@ -33,10 +33,20 @@ class SgfConverterMovesTests {
                     SgfDiagnosticSeverity.Error
                 ),
                 SgfDiagnostic(
-                    "Property AW (Player2 initial dots) has incorrect format: `1234`. Expected: `xy`, where each coordinate in [a..zA..Z].",
+                    "Property AW (Player2 initial dots) has incorrect x coordinate `1`.",
                     LineColumn(1, 36),
                     SgfDiagnosticSeverity.Error
-                )
+                ),
+                SgfDiagnostic(
+                    "Property AW (Player2 initial dots) has incorrect y coordinate `2`.",
+                    LineColumn(1, 37),
+                    SgfDiagnosticSeverity.Error
+                ),
+                SgfDiagnostic(
+                    "Property AW (Player2 initial dots) has incorrect extra chars: `34`",
+                    LineColumn(1, 38),
+                    SgfDiagnosticSeverity.Error
+                ),
             )
         ).single().rules
         assertTrue(rules.initialMoves.isEmpty())
@@ -110,10 +120,11 @@ class SgfConverterMovesTests {
     @Test
     fun incorrectMovesSequence() {
         val rootNode = parseAndConvert(
-            "(;GM[40]FF[4]SZ[39:32];B[bb];B[__];W[bb]", listOf(
+            "(;GM[40]FF[4]SZ[39:32];B[bb];B[__];W[bb];W[c])", listOf(
                 SgfDiagnostic("Property B (Player1 move) has incorrect x coordinate `_`.", LineColumn(1, 32), SgfDiagnosticSeverity.Error),
                 SgfDiagnostic("Property B (Player1 move) has incorrect y coordinate `_`.", LineColumn(1, 33), SgfDiagnosticSeverity.Error),
                 SgfDiagnostic("Property W (Player2 move) value `bb` is incorrect. The dot at position `(2;2)` is already placed or captured.", LineColumn(1, 38), SgfDiagnosticSeverity.Error),
+                SgfDiagnostic("Property W (Player2 move) has incorrect y coordinate ``.", LineColumn(1, 45), SgfDiagnosticSeverity.Error),
             )
         ).single().gameTree.rootNode
         val nextNode = rootNode.getNextNode(2, 2, Player.First)!!
@@ -144,5 +155,35 @@ class SgfConverterMovesTests {
         ).single().gameTree
         val nextNode = gameTree.rootNode.getNextNode(3, 3, Player.First)!!
         assertTrue(nextNode.nextNodes.isEmpty())
+    }
+
+    @Test
+    fun capturingPositions() {
+        // .  *2  .
+        // *1 +0 +3
+        // .  *4  .
+        val gameTree = parseAndConvert(
+            "(;GM[40]FF[4]AP[zagram.org]SZ[39:32];B[bb];W[ab];W[ba];W[cb];W[bc.bccbbaabbc])", listOf(
+                SgfDiagnostic("Property W (Player2 move) has capturing positions that are not yet supported: (2;3), (3;2), (2;1), (1;2), (2;3) (`bccbbaabbc`). The capturing is calculated automatically according game rules.",
+                    LineColumn(1, 67),
+                    SgfDiagnosticSeverity.Warning),
+            )
+        ).single().gameTree
+
+        var node = gameTree.rootNode.getNextNode(2, 2, Player.First)!!
+        node = node.getNextNode(1, 2, Player.Second)!!
+        node = node.getNextNode(2, 1, Player.Second)!!
+        node = node.getNextNode(3, 2, Player.Second)!!
+        node = node.getNextNode(2, 3, Player.Second)!!
+
+        assertEquals(
+            listOf(
+                Position(2, 3),
+                Position(3, 2),
+                Position(2, 1),
+                Position(1, 2),
+            ),
+            node.moveResult!!.bases!!.single().closurePositions
+        )
     }
 }

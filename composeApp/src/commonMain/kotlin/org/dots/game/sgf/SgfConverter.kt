@@ -45,6 +45,10 @@ import org.dots.game.sgf.SgfMetaInfo.propertyInfos
 
 class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter: (SgfDiagnostic) -> Unit) {
     companion object {
+        private const val LOWER_CHAR_OFFSET = 'a' - Field.OFFSET
+        private const val UPPER_CHAR_OFFSET = 'A' - ('z' - 'a' + 1) - Field.OFFSET
+        private const val CAPTURING_POSITIONS_INDEX = 3
+
         /**
          * Returns `null` if a critical error occurs:
          *   * Unsupported file format (FF)
@@ -372,7 +376,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
                 SgfPropertyType.Size -> propertyValueToken.convertSize(propertyInfo)
                 SgfPropertyType.AppInfo -> propertyValue.convertAppInfo()
                 SgfPropertyType.Position -> {
-                    propertyValueToken.convertPosition(propertyInfo)?.also { moveInfo ->
+                    propertyValueToken.convertMoveInfo(propertyInfo)?.also { moveInfo ->
                         if (convertedValues.removeAll { (it as MoveInfo).position == moveInfo.position }) {
                             propertyInfo.reportPropertyDiagnostic(
                                 "value `${propertyValue}` overwrites one the previous position.",
@@ -497,44 +501,63 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         return Pair(width, height)
     }
 
-    private fun PropertyValueToken.convertPosition(propertyInfo: SgfPropertyInfo): MoveInfo? {
-        return when (value.length) {
-            0 -> null // Empty value is treated as pass
-            2 -> {
-                val x = value[0].convertToCoordinateOrNull()
-                val y = value[1].convertToCoordinateOrNull()
-                if (x != null && y != null) {
-                    MoveInfo(
-                        Position(x, y),
-                        propertyInfo.getPlayer(),
-                        PropertyInfoAndTextSpan(propertyInfo, textSpan),
-                    )
-                } else {
-                    if (x == null) {
-                        propertyInfo.reportPropertyDiagnostic(
-                            "has incorrect x coordinate `${value[0]}`.",
-                            TextSpan(textSpan.start, 1),
-                            SgfDiagnosticSeverity.Error,
-                        )
-                    }
-                    if (y == null) {
-                        propertyInfo.reportPropertyDiagnostic(
-                            "has incorrect y coordinate `${value[1]}`.",
-                            TextSpan(textSpan.start + 1, 1),
-                            SgfDiagnosticSeverity.Error,
-                        )
-                    }
-                    null
+    private fun PropertyValueToken.convertMoveInfo(propertyInfo: SgfPropertyInfo): MoveInfo? {
+        val resultMoveInfo = convertPosition(propertyInfo, 0)
+
+        if (value.elementAtOrNull(CAPTURING_POSITIONS_INDEX - 1) == '.') {
+            val capturingMoveInfos = buildList {
+                for (internalIndex in CAPTURING_POSITIONS_INDEX until value.length step 2) {
+                     convertPosition(propertyInfo, internalIndex)?.let { add(it) }
                 }
             }
-            else -> {
-                propertyInfo.reportPropertyDiagnostic(
-                    "has incorrect format: `${value}`. Expected: `xy`, where each coordinate in [a..zA..Z].",
-                    textSpan,
-                    SgfDiagnosticSeverity.Error,
-                )
-                null
-            }
+            val textSpan = TextSpan(textSpan.start + CAPTURING_POSITIONS_INDEX, value.length - CAPTURING_POSITIONS_INDEX)
+            propertyInfo.reportPropertyDiagnostic(
+                "has capturing positions that are not yet supported: ${capturingMoveInfos.map { it.position }.joinToString()} (`${textSpan.getText()}`). " +
+                        "The capturing is calculated automatically according game rules.",
+                textSpan,
+                SgfDiagnosticSeverity.Warning,
+            )
+        } else if (value.length > 2) {
+            val textSpan = TextSpan(textSpan.start + 2, value.length - 2)
+            propertyInfo.reportPropertyDiagnostic(
+                "has incorrect extra chars: `${value.substring(2)}`",
+                textSpan,
+                SgfDiagnosticSeverity.Error,
+            )
+        }
+
+        return resultMoveInfo
+    }
+
+    private fun PropertyValueToken.convertPosition(propertyInfo: SgfPropertyInfo, internalIndex: Int): MoveInfo? {
+        if (internalIndex == value.length) {
+            return null // Empty value is treated as pass
+        }
+
+        val x = value[internalIndex].convertToCoordinateOrNull() ?: run {
+            propertyInfo.reportPropertyDiagnostic(
+                "has incorrect x coordinate `${value[0]}`.",
+                TextSpan(textSpan.start + internalIndex, 1),
+                SgfDiagnosticSeverity.Error,
+            )
+            null
+        }
+        val yChar = value.elementAtOrNull(internalIndex + 1)
+        val y = yChar?.convertToCoordinateOrNull() ?: run {
+            propertyInfo.reportPropertyDiagnostic(
+                "has incorrect y coordinate `${yChar ?: ""}`.",
+                TextSpan(textSpan.start + internalIndex + 1, yChar?.let { 1 } ?: 0),
+                SgfDiagnosticSeverity.Error,
+            )
+            null
+        }
+
+        return if (x != null && y != null) {
+            val textSpan = TextSpan(textSpan.start + internalIndex, 2)
+            MoveInfo(Position(x, y), propertyInfo.getPlayer(), PropertyInfoAndTextSpan(propertyInfo, textSpan))
+        }
+        else {
+            null
         }
     }
 
@@ -542,8 +565,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
 
     private fun Char.convertToCoordinateOrNull(): Int? {
         return when {
-            this >= 'a' && this <= 'z' -> this - 'a' + Field.OFFSET
-            this >= 'A' && this <= 'Z' -> this - 'A' + ('z' - 'a' + 1) + Field.OFFSET
+            this >= 'a' && this <= 'z' -> this - LOWER_CHAR_OFFSET
+            this >= 'A' && this <= 'Z' -> this - UPPER_CHAR_OFFSET
             else -> null
         }
     }
