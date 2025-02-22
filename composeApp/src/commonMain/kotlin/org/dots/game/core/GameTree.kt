@@ -1,6 +1,6 @@
 package org.dots.game.core
 
-class GameTree(val field: Field) {
+class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player2TimeLeft: Double? = null) {
     val rootNode: GameTreeNode = GameTreeNode(null, null, 0, mutableMapOf())
     val allNodes: MutableSet<GameTreeNode> = mutableSetOf(rootNode)
     var currentNode: GameTreeNode = rootNode
@@ -10,14 +10,14 @@ class GameTree(val field: Field) {
      * @return `false` if such a node with the current @param[move] already exists,
      * otherwise add the new passed node and returns `true`
      */
-    fun add(move: MoveResult): Boolean {
+    fun add(move: MoveResult, timeLeft: Double? = null): Boolean {
         val positionPlayer = move.positionPlayer
         val existingNode = currentNode.nextNodes[positionPlayer]
 
         var result: Boolean
         currentNode = if (existingNode == null) {
             result = true
-            GameTreeNode(move, previousNode = currentNode, move.number - field.initialMovesCount + 1).also {
+            GameTreeNode(move, previousNode = currentNode, move.number - field.initialMovesCount + 1, timeLeft = timeLeft).also {
                 currentNode.nextNodes[positionPlayer] = it
                 allNodes.add(it)
             }
@@ -140,6 +140,7 @@ class GameTreeNode(
     val previousNode: GameTreeNode?,
     val number: Int,
     val nextNodes: MutableMap<PositionPlayer, GameTreeNode> = mutableMapOf(),
+    val timeLeft: Double? = null,
 ) {
     val isRoot = moveResult == null
 

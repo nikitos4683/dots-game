@@ -374,6 +374,19 @@ class SgfConverterTests {
         assertTrue(nextNode.nextNodes.isEmpty())
     }
 
+    @Test
+    fun timeLeft() {
+        val gameTree = parseAndConvert(
+            "(;GM[40]FF[4]SZ[39:32]BL[315]WL[312];B[bc]BL[308.3];W[de]WL[294.23])",
+        ).single().gameTree
+        assertEquals(gameTree.player1TimeLeft, 315.0)
+        assertEquals(gameTree.player2TimeLeft, 312.0)
+        var nextNode = gameTree.rootNode.getNextNode(2, 3, Player.First)!!
+        assertEquals(308.3, nextNode.timeLeft)
+        nextNode = nextNode.getNextNode(4, 5, Player.Second)!!
+        assertEquals(294.23, nextNode.timeLeft)
+    }
+
     private fun checkMoveDisregardExtraInfo(expectedPosition: Position, expectedPlayer: Player, actualMoveInfo: MoveInfo) {
         assertEquals(expectedPosition, actualMoveInfo.position)
         assertEquals(expectedPlayer, actualMoveInfo.player)

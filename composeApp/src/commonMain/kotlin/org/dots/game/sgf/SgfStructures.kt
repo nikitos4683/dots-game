@@ -2,15 +2,17 @@ package org.dots.game.sgf
 
 import org.dots.game.core.Player
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_ADD_DOTS_KEY
-import org.dots.game.sgf.SgfMetaInfo.PLAYER1_MOVE
+import org.dots.game.sgf.SgfMetaInfo.PLAYER1_MOVE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_RATING_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_TEAM_KEY
-import org.dots.game.sgf.SgfMetaInfo.PLAYER2_MOVE
+import org.dots.game.sgf.SgfMetaInfo.PLAYER1_TIME_LEFT_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER2_MOVE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_ADD_DOTS_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_RATING_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TEAM_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TIME_LEFT_KEY
 import org.dots.game.sgf.SgfMetaInfo.propertyInfoToKey
 
 const val SUPPORTED_FILE_FORMAT = 4
@@ -96,8 +98,8 @@ data class SgfPropertyInfo(
 
 fun SgfPropertyInfo.getPlayer(): Player {
     return when (val key = propertyInfoToKey[this]) {
-        PLAYER1_NAME_KEY, PLAYER1_RATING_KEY, PLAYER1_TEAM_KEY, PLAYER1_ADD_DOTS_KEY, PLAYER1_MOVE -> Player.First
-        PLAYER2_NAME_KEY, PLAYER2_RATING_KEY, PLAYER2_TEAM_KEY, PLAYER2_ADD_DOTS_KEY, PLAYER2_MOVE -> Player.Second
+        PLAYER1_NAME_KEY, PLAYER1_RATING_KEY, PLAYER1_TEAM_KEY, PLAYER1_ADD_DOTS_KEY, PLAYER1_TIME_LEFT_KEY, PLAYER1_MOVE_KEY -> Player.First
+        PLAYER2_NAME_KEY, PLAYER2_RATING_KEY, PLAYER2_TEAM_KEY, PLAYER2_ADD_DOTS_KEY, PLAYER2_TIME_LEFT_KEY, PLAYER2_MOVE_KEY -> Player.Second
         else -> error("The function should be called only for player-related properties but not for `${key ?: name}`")
     }
 }
@@ -132,12 +134,13 @@ object SgfMetaInfo {
     const val TIME_KEY = "TM"
     const val OVERTIME_KEY = "OT"
     const val APP_INFO_KEY = "AP"
-
     const val PLAYER1_ADD_DOTS_KEY = "A${PLAYER1_MARKER}"
     const val PLAYER2_ADD_DOTS_KEY = "A${PLAYER2_MARKER}"
+    const val PLAYER1_TIME_LEFT_KEY = "${PLAYER1_MARKER}L"
+    const val PLAYER2_TIME_LEFT_KEY = "${PLAYER2_MARKER}L"
 
-    const val PLAYER1_MOVE = PLAYER1_MARKER.toString()
-    const val PLAYER2_MOVE = PLAYER2_MARKER.toString()
+    const val PLAYER1_MOVE_KEY = PLAYER1_MARKER.toString()
+    const val PLAYER2_MOVE_KEY = PLAYER2_MARKER.toString()
 
     val propertyInfos: Map<String, SgfPropertyInfo> = mapOf(
         GAME_MODE_KEY to SgfPropertyInfo("Game Mode", SgfPropertyType.Number),
@@ -166,12 +169,13 @@ object SgfMetaInfo {
         TIME_KEY to SgfPropertyInfo("Time", SgfPropertyType.Double),
         OVERTIME_KEY to SgfPropertyInfo("Overtime"),
         APP_INFO_KEY to SgfPropertyInfo("App Info", SgfPropertyType.AppInfo),
-
         PLAYER1_ADD_DOTS_KEY to SgfPropertyInfo("Player1 initial dots", SgfPropertyType.Position, multipleValues = true),
         PLAYER2_ADD_DOTS_KEY to SgfPropertyInfo("Player2 initial dots", SgfPropertyType.Position, multipleValues = true),
+        PLAYER1_TIME_LEFT_KEY to SgfPropertyInfo("Player1 time left", SgfPropertyType.Double, scope = SgfPropertyScope.Both),
+        PLAYER2_TIME_LEFT_KEY to SgfPropertyInfo("Player2 time left", SgfPropertyType.Double, scope = SgfPropertyScope.Both),
 
-        PLAYER1_MOVE to SgfPropertyInfo("Player1 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
-        PLAYER2_MOVE to SgfPropertyInfo("Player2 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
+        PLAYER1_MOVE_KEY to SgfPropertyInfo("Player1 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
+        PLAYER2_MOVE_KEY to SgfPropertyInfo("Player2 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
     )
 
     val propertyInfoToKey: Map<SgfPropertyInfo, String> = propertyInfos.entries.associateBy({ it.value }) { it.key }.also {

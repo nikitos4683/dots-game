@@ -6,6 +6,7 @@ import org.dots.game.core.GameInfo
 import org.dots.game.core.GameTree
 import org.dots.game.core.MoveInfo
 import org.dots.game.core.MoveResult
+import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
 import org.dots.game.sgf.SgfGameMode.Companion.SUPPORTED_GAME_MODE_KEY
@@ -25,15 +26,17 @@ import org.dots.game.sgf.SgfMetaInfo.OPENING_KEY
 import org.dots.game.sgf.SgfMetaInfo.OVERTIME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLACE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_ADD_DOTS_KEY
-import org.dots.game.sgf.SgfMetaInfo.PLAYER1_MOVE
+import org.dots.game.sgf.SgfMetaInfo.PLAYER1_MOVE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_RATING_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_TEAM_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER1_TIME_LEFT_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_ADD_DOTS_KEY
-import org.dots.game.sgf.SgfMetaInfo.PLAYER2_MOVE
+import org.dots.game.sgf.SgfMetaInfo.PLAYER2_MOVE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_RATING_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TEAM_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TIME_LEFT_KEY
 import org.dots.game.sgf.SgfMetaInfo.SIZE_KEY
 import org.dots.game.sgf.SgfMetaInfo.SOURCE_KEY
 import org.dots.game.sgf.SgfMetaInfo.TIME_KEY
@@ -150,6 +153,9 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
             }
         }
 
+        val player1TimeLeft = gameInfoProperties.getPropertyValue<Double>(PLAYER1_TIME_LEFT_KEY)
+        val player2TimeLeft = gameInfoProperties.getPropertyValue<Double>(PLAYER2_TIME_LEFT_KEY)
+
         val gameInfo = GameInfo(
             gameName = gameInfoProperties.getPropertyValue(GAME_NAME_KEY),
             player1Name = gameInfoProperties.getPropertyValue(PLAYER1_NAME_KEY),
@@ -176,7 +182,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         val rules = Rules(width, height, initialMoves = initialMoves)
         val field = Field(rules) { it.reportPositionThatViolatesRules() }
 
-        val gameTree = GameTree(field)
+        val gameTree = GameTree(field, player1TimeLeft, player2TimeLeft)
 
         return Game(gameInfo, gameTree)
     }
@@ -185,8 +191,10 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         gameTree: GameTree,
         convertedProperties: MutableMap<String, SgfProperty<*>>,
     ) {
-        val player1Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER1_MOVE)
-        val player2Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER2_MOVE)
+        val player1Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER1_MOVE_KEY)
+        val player2Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER2_MOVE_KEY)
+        val player1TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER1_TIME_LEFT_KEY)
+        val player2TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER2_TIME_LEFT_KEY)
 
         fun processMoves(moveInfos: List<MoveInfo>?) {
             if (moveInfos == null) return
@@ -194,7 +202,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
             for (moveInfo in moveInfos) {
                 val moveResult = gameTree.field.makeMove(moveInfo.position, moveInfo.player)
                 if (moveResult != null) {
-                    gameTree.add(moveResult)
+                    val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
+                    gameTree.add(moveResult, timeLeft)
                 } else {
                     moveInfo.reportPositionThatViolatesRules()
                 }
