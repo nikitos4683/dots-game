@@ -1,6 +1,7 @@
 package org.dots.game.sgf
 
 import org.dots.game.core.AppInfo
+import org.dots.game.core.AppType
 import org.dots.game.core.Game
 import org.dots.game.core.GameTreeNode
 import org.dots.game.core.MoveInfo
@@ -255,6 +256,17 @@ class SgfConverterTests {
             )
         ).single().gameInfo
         assertNull(gameInfo.player1Rating)
+    }
+
+    @Test
+    fun playdotsSgf() {
+        val gameInfo = parseAndConvert(
+            "(;AP[Спортивные Точки (playdots.ru)]GM[40]FF[4]SZ[39:32]BR[Нет звания, 1200]WR[Второй разряд, 1300])"
+        ).single().gameInfo
+
+        assertEquals(AppType.Playdots, gameInfo.appInfo!!.appType)
+        assertEquals(1200.0, gameInfo.player1Rating)
+        assertEquals(1300.0, gameInfo.player2Rating)
     }
 }
 

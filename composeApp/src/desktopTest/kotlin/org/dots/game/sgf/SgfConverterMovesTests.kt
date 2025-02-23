@@ -90,7 +90,7 @@ class SgfConverterMovesTests {
         parseAndConvert(
             "(;GM[40]FF[4]SZ[39:32]AB[bb][ca][da][eb][dc][cc]AW[cb][db])", listOf(
                 SgfDiagnostic(
-                    "Property AW (Player2 initial dots) value `db` is incorrect. The dot at position `(4;2)` is already placed or captured.",
+                    "Property AW (Player2 initial dots) has incorrect value `db`. The dot at position (4;2) is already placed or captured (move number: 8).",
                     LineColumn(1, 56),
                     SgfDiagnosticSeverity.Error,
                 )
@@ -120,11 +120,12 @@ class SgfConverterMovesTests {
     @Test
     fun incorrectMovesSequence() {
         val rootNode = parseAndConvert(
-            "(;GM[40]FF[4]SZ[39:32];B[bb];B[__];W[bb];W[c])", listOf(
+            "(;GM[40]FF[4]SZ[10:10];B[bb];B[__];W[bb];W[c];W[ml])", listOf(
                 SgfDiagnostic("Property B (Player1 move) has incorrect x coordinate `_`.", LineColumn(1, 32), SgfDiagnosticSeverity.Error),
                 SgfDiagnostic("Property B (Player1 move) has incorrect y coordinate `_`.", LineColumn(1, 33), SgfDiagnosticSeverity.Error),
-                SgfDiagnostic("Property W (Player2 move) value `bb` is incorrect. The dot at position `(2;2)` is already placed or captured.", LineColumn(1, 38), SgfDiagnosticSeverity.Error),
+                SgfDiagnostic("Property W (Player2 move) has incorrect value `bb`. The dot at position (2;2) is already placed or captured (move number: 2).", LineColumn(1, 38), SgfDiagnosticSeverity.Error),
                 SgfDiagnostic("Property W (Player2 move) has incorrect y coordinate ``.", LineColumn(1, 45), SgfDiagnosticSeverity.Error),
+                SgfDiagnostic("Property W (Player2 move) has incorrect value `ml`. The position (13;12) is out of bounds 10:10 (move number: 2).", LineColumn(1, 49), SgfDiagnosticSeverity.Error),
             )
         ).single().gameTree.rootNode
         val nextNode = rootNode.getNextNode(2, 2, Player.First)!!

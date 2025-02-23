@@ -1,6 +1,6 @@
 package org.dots.game.core
 
-class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo) -> Unit = { _ -> }) {
+class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }) {
     companion object {
         const val OFFSET: Int = 1
         const val MAX_WIDTH = (1 shl Position.COORDINATE_BITS_COUNT) - 2
@@ -34,9 +34,18 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         }
 
         for (moveInfo in rules.initialMoves) {
-            if (makeMove(moveInfo.position, moveInfo.player) == null) {
-                onIncorrectInitialMove(moveInfo)
+            val position = moveInfo.position
+            if (!checkPositionWithinBounds(position)) {
+                onIncorrectInitialMove(moveInfo, false, currentMoveNumber)
+                continue
             }
+
+            if (!checkValidMove(position)) {
+                onIncorrectInitialMove(moveInfo, true, currentMoveNumber)
+                continue
+            }
+
+            makeMoveUnsafe(position, moveInfo.player)
         }
 
         initialMovesCount = moveResults.size
@@ -60,15 +69,19 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
      * Valid real positions starts from `1`, but not from `0`. `0` is reserved for internal purposes.
      */
     fun makeMove(position: Position, player: Player? = null): MoveResult? {
-        val position = positionIfWithinBoundsAndFree(position) ?: return null
-        return makeMoveUnsafe(position, player)
+        return if (checkPositionWithinBounds(position) && checkValidMove(position))
+            makeMoveUnsafe(position, player)
+        else
+            null
     }
 
-    fun positionIfWithinBoundsAndFree(position: Position): Position? {
+    fun checkPositionWithinBounds(position: Position): Boolean {
         val (x, y) = position
-        return if (x < OFFSET || x >= width + OFFSET || y < OFFSET || y >= height + OFFSET) null else Position(x, y).takeIf {
-            it.getState().checkValidMove()
-        }
+        return x >= OFFSET && x < width + OFFSET && y >= OFFSET && y < height + OFFSET
+    }
+
+    fun checkValidMove(position: Position): Boolean {
+        return position.getState().checkValidMove()
     }
 
     fun getCurrentPlayer(player: Player?): Player {

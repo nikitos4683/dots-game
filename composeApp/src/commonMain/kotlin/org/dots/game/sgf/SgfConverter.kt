@@ -140,7 +140,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
 
         val initialMoves = buildList {
             addAll(gameInfoProperties.getPropertyValue<List<MoveInfo>>(PLAYER1_ADD_DOTS_KEY) ?: emptyList())
-            for (player2InitialMoveInfo in (gameInfoProperties.getPropertyValue<List<MoveInfo>>(PLAYER2_ADD_DOTS_KEY) ?: emptyList())) {
+            for (player2InitialMoveInfo in (gameInfoProperties.getPropertyValue<List<MoveInfo>>(PLAYER2_ADD_DOTS_KEY)
+                ?: emptyList())) {
                 if (removeAll { it.position == player2InitialMoveInfo.position }) {
                     val (propertyInfo, textSpan) = player2InitialMoveInfo.extraInfo as PropertyInfoAndTextSpan
                     propertyInfo.reportPropertyDiagnostic(
@@ -184,7 +185,9 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         )
 
         val rules = Rules(width, height, initialMoves = initialMoves)
-        val field = Field(rules) { it.reportPositionThatViolatesRules() }
+        val field = Field(rules) { moveInfo, withinBounds, currentMoveNumber ->
+            moveInfo.reportPositionThatViolatesRules(withinBounds, width, height, currentMoveNumber)
+        }
 
         val gameTree = GameTree(field, player1TimeLeft, player2TimeLeft)
 
@@ -195,6 +198,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         gameTree: GameTree,
         convertedProperties: MutableMap<String, SgfProperty<*>>,
     ) {
+        val field = gameTree.field
         val player1Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER1_MOVE_KEY)
         val player2Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER2_MOVE_KEY)
         val player1TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER1_TIME_LEFT_KEY)
@@ -204,12 +208,25 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
             if (moveInfos == null) return
 
             for (moveInfo in moveInfos) {
-                val moveResult = gameTree.field.makeMove(moveInfo.position, moveInfo.player)
-                if (moveResult != null) {
-                    val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
-                    gameTree.add(moveResult, timeLeft)
+                var moveResult: MoveResult?
+                val withinBounds: Boolean
+                if (field.checkPositionWithinBounds(moveInfo.position)) {
+                    moveResult = field.makeMove(moveInfo.position, moveInfo.player)?.also {
+                        val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
+                        gameTree.add(it, timeLeft)
+                    }
+                    withinBounds = true
                 } else {
-                    moveInfo.reportPositionThatViolatesRules()
+                    moveResult = null
+                    withinBounds = false
+                }
+                if (moveResult == null) {
+                    moveInfo.reportPositionThatViolatesRules(
+                        withinBounds = withinBounds,
+                        field.width,
+                        field.height,
+                        field.currentMoveNumber
+                    )
                 }
                 add(moveInfo to moveResult)
             }
@@ -219,10 +236,15 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         processMoves(player2Moves)
     }
 
-    private fun MoveInfo.reportPositionThatViolatesRules() {
+    private fun MoveInfo.reportPositionThatViolatesRules(withinBounds: Boolean, width: Int, height: Int, currentMoveNumber: Int) {
         val (propertyInfo, textSpan) = extraInfo as PropertyInfoAndTextSpan
+        val errorMessageSuffix = if (!withinBounds) {
+            "The position $position is out of bounds $width:$height"
+        } else {
+            "The dot at position $position is already placed or captured"
+        }
         propertyInfo.reportPropertyDiagnostic(
-            "value `${textSpan.getText()}` is incorrect. The dot at position `${position}` is already placed or captured.",
+            "has incorrect value `${textSpan.getText()}`. $errorMessageSuffix (move number: ${currentMoveNumber + 1}).",
             textSpan,
             SgfDiagnosticSeverity.Error
         )
@@ -258,7 +280,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
             }
 
             if (isRootScope && sgfPropertyInfo.scope == SgfPropertyScope.Move ||
-                    !isRootScope && sgfPropertyInfo.scope == SgfPropertyScope.Root
+                !isRootScope && sgfPropertyInfo.scope == SgfPropertyScope.Root
             ) {
                 val currentScope: SgfPropertyScope
                 val severity: SgfDiagnosticSeverity
@@ -362,13 +384,21 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
                     intValue
                 }
 
-                SgfPropertyType.Double -> propertyValue.toDoubleOrNull().also {
-                    if (it == null) {
-                        propertyInfo.reportPropertyDiagnostic(
-                            "has incorrect format: `${propertyValue}`. Expected: Real Number.",
-                            propertyValueToken.textSpan,
-                            SgfDiagnosticSeverity.Warning,
-                        )
+                SgfPropertyType.Double -> {
+                    val normalizedValue = if (propertyInfoToKey.getValue(propertyInfo).let { it  == PLAYER1_RATING_KEY || it == PLAYER2_RATING_KEY }) {
+                        // TODO: consider `AppType` (normalization is only actual for Playdots)
+                        propertyValue.split(',').last()
+                    } else {
+                        propertyValue
+                    }
+                    normalizedValue.toDoubleOrNull().also {
+                        if (it == null) {
+                            propertyInfo.reportPropertyDiagnostic(
+                                "has incorrect format: `${propertyValue}`. Expected: Real Number.",
+                                propertyValueToken.textSpan,
+                                SgfDiagnosticSeverity.Warning,
+                            )
+                        }
                     }
                 }
                 SgfPropertyType.SimpleText -> propertyValue.convertSimpleText()
@@ -507,7 +537,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         if (value.elementAtOrNull(CAPTURING_POSITIONS_INDEX - 1) == '.') {
             val capturingMoveInfos = buildList {
                 for (internalIndex in CAPTURING_POSITIONS_INDEX until value.length step 2) {
-                     convertPosition(propertyInfo, internalIndex)?.let { add(it) }
+                    convertPosition(propertyInfo, internalIndex)?.let { add(it) }
                 }
             }
             val textSpan = TextSpan(textSpan.start + CAPTURING_POSITIONS_INDEX, value.length - CAPTURING_POSITIONS_INDEX)

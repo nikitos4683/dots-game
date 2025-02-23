@@ -31,6 +31,15 @@ class GameInfo(
     val appInfo: AppInfo?,
 )
 
-data class AppInfo(val name: String, val version: String?)
+data class AppInfo(val name: String, val version: String?) {
+    val appType = AppType.entries.find { it.value == name } ?: AppType.Unknown
+}
 
 data class MoveInfo(val position: Position, val player: Player, val extraInfo: Any? = null)
+
+enum class AppType(val value: String) {
+    Zagram("zagram.org"),
+    Notago("NOTAGO"),
+    Playdots("Спортивные Точки (playdots.ru)"),
+    Unknown(""),
+}
