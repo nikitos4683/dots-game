@@ -1,14 +1,14 @@
 package org.dots.game.infrastructure
 
+import org.dots.game.core.EMPTY_POSITION
+import org.dots.game.core.FIRST_PLAYER_MARKER
 import org.dots.game.core.Field
 import org.dots.game.core.Player
 import org.dots.game.core.Position
+import org.dots.game.core.SECOND_PLAYER_MARKER
 import kotlin.collections.iterator
 
 object TestDataParser {
-    const val EMPTY_CELL_MARKER = '.'
-    const val FIRST_PLAYER_MARKER = '*'
-    const val SECOND_PLAYER_MARKER = '+'
     private val WHITESPACE_REGEX = Regex("\\s+")
 
     fun parse(data: String): TestDataField {
@@ -29,7 +29,7 @@ object TestDataParser {
             if (cells.isEmpty()) error("Empty line at $lineIndex")
 
             for ((cellIndex, cell) in cells.withIndex()) {
-                if (cell.all { it == EMPTY_CELL_MARKER }) continue
+                if (cell.all { it == EMPTY_POSITION }) continue
 
                 val player = when (cell.first()) {
                     FIRST_PLAYER_MARKER -> Player.First

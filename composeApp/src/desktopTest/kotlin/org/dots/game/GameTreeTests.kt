@@ -6,6 +6,7 @@ import org.dots.game.core.GameTreeNode
 import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
+import org.dots.game.field.FieldTests
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

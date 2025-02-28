@@ -1,4 +1,4 @@
-package org.dots.game
+package org.dots.game.field
 
 import org.dots.game.core.Field
 import org.dots.game.core.Rules
@@ -15,7 +15,7 @@ abstract class FieldTests {
         val field = Field(rules)
         for ((index, testMove) in testDataFiled.moves.withIndex()) {
             val position = testMove.position
-            assertNotNull(field.makeMove(position, testMove.player), "Can't make move #$index to ($position.x,$position.y)")
+            assertNotNull(field.makeMove(position, testMove.player), "Can't make move #$index to $position")
         }
         return field
     }

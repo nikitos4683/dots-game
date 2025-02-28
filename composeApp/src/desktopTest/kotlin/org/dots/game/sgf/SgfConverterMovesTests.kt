@@ -161,7 +161,7 @@ class SgfConverterMovesTests {
     @Test
     fun capturingPositions() {
         // .  *2  .
-        // *1 +0 +3
+        // *1 +0 *3
         // .  *4  .
         val gameTree = parseAndConvert(
             "(;GM[40]FF[4]AP[zagram.org]SZ[39:32];B[bb];W[ab];W[ba];W[cb];W[bc.bccbbaabbc])", listOf(

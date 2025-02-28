@@ -26,6 +26,10 @@ value class DotState(val value: Int) {
         return value and ValidMoveMask == 0
     }
 
+    fun checkPlaced(): Boolean {
+        return value and DotStateFlags.Placed.value != 0
+    }
+
     fun checkPlaced(playerPlacedValue: DotState): Boolean {
         return value and PlacedMask == playerPlacedValue.value
     }
@@ -34,13 +38,29 @@ value class DotState(val value: Int) {
         return value and ActiveMask == playerActiveValue.value || value and DotStateFlags.Border.value != 0
     }
 
+    fun checkTerritory(): Boolean {
+        return value and DotStateFlags.Territory.value != 0
+    }
+
     fun checkTerritory(playerAndTerritory: DotState): Boolean {
         return value and TerritoryMask == playerAndTerritory.value
+    }
+
+    fun getTerritoryPlayer(): Player {
+        return if (value and DotStateFlags.TerritoryPlayer.value == 0) First else Second
+    }
+
+    fun checkWithinEmptyTerritory(): Boolean {
+        return value and DotStateFlags.EmptyTerritory.value != 0
     }
 
     fun checkWithinEmptyTerritory(player: Player): Boolean {
         return value and EmptyTerritoryMask ==
                 (if (player == First) 0 else DotStateFlags.EmptyTerritoryPlayer.value) or DotStateFlags.EmptyTerritory.value
+    }
+
+    fun getEmptyTerritoryPlayer(): Player {
+        return if (value and DotStateFlags.EmptyTerritoryPlayer.value == 0) First else Second
     }
 
     fun checkBorder(): Boolean {
@@ -103,3 +123,13 @@ fun Player.createTerritoryState(): DotState {
 fun Player.createEmptyTerritoryState(): DotState {
     return DotState(DotStateFlags.EmptyTerritory.value or (if (this == First) 0 else DotStateFlags.EmptyTerritoryPlayer.value))
 }
+
+const val FIRST_PLAYER_MARKER = '*'
+const val SECOND_PLAYER_MARKER = '+'
+const val TERRITORY_EMPTY_MARKER = '^'
+const val EMPTY_TERRITORY_MARKER = '`'
+const val EMPTY_POSITION = '.'
+
+val x = ""
+
+val playerMarker = mapOf(First to FIRST_PLAYER_MARKER, Second to SECOND_PLAYER_MARKER)
