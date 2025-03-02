@@ -15,8 +15,6 @@ value class DotState(val value: Int) {
         private val ActiveMask = DotStateFlags.Placed.value or DotStateFlags.Territory.value or DotStateFlags.PlacedPlayer.value
         private val TerritoryMask = DotStateFlags.Territory.value or DotStateFlags.TerritoryPlayer.value
         private val InvertTerritoryMask = TerritoryMask.inv()
-        private val EmptyTerritoryMask = DotStateFlags.EmptyTerritory.value or DotStateFlags.EmptyTerritoryPlayer.value
-        private val InvertEmptyTerritoryMask = EmptyTerritoryMask.inv()
     }
 
     fun checkValidMove(): Boolean {
@@ -47,19 +45,6 @@ value class DotState(val value: Int) {
         return if (value and DotStateFlags.TerritoryPlayer.value == 0) First else Second
     }
 
-    fun checkWithinEmptyTerritory(): Boolean {
-        return value and DotStateFlags.EmptyTerritory.value != 0
-    }
-
-    fun checkWithinEmptyTerritory(player: Player): Boolean {
-        return value and EmptyTerritoryMask ==
-                (if (player == First) 0 else DotStateFlags.EmptyTerritoryPlayer.value) or DotStateFlags.EmptyTerritory.value
-    }
-
-    fun getEmptyTerritoryPlayer(): Player {
-        return if (value and DotStateFlags.EmptyTerritoryPlayer.value == 0) First else Second
-    }
-
     fun checkBorder(): Boolean {
         return value and DotStateFlags.Border.value != 0
     }
@@ -69,7 +54,7 @@ value class DotState(val value: Int) {
     }
 
     fun setTerritory(playerAndTerritory: DotState): DotState {
-        return DotState((value and InvertTerritoryMask or playerAndTerritory.value) and InvertEmptyTerritoryMask)
+        return DotState(value and InvertTerritoryMask or playerAndTerritory.value)
     }
 
     override fun toString(): String {
@@ -86,12 +71,6 @@ value class DotState(val value: Int) {
                 append("; ")
             }
 
-            if (value and DotStateFlags.EmptyTerritory.value != 0) {
-                append("WithinEmptyTerritory: Player")
-                append(if (value and DotStateFlags.EmptyTerritoryPlayer.value == 0) "0" else "1")
-                append("; ")
-            }
-
             if (value and DotStateFlags.Border.value != 0) {
                 append("Border; ")
             }
@@ -104,9 +83,7 @@ private enum class DotStateFlags(val value: Int) {
     PlacedPlayer(0x2),
     Territory(0x4),
     TerritoryPlayer(0x8),
-    EmptyTerritory(0x10),
-    EmptyTerritoryPlayer(0x20),
-    Border(0x40),
+    Border(0x10),
 }
 
 fun Player.createPlacedState(): DotState {
@@ -115,10 +92,6 @@ fun Player.createPlacedState(): DotState {
 
 fun Player.createTerritoryState(): DotState {
     return DotState(DotStateFlags.Territory.value or (if (this == First) 0 else DotStateFlags.TerritoryPlayer.value))
-}
-
-fun Player.createEmptyTerritoryState(): DotState {
-    return DotState(DotStateFlags.EmptyTerritory.value or (if (this == First) 0 else DotStateFlags.EmptyTerritoryPlayer.value))
 }
 
 const val FIRST_PLAYER_MARKER = '*'

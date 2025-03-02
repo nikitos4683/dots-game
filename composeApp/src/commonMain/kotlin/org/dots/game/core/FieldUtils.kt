@@ -27,10 +27,11 @@ fun Field.dump(printNumbers: Boolean = true, padding: Int = Int.MAX_VALUE, print
                 } else if (isTerritory) {
                     append(TERRITORY_EMPTY_MARKER)
                 }
-                if (debugInfo && state.checkWithinEmptyTerritory()) {
+                val emptyBaseAtPosition = emptyBasePositionsSequence[position]
+                if (debugInfo && emptyBaseAtPosition != null) {
                     require(!isTerritory && !isPlaced)
                     append(EMPTY_TERRITORY_MARKER)
-                    append(playerMarker.getValue(state.getEmptyTerritoryPlayer()))
+                    append(playerMarker.getValue(emptyBaseAtPosition.player))
                 }
                 if (isEmpty()) {
                     append(

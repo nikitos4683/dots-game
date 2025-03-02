@@ -69,7 +69,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         private set
 
     /**
-     * Valid real positions starts from `1`, but not from `0`. `0` is reserved for internal purposes.
+     * Valid real positions starts from `1`, but not from `0`.
+     * `0` is reserved for the initial position (cross, empty or other).
      */
     fun makeMove(position: Position, player: Player? = null): MoveResult? {
         return if (checkPositionWithinBounds(position) && checkValidMove(position))
@@ -350,16 +351,19 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         fun Position.checkAndAdd() {
             val state = getState()
             if (state.checkTerritory(playerTerritory)) return // Ignore already captured territory
-            if (!forceCapturingEmptyTerritory && state.checkWithinEmptyTerritory(player)) {
-                if (outerEmptyBase != null) {
-                    // Walk into inner empty territory if only it's a territory of `outerEmptyBase`
-                    // Otherwise, it's a territory of a more inner base.
-                    if (emptyBasePositions.getValue(this) != outerEmptyBase) {
+            if (!forceCapturingEmptyTerritory) {
+                val emptyBaseAtPosition = emptyBasePositions[this]
+                if (emptyBaseAtPosition != null) {
+                    if (outerEmptyBase != null) {
+                        // Walk into inner empty territory if only it's a territory of `outerEmptyBase`
+                        // Otherwise, it's a territory of a more inner base.
+                        if (emptyBaseAtPosition != outerEmptyBase) {
+                            return
+                        }
+                    } else {
+                        // Don't walk into inner empty territory, it's handled by an existing inner base
                         return
                     }
-                } else {
-                    // Don't walk into inner empty territory, it's handled by an existing inner base
-                    return
                 }
             }
 
@@ -429,8 +433,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             nonCapturingTerritory,
         )
 
-        val playerEmptyTerritory = player.createEmptyTerritoryState()
-
         updateScoreCount(player, currentPlayerDiff, oppositePlayerDiff, rollback = false)
 
         for (territoryPosition in territoryPositions) {
@@ -449,7 +451,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
             if (nonCapturingTerritory) {
                 if (territoryPositionState.checkValidMove()) {
-                    savePreviousStateAndSetNew(playerEmptyTerritory, setEmptyBase = true)
+                    savePreviousStateAndSetNew(DotState.Empty, setEmptyBase = true)
                 }
             } else {
                 savePreviousStateAndSetNew(territoryPositionState.setTerritory(playerTerritory), setEmptyBase = false)
