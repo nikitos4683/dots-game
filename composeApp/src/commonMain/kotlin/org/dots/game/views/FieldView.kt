@@ -216,7 +216,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
                 Modifier
                     .offset(offsetGraphical.x, offsetGraphical.y)
                     .size(cellSize * (maxX - minX), cellSize * (maxY - minY))
-                    .background(uiSettings.toColor(moveResult.player).copy(alpha = baseAlpha), polygonShape)
+                    .background(uiSettings.toColor(base.player).copy(alpha = baseAlpha), polygonShape)
             )
         }
     }
