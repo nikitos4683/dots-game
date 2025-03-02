@@ -11,14 +11,14 @@ class FieldWithEmptyCapturing() : FieldTests() {
 
     @Test
     fun checkCapturing() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . * .
             * . *
             . * .
-        """)
-
-        assertEquals(0, field.player1Score)
-        assertNull(field.makeMove(2 x 2, Player.First))
-        assertNull(field.makeMove(2 x 2, Player.Second))
+        """) {
+            assertEquals(0, it.player1Score)
+            assertNull(it.makeMove(2 x 2, Player.First))
+            assertNull(it.makeMove(2 x 2, Player.Second))
+        }
     }
 }

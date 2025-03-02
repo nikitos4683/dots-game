@@ -1,13 +1,36 @@
 package org.dots.game.field
 
+import org.dots.game.core.DotState
 import org.dots.game.core.Field
+import org.dots.game.core.Position
 import org.dots.game.core.Rules
 import org.dots.game.infrastructure.TestDataParser
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 abstract class FieldTests {
     open val captureByBorder: Boolean = Rules.Standard.captureByBorder
     open val captureEmptyBase: Boolean = Rules.Standard.captureEmptyBase
+
+    fun testFieldWithRollback(fieldData: String, check: (Field) -> Unit) {
+        with (initialize(fieldData)) {
+            check(this)
+            unmakeAllMoves()
+
+            assertTrue(moveSequence.isEmpty())
+            assertEquals(0, player1Score)
+            assertEquals(0, player2Score)
+            assertTrue(emptyBasePositionsSequence.isEmpty())
+            for (x in 0 until realWidth) {
+                for (y in 0 until realHeight) {
+                    val position = Position(x, y)
+                    val expectedState = if (captureByBorder && position.isBorder()) DotState.Border else DotState.Empty
+                    assertEquals(expectedState, Position(x, y).getState())
+                }
+            }
+        }
+    }
 
     fun initialize(fieldData: String): Field {
         val testDataFiled = TestDataParser.parse(fieldData)

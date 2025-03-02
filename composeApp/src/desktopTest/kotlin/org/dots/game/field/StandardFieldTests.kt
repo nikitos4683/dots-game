@@ -1,5 +1,6 @@
 package org.dots.game.field
 
+import org.dots.game.core.DotState
 import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.x
@@ -10,130 +11,122 @@ import kotlin.test.assertNull
 
 class StandardFieldTests : FieldTests() {
     @Test
-    fun invalidMoveOnThePlacedPot() {
-        val field  = initialize("""
+    fun testInvalidMoveOnThePlacedDot() {
+        testFieldWithRollback("""
             . . .
             . * .
             . . .
-        """)
-
-        assertNull(field.makeMove(2 x 2, Player.First))
-    }
-
-    @Test
-    fun connectionWithoutBase() {
-        val field  = initialize("""
-            * *  *
-            * *4 .
-            * .  .
-        """)
+        """) {
+            assertNull(it.makeMove(2 x 2, Player.First))
+        }
     }
 
     @Test
     fun checkCapturing() {
-        val field  = initialize("""
+        testFieldWithRollback("""
             . * .
             * + *
             . . .
-        """)
-
-        val moveResult = field.makeMove(2 x 3, Player.First)!!
-        val base = moveResult.bases.single()
-        assertEquals(
-            listOf(Position(2, 3), Position(3, 2), Position(2, 1), Position(1, 2)),
-            base.closurePositions
-        )
-        assertEquals(setOf(Position(2, 2)), base.territoryPreviousStates.keys)
+        """) {
+            val moveResult = it.makeMove(2 x 3, Player.First)!!
+            val base = moveResult.bases.single()
+            assertEquals(
+                listOf(Position(2, 3), Position(3, 2), Position(2, 1), Position(1, 2)),
+                base.closurePositions
+            )
+            assertEquals(setOf(Position(2, 2)), base.previousStates.keys)
+        }
     }
 
     @Test
     fun simpleCapture() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . * .
             * + *
             . * .
-        """)
-
-        assertEquals(1, field.player1Score)
-        assertEquals(0, field.player2Score)
+        """) {
+            assertEquals(1, it.player1Score)
+            assertEquals(0, it.player2Score)
+        }
     }
 
     @Test
     fun simpleCapture2() {
-        val field = initialize("""
+        testFieldWithRollback("""
             .  *2 .
             *0 +1 *3
             .  *5 *4
-        """)
-
-        assertEquals(1, field.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 
     @Test
     fun simpleCaptureForOppositePlayer() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . + .
             + * +
             . + .
-        """)
-
-        assertEquals(0, field.player1Score)
-        assertEquals(1, field.player2Score)
+        """) {
+            assertEquals(0, it.player1Score)
+            assertEquals(1, it.player2Score)
+        }
     }
 
     @Test
     fun tripleCapture() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . * . * .
             * + . + *
             . * + * .
             . . * . .
-        """)
-
-        val moveResult = field.makeMove(3 x 2, Player.First)!!
-        val bases = moveResult.bases
-        assertEquals(3, bases.size)
-        assertEquals(3, field.player1Score)
+        """) {
+            val moveResult = it.makeMove(3 x 2, Player.First)!!
+            val bases = moveResult.bases
+            assertEquals(3, bases.size)
+            assertEquals(3, it.player1Score)
+        }
     }
 
     @Test
     fun invalidMoveWithinBase(){
-        val field = initialize("""
+        testFieldWithRollback("""
             . * * .
             * + . *
             . * * .
-        """)
-
-        assertNull(field.makeMove(3 x 2, Player.First))
-        assertNull(field.makeMove(3 x 2, Player.Second))
+        """) {
+            assertNull(it.makeMove(3 x 2, Player.First))
+            assertNull(it.makeMove(3 x 2, Player.Second))
+        }
     }
 
     @Test
     fun capturedDotIsNotActive() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . * + .
             * + * +7
             . * + .
-        """)
-
-        assertEquals(1, field.player1Score)
-        assertEquals(0, field.player2Score)
+        """) {
+            assertEquals(1, it.player1Score)
+            assertEquals(0, it.player2Score)
+        }
     }
 
     @Test
     fun emptyBase() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . *  .
             * +4 *
             . *  .
-        """)
-
-        assertEquals(1, field.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 
     @Test
     fun emptyBaseWithinEmptyBase() {
-        val field = initialize("""
+        testFieldWithRollback(
+            """
             ... ... +04 +05 +06
             ... +07 ... ... ... +08
             +09 ... ... +00 ... ... +10
@@ -141,17 +134,18 @@ class StandardFieldTests : FieldTests() {
             +13 ... ... +03 ... ... +14
             ... +15 ... ... ... +16
             ... ... +17 +18 +19
-        """)
+        """
+        ) {
+            assertEquals(1, it.player2Score)
 
-        assertEquals(1, field.player2Score)
-
-        assertNotNull(field.makeMove(4 x 2, Player.First))
-        assertEquals(2, field.player2Score)
+            assertNotNull(it.makeMove(4 x 2, Player.First))
+            assertEquals(2, it.player2Score)
+        }
     }
 
     @Test
     fun emptyBaseWithinEmptyBase2() {
-        val field = initialize("""
+        testFieldWithRollback("""
             ... ... +00 +01 +02
             ... +03 ... ... ... +04
             +05 ... ... +16 ... ... +06
@@ -159,16 +153,17 @@ class StandardFieldTests : FieldTests() {
             +09 ... ... +19 ... ... +10
             ... +11 ... ... ... +12
             ... ... +13 +14 +15
-        """)
-        assertEquals(1, field.player2Score)
+        """) {
+            assertEquals(1, it.player2Score)
 
-        assertNotNull(field.makeMove(4 x 2, Player.First))
-        assertEquals(2, field.player2Score)
+            assertNotNull(it.makeMove(4 x 2, Player.First))
+            assertEquals(2, it.player2Score)
+        }
     }
 
     @Test
     fun emptyBaseWithinEmptyBase3() {
-        val field = initialize("""
+        testFieldWithRollback("""
             ... ... +20 +05 +06
             ... +07 ... ... ... +08
             +09 ... ... +00 ... ... +10
@@ -176,17 +171,17 @@ class StandardFieldTests : FieldTests() {
             +13 ... ... +03 ... ... +14
             ... +15 ... ... ... +16
             ... ... +17 +18 +19
-        """)
+        """) {
+            assertEquals(1, it.player2Score)
 
-        assertEquals(1, field.player2Score)
-
-        assertNotNull(field.makeMove(4 x 2, Player.First))
-        assertEquals(2, field.player2Score)
+            assertNotNull(it.makeMove(4 x 2, Player.First))
+            assertEquals(2, it.player2Score)
+        }
     }
 
     @Test
     fun emptyBaseWithinEmptyBase4() {
-        val field = initialize("""
+        testFieldWithRollback("""
             ... ... +20 +05 +06
             ... +07 ... ... ... +08 +21 +22
             +09 ... ... +00 ... ... ... ... +10
@@ -194,15 +189,15 @@ class StandardFieldTests : FieldTests() {
             +13 ... ... +03 ... ... ... ... +14
             ... +15 ... ... ... +16 +23 +24
             ... ... +17 +18 +19
-        """)
-
-        assertEquals(2, field.player2Score)
-        assertNull(field.makeMove(8 x 4, Player.First))
+        """) {
+            assertEquals(2, it.player2Score)
+            assertNull(it.makeMove(8 x 4, Player.First))
+        }
     }
 
     @Test
     fun emptyBaseWithinEmptyBase5() {
-        val field = initialize("""
+        testFieldWithRollback("""
             ... ... +04 +05 +06
             ... +07 ... ... ... +08 +20 +21
             +09 ... ... +00 ... ... ... ... +10
@@ -210,55 +205,98 @@ class StandardFieldTests : FieldTests() {
             +13 ... ... +03 ... ... ... ... +14
             ... +15 ... ... ... +16 +22 +23
             ... ... +17 +18 +19
-        """)
+        """) {
+            assertEquals(1, it.player2Score)
+            assertNull(it.makeMove(8 x 4, Player.First))
+            assertNull(it.makeMove(4 x 4, Player.First))
+        }
+    }
 
-        assertEquals(1, field.player2Score)
-        assertNull(field.makeMove(8 x 4, Player.First))
-        assertNull(field.makeMove(4 x 4, Player.First))
+    @Test
+    fun emptyBaseWithinEmptyBase6() {
+        testFieldWithRollback("""
+            ... ... ... +04 +05 +06 +07 +08 ... ... ...
+            ... ... +31 ... ... ... ... ... +09 ... ...
+            ... +30 ... ... +32 +33 +34 ... ... +10 ...
+            +29 ... ... +47 ... ... ... +35 ... ... +11
+            +28 ... +46 ... ... +00 ... ... +36 ... +12
+            +27 ... +45 ... +03 ... +01 ... +37 ... +13
+            +26 ... +44 ... ... +02 ... ... +38 ... +14
+            +25 ... ... +43 ... ... ... +39 ... ... +15
+            ... +24 ... ... +42 +41 +40 ... ... +16 ...
+            ... ... +23 ... ... ... ... ... +17 ... ...
+            ... ... ... +22 +21 +20 +19 +18 ... ... ...
+        """) {
+            assertNotNull(it.makeMove(6 x 6, Player.First))
+            assertEquals(1, it.player2Score)
+            assertNotNull(it.makeMove(4 x 6, Player.First))
+            assertEquals(2, it.player2Score)
+            assertNotNull(it.makeMove(2 x 6, Player.First))
+            assertEquals(3, it.player2Score)
+
+            assertNotNull(it.unmakeMove())
+            assertNotNull(it.unmakeMove())
+            assertNotNull(it.unmakeMove())
+
+            assertNotNull(it.makeMove(4 x 6, Player.First))
+            assertEquals(1, it.player2Score)
+            assertNull(it.makeMove(6 x 6, Player.First))
+            assertNotNull(it.makeMove(2 x 6, Player.First))
+            assertEquals(2, it.player2Score)
+
+            assertNotNull(it.unmakeMove())
+            assertNotNull(it.unmakeMove())
+
+            assertNotNull(it.makeMove(2 x 6, Player.First))
+            assertEquals(1, it.player2Score)
+            assertNull(it.makeMove(6 x 6, Player.First))
+            assertNull(it.makeMove(4 x 6, Player.First))
+            assertNotNull(it.unmakeMove())
+        }
     }
 
     @Test
     fun preventEndlessLoopOnCaptureChecking() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . + +   + +
             + . .   . . +
             + . +14 . . *15 +
             + . .   . . +
             . + +   + +
-        """)
-
-        assertEquals(1, field.player2Score)
+        """) {
+            assertEquals(1, it.player2Score)
+        }
     }
 
     @Test
     fun player1CapturesByPlacingInsideEmptyBase() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . *  +  .
             * +6 *7 +
             . *  +  .
-        """)
-
-        assertEquals(1, field.player1Score)
-        assertEquals(0, field.player2Score)
+        """) {
+            assertEquals(1, it.player1Score)
+            assertEquals(0, it.player2Score)
+        }
     }
 
     @Test
     fun baseInsideBase() {
-        val field = initialize("""
+        testFieldWithRollback("""
             .. ..  * .. ..
             ..  *  +1 * ..
              *  +2 *0 +3 * 
             ..  *  +4 * ..
             .. ..  * .. ..
-        """)
-
-        assertEquals(4, field.player1Score)
-        assertEquals(0, field.player2Score)
+        """) {
+            assertEquals(4, it.player1Score)
+            assertEquals(0, it.player2Score)
+        }
     }
 
     @Test
     fun baseInsideBaseInsideBase() {
-        val field = initialize("""
+        testFieldWithRollback("""
             .. ..  ..  +
             .. ..  +   *05 +
             .. +   *06 +01 *07 +
@@ -266,50 +304,117 @@ class StandardFieldTests : FieldTests() {
             .. +   *10 +04 *11 +
             .. ..  +   *12 +
             .. .. ..   +
-        """)
-
-        assertEquals(0, field.player1Score)
-        assertEquals(9, field.player2Score)
+        """) {
+            assertEquals(0, it.player1Score)
+            assertEquals(9, it.player2Score)
+        }
     }
 
     @Test
-    fun checkEdges() {
-        val leftEdge = initialize("""
+    fun checkTopEdge() {
+        testFieldWithRollback("""
             .  *0 .
             *3 +  *1
             .  *2 .
-        """)
-        assertEquals(1, leftEdge.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
+    }
 
-        val topEdge = initialize("""
+    @Test
+    fun checkRightEdge() {
+        testFieldWithRollback("""
             .  *3 .
             *2 +  *0
             .  *1 .
-        """)
-        assertEquals(1, topEdge.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
+    }
 
-        val rightEdge = initialize("""
+    @Test
+    fun checkBottomEdge() {
+        testFieldWithRollback("""
             .  *2 .
             *1 + *3
             .  *0 .
-        """)
-        assertEquals(1, rightEdge.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
 
-        val bottomEdge = initialize("""
+    }
+
+    @Test
+    fun checkLeftEdge() {
+        testFieldWithRollback("""
             .  *1 .
             *0 + *2
             .  *3 .
-        """)
-        assertEquals(1, bottomEdge.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 
     @Test
     fun dontProceedWithWalkIfEncounterABorder() {
-        val field = initialize("""
+        testFieldWithRollback("""
             .  .  *1 .
             *0 *5 +4 *2
             .  .  *3 .
-        """)
-        assertEquals(1, field.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
+    }
+
+    @Test
+    fun invalidateEmptyTerritoryWhenItsBorderCaptured() {
+        testFieldWithRollback("""
+            .  +0 +1 *6
+            +5 .  *9 +2 *7
+            .  +4 +3 *8
+        """) {
+            assertEquals(DotState.Empty, with (it) { Position(2, 2).getState() })
+        }
+    }
+
+    @Test
+    fun invalidateEmptyTerritoryWhenItsBorderCaptured2() {
+        testFieldWithRollback(
+            """
+            ... ... +04 +05 +06
+            ... +07 ... ... ... +08
+            +09 ... ... +00 ... ... +10 *20
+            +11 ... +01 ... +02 ... ... +12 *21
+            +13 ... ... +03 ... ... +14 *22
+            ... +15 ... ... ... +16
+            ... ... +17 +18 +19
+        """
+        ) {
+            assertNotNull(it.makeMove(7 x 4, Player.First))
+            assertEquals(1, it.player1Score)
+            assertEquals(0, it.player2Score)
+
+            assertNotNull(it.makeMove(2 x 4, Player.First))
+            assertEquals(1, it.player1Score)
+            assertEquals(0, it.player2Score)
+
+            assertNotNull(it.makeMove(4 x 4, Player.First))
+            assertEquals(1, it.player1Score)
+            assertEquals(1, it.player2Score)
+        }
+    }
+
+    @Test
+    fun tryPlacingToTerritoryThatBecameCapturedAfterBeingEmpty() {
+        testFieldWithRollback(
+            """
+            .  *1 *2 .
+            *0 +6 .  *3
+            .  *5 *4 .
+        """
+        ) {
+            assertEquals(1, it.player1Score)
+            assertNull(it.makeMove(3 x 2, Player.First))
+        }
     }
 }

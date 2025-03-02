@@ -8,6 +8,7 @@ import kotlin.jvm.JvmInline
 value class DotState(val value: Int) {
     companion object {
         val Empty = DotState(0)
+        val Border = DotState(DotStateFlags.Border.value)
 
         private val ValidMoveMask = DotStateFlags.Placed.value or DotStateFlags.Territory.value
         private val PlacedMask = DotStateFlags.Placed.value or DotStateFlags.PlacedPlayer.value
@@ -16,10 +17,6 @@ value class DotState(val value: Int) {
         private val InvertTerritoryMask = TerritoryMask.inv()
         private val EmptyTerritoryMask = DotStateFlags.EmptyTerritory.value or DotStateFlags.EmptyTerritoryPlayer.value
         private val InvertEmptyTerritoryMask = EmptyTerritoryMask.inv()
-
-        fun createBorderState(): DotState {
-            return DotState(DotStateFlags.Border.value)
-        }
     }
 
     fun checkValidMove(): Boolean {
@@ -129,7 +126,5 @@ const val SECOND_PLAYER_MARKER = '+'
 const val TERRITORY_EMPTY_MARKER = '^'
 const val EMPTY_TERRITORY_MARKER = '`'
 const val EMPTY_POSITION = '.'
-
-val x = ""
 
 val playerMarker = mapOf(First to FIRST_PLAYER_MARKER, Second to SECOND_PLAYER_MARKER)

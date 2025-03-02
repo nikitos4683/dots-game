@@ -11,95 +11,108 @@ class FieldWithBorderTests() : FieldTests() {
 
     @Test
     fun captureByBorder() {
-        val field = initialize("""
+        testFieldWithRollback("""
             * + *
             . * .
             . . .
-        """)
-
-        assertEquals(1, field.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 
     @Test
-    fun checkCorners() {
-        val corner0 = initialize("""
+    fun checkTopLeftCorner() {
+        testFieldWithRollback("""
             + * .
             * . .
             . . .
-        """)
-        assertEquals(1, corner0.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
+    }
 
-        val corner1 = initialize("""
+    @Test
+    fun checkTopRightCorner() {
+        testFieldWithRollback("""
             . * +
             . . *
             . . .
-        """)
-        assertEquals(1, corner1.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
+    }
 
-        val corner2 = initialize("""
+    @Test
+    fun checkBottomRightCorner() {
+        testFieldWithRollback("""
             . . .
             . . *
             . * +
-        """)
-        assertEquals(1, corner2.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
+    }
 
-        val corner3 = initialize("""
+    @Test
+    fun checkBottomLeftCorner() {
+        testFieldWithRollback("""
             . . .
             * . .
             + * .
-        """)
-        assertEquals(1, corner3.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 
     @Test
     fun captureByDotsAndBorder() {
-        val field = initialize("""
+        testFieldWithRollback("""
             * +  * .
             . *7 . .
             * +  * .
             . *  . .
             . .  . .
-        """)
-
-        assertEquals(2, field.player1Score)
-        assertNotNull(field.makeMove(4 x 2, Player.Second))
-        assertEquals(2, field.player1Score)
+        """) {
+            assertEquals(2, it.player1Score)
+            assertNotNull(it.makeMove(4 x 2, Player.Second))
+            assertEquals(2, it.player1Score)
+        }
     }
 
     @Test
     fun captureHalfLeftField() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . . * . .
             + . * . .
             . . * . .
             . . * . .
-        """)
-
-        assertEquals(1, field.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 
     @Test
     fun captureHalfTopField() {
-        val field = initialize("""
+        testFieldWithRollback("""
             . . + . .
             . . . . .
             * * * * *
             . . . . .
             . . . . .
-        """)
-
-        assertEquals(1, field.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 
     @Test
     fun captureDiagonalField() {
-        val field = initialize("""
+        testFieldWithRollback("""
             * . . .
             . * . .
             . . * .
             + . . *
-        """)
-
-        assertEquals(1, field.player1Score)
+        """) {
+            assertEquals(1, it.player1Score)
+        }
     }
 }
