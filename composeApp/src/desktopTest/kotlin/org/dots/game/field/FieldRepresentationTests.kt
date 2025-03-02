@@ -3,6 +3,7 @@ package org.dots.game.field
 import org.dots.game.core.Field
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
+import org.dots.game.core.dump
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
