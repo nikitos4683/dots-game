@@ -68,6 +68,12 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     var player2Score: Int = 0
         private set
 
+    fun getCurrentPlayer(): Player = moveResults.lastOrNull()?.player?.opposite() ?: Player.First
+
+    fun getScoreDiff(): Int {
+        return if (getCurrentPlayer() == Player.First) { player1Score - player2Score } else { player2Score - player1Score }
+    }
+
     /**
      * Valid real positions starts from `1`, but not from `0`.
      * `0` is reserved for the initial position (cross, empty or other).
@@ -86,10 +92,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     fun checkValidMove(position: Position): Boolean {
         return position.getState().checkValidMove()
-    }
-
-    fun getCurrentPlayer(player: Player?): Player {
-        return player ?: moveResults.lastOrNull()?.player?.opposite() ?: Player.First
     }
 
     fun unmakeAllMoves() {
@@ -125,7 +127,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     }
 
     internal fun makeMoveUnsafe(position: Position, player: Player? = null): MoveResult? {
-        val currentPlayer = getCurrentPlayer(player)
+        val currentPlayer = player ?: getCurrentPlayer()
 
         val emptyBaseAtPosition = emptyBasePositions[position]
         val originalState = position.getState()

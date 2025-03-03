@@ -184,7 +184,7 @@ class SgfConverterMovesTests {
                 Position(2, 1),
                 Position(1, 2),
             ),
-            node.moveResult!!.bases!!.single().closurePositions
+            node.moveResult!!.bases.single().closurePositions
         )
     }
 }

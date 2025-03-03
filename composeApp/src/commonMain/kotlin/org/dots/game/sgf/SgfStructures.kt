@@ -78,8 +78,9 @@ enum class SgfPropertyType {
     SimpleText,
     Text,
     Size,
-    AppInfo,
     Position,
+    AppInfo,
+    GameResult,
 }
 
 enum class SgfPropertyScope {
@@ -142,13 +143,17 @@ object SgfMetaInfo {
     const val PLAYER1_MOVE_KEY = PLAYER1_MARKER.toString()
     const val PLAYER2_MOVE_KEY = PLAYER2_MARKER.toString()
 
+    const val RESIGN_WIN_GAME_RESULT = 'R'
+    const val TIME_WIN_GAME_RESULT = 'T'
+    const val UNKNOWN_WIN_GAME_RESULT = '?'
+
     val propertyInfos: Map<String, SgfPropertyInfo> = mapOf(
         GAME_MODE_KEY to SgfPropertyInfo("Game Mode", SgfPropertyType.Number),
         FILE_FORMAT_KEY to SgfPropertyInfo("File Format", SgfPropertyType.Number),
         CHARSET_KEY to SgfPropertyInfo("Charset"),
         SIZE_KEY to SgfPropertyInfo("Size", SgfPropertyType.Size),
         RULES_KEY to SgfPropertyInfo("Rules"),
-        RESULT_KEY to SgfPropertyInfo("Result"),
+        RESULT_KEY to SgfPropertyInfo("Result", SgfPropertyType.GameResult),
         GAME_NAME_KEY to SgfPropertyInfo("Game Name"),
         PLAYER1_NAME_KEY to SgfPropertyInfo("Player1 Name"),
         PLAYER1_RATING_KEY to SgfPropertyInfo( "Player1 Rating", SgfPropertyType.Double),

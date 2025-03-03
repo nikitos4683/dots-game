@@ -3,6 +3,7 @@ package org.dots.game.sgf
 import org.dots.game.core.Field
 import org.dots.game.core.Game
 import org.dots.game.core.GameInfo
+import org.dots.game.core.GameResult
 import org.dots.game.core.GameTree
 import org.dots.game.core.MoveInfo
 import org.dots.game.core.MoveResult
@@ -26,20 +27,26 @@ import org.dots.game.sgf.SgfMetaInfo.OPENING_KEY
 import org.dots.game.sgf.SgfMetaInfo.OVERTIME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLACE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_ADD_DOTS_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER1_MARKER
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_MOVE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_RATING_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_TEAM_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER1_TIME_LEFT_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_ADD_DOTS_KEY
+import org.dots.game.sgf.SgfMetaInfo.PLAYER2_MARKER
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_MOVE_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_NAME_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_RATING_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TEAM_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TIME_LEFT_KEY
+import org.dots.game.sgf.SgfMetaInfo.RESIGN_WIN_GAME_RESULT
+import org.dots.game.sgf.SgfMetaInfo.RESULT_KEY
 import org.dots.game.sgf.SgfMetaInfo.SIZE_KEY
 import org.dots.game.sgf.SgfMetaInfo.SOURCE_KEY
 import org.dots.game.sgf.SgfMetaInfo.TIME_KEY
+import org.dots.game.sgf.SgfMetaInfo.TIME_WIN_GAME_RESULT
+import org.dots.game.sgf.SgfMetaInfo.UNKNOWN_WIN_GAME_RESULT
 import org.dots.game.sgf.SgfMetaInfo.propertyInfoToKey
 import org.dots.game.sgf.SgfMetaInfo.propertyInfos
 
@@ -48,6 +55,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         private const val LOWER_CHAR_OFFSET = 'a' - Field.OFFSET
         private const val UPPER_CHAR_OFFSET = 'A' - ('z' - 'a' + 1) - Field.OFFSET
         private const val CAPTURING_POSITIONS_INDEX = 3
+        private const val GAME_RESULT_DESCRIPTION_SUFFIX = "is Number, $RESIGN_WIN_GAME_RESULT (Resign), $TIME_WIN_GAME_RESULT (Time) or $UNKNOWN_WIN_GAME_RESULT (Unknown)"
 
         /**
          * Returns `null` if a critical error occurs:
@@ -162,6 +170,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         val player2TimeLeft = gameInfoProperties.getPropertyValue<Double>(PLAYER2_TIME_LEFT_KEY)
 
         val gameInfo = GameInfo(
+            appInfo = gameInfoProperties.getPropertyValue(APP_INFO_KEY),
             gameName = gameInfoProperties.getPropertyValue(GAME_NAME_KEY),
             player1Name = gameInfoProperties.getPropertyValue(PLAYER1_NAME_KEY),
             player1Rating = gameInfoProperties.getPropertyValue(PLAYER1_RATING_KEY),
@@ -181,7 +190,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
             source = gameInfoProperties.getPropertyValue(SOURCE_KEY),
             time = gameInfoProperties.getPropertyValue(TIME_KEY),
             overtime = gameInfoProperties.getPropertyValue(OVERTIME_KEY),
-            appInfo = gameInfoProperties.getPropertyValue(APP_INFO_KEY),
+            result = gameInfoProperties.getPropertyValue(RESULT_KEY),
         )
 
         val rules = Rules(width, height, initialMoves = initialMoves)
@@ -416,6 +425,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
                         }
                     }
                 }
+                SgfPropertyType.GameResult -> propertyValueToken.convertGameResult(propertyInfo)
             }
 
             convertedValue?.let { convertedValues.add(it) }
@@ -588,6 +598,70 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         }
         else {
             null
+        }
+    }
+
+    private fun PropertyValueToken.convertGameResult(propertyInfo: SgfPropertyInfo): GameResult? {
+        if (value == "0") {
+            return GameResult.Draw
+        }
+
+        val player = value.elementAtOrNull(0).let {
+            when (it) {
+                PLAYER1_MARKER -> Player.First
+                PLAYER2_MARKER -> Player.Second
+                else -> {
+                    propertyInfo.reportPropertyDiagnostic(
+                        "has invalid player `${it ?: ""}`. Allowed values: $PLAYER1_MARKER or $PLAYER2_MARKER",
+                        TextSpan(textSpan.start, if (it == null) 0 else 1),
+                        SgfDiagnosticSeverity.Error,
+                    )
+                    return null
+                }
+            }
+        }
+
+        value.elementAtOrNull(1).let {
+            if (it != '+') {
+                propertyInfo.reportPropertyDiagnostic(
+                    "value `$value` is written in invalid format. Correct format is 0 (Draw) or X+Y where X is $PLAYER1_MARKER or $PLAYER2_MARKER, Y $GAME_RESULT_DESCRIPTION_SUFFIX",
+                    TextSpan(textSpan.start + 1, if (it == null) 0 else 1),
+                    SgfDiagnosticSeverity.Error,
+                )
+                return GameResult.UnknownWin(player)
+            }
+        }
+
+        fun reportUnknownSuffixIfNeeded() {
+            if (value.length > 3) {
+                propertyInfo.reportPropertyDiagnostic(
+                    "has unexpected suffix `${value.substring(3)}`.",
+                    TextSpan(textSpan.start + 3, value.length - 3),
+                    SgfDiagnosticSeverity.Error,
+                )
+            }
+        }
+
+        return value.elementAtOrNull(2).let {
+            when (it) {
+                RESIGN_WIN_GAME_RESULT -> GameResult.ResignWin(player).also { reportUnknownSuffixIfNeeded() }
+                TIME_WIN_GAME_RESULT -> GameResult.TimeWin(player).also { reportUnknownSuffixIfNeeded() }
+                UNKNOWN_WIN_GAME_RESULT -> GameResult.UnknownWin(player).also { reportUnknownSuffixIfNeeded() }
+                else -> {
+                    val resultString = value.substring(2)
+                    val number = resultString.toDoubleOrNull()
+                    if (number != null) {
+                        GameResult.ScoreWin(number, player)
+                    } else {
+                        propertyInfo.reportPropertyDiagnostic(
+                            "has invalid result value `$resultString`. Correct value $GAME_RESULT_DESCRIPTION_SUFFIX",
+                            TextSpan(textSpan.start + 2, resultString.length),
+                            SgfDiagnosticSeverity.Error,
+                        )
+                        GameResult.UnknownWin(player)
+                    }
+                }
+            }
         }
     }
 

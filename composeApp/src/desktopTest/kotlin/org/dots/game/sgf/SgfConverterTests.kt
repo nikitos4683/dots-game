@@ -3,6 +3,7 @@ package org.dots.game.sgf
 import org.dots.game.core.AppInfo
 import org.dots.game.core.AppType
 import org.dots.game.core.Game
+import org.dots.game.core.GameResult
 import org.dots.game.core.GameTreeNode
 import org.dots.game.core.MoveInfo
 import org.dots.game.core.Player
@@ -267,6 +268,47 @@ class SgfConverterTests {
         assertEquals(AppType.Playdots, gameInfo.appInfo!!.appType)
         assertEquals(1200.0, gameInfo.player1Rating)
         assertEquals(1300.0, gameInfo.player2Rating)
+    }
+
+    @Test
+    fun gameResultInvalid() {
+        val valuesToErrors = listOf<Triple<String, SgfDiagnostic, GameResult?>>(
+            Triple("", SgfDiagnostic("Property RE (Result) has invalid player ``. Allowed values: B or W", LineColumn(1, 26), SgfDiagnosticSeverity.Error), null),
+            Triple("_", SgfDiagnostic("Property RE (Result) has invalid player `_`. Allowed values: B or W", LineColumn(1, 26), SgfDiagnosticSeverity.Error), null),
+            Triple("B_", SgfDiagnostic("Property RE (Result) value `B_` is written in invalid format. Correct format is 0 (Draw) or X+Y where X is B or W, Y is Number, R (Resign), T (Time) or ? (Unknown)", LineColumn(1, 27), SgfDiagnosticSeverity.Error), GameResult.UnknownWin(Player.First)),
+            Triple("B+", SgfDiagnostic("Property RE (Result) has invalid result value ``. Correct value is Number, R (Resign), T (Time) or ? (Unknown)", LineColumn(1, 28), SgfDiagnosticSeverity.Error), GameResult.UnknownWin(Player.First)),
+            Triple("B+X", SgfDiagnostic("Property RE (Result) has invalid result value `X`. Correct value is Number, R (Resign), T (Time) or ? (Unknown)", LineColumn(1, 28), SgfDiagnosticSeverity.Error), GameResult.UnknownWin(Player.First)),
+            Triple("B+R_", SgfDiagnostic("Property RE (Result) has unexpected suffix `_`.", LineColumn(1, 29), SgfDiagnosticSeverity.Error), GameResult.ResignWin(Player.First)),
+        )
+
+        for ((value, diagnostic, expectedGameResult) in valuesToErrors) {
+            val actualGameResult = parseAndConvert(
+                "(;GM[40]FF[4]SZ[39:32]RE[$value])",
+                listOf(diagnostic)
+            ).single().gameInfo.result
+            if (expectedGameResult != null) {
+                assertEquals(expectedGameResult, actualGameResult)
+            }
+        }
+    }
+
+    @Test
+    fun gameResultValid() {
+        val valuesToGameResults = listOf(
+            "0" to GameResult.Draw,
+            "B+R" to GameResult.ResignWin(Player.First),
+            "B+T" to GameResult.TimeWin(Player.First),
+            "B+?" to GameResult.UnknownWin(Player.First),
+            "B+10" to GameResult.ScoreWin(10.0, Player.First),
+            "W+5" to GameResult.ScoreWin(5.0, Player.Second),
+        )
+
+        for ((value, expectedGameResult) in valuesToGameResults) {
+            val actualGameResult = parseAndConvert(
+                "(;GM[40]FF[4]SZ[39:32]RE[$value])",
+            ).single().gameInfo.result
+            assertEquals(expectedGameResult, actualGameResult)
+        }
     }
 }
 
