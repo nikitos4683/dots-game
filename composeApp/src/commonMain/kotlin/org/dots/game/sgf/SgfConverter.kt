@@ -42,6 +42,7 @@ import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TEAM_KEY
 import org.dots.game.sgf.SgfMetaInfo.PLAYER2_TIME_LEFT_KEY
 import org.dots.game.sgf.SgfMetaInfo.RESIGN_WIN_GAME_RESULT
 import org.dots.game.sgf.SgfMetaInfo.RESULT_KEY
+import org.dots.game.sgf.SgfMetaInfo.ROUND_KEY
 import org.dots.game.sgf.SgfMetaInfo.SIZE_KEY
 import org.dots.game.sgf.SgfMetaInfo.SOURCE_KEY
 import org.dots.game.sgf.SgfMetaInfo.TIME_KEY
@@ -191,6 +192,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
             time = gameInfoProperties.getPropertyValue(TIME_KEY),
             overtime = gameInfoProperties.getPropertyValue(OVERTIME_KEY),
             result = gameInfoProperties.getPropertyValue(RESULT_KEY),
+            round = gameInfoProperties.getPropertyValue(ROUND_KEY),
         )
 
         val rules = Rules(width, height, initialMoves = initialMoves)

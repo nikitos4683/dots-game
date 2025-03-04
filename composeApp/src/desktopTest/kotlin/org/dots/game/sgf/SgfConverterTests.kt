@@ -9,6 +9,8 @@ import org.dots.game.core.MoveInfo
 import org.dots.game.core.Player
 import org.dots.game.core.PositionPlayer
 import org.dots.game.core.Position
+import java.io.File
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -18,7 +20,7 @@ class SgfConverterTests {
     @Test
     fun gameInfo() {
         val (gameInfo, rules) = parseAndConvert(
-            "(;GM[40]FF[4]CA[UTF-8]SZ[17:21]RU[russian]GN[Test Game]PB[Player1]BR[256]BT[Player1's Team]PW[Player2]WR[512]WT[Player2's Team]KM[0.5]DT[2025-01-19]GC[A game for SGF parser testing]C[Comment to node]PC[Amsterdam, Netherlands]EV[Test event]ON[Empty]AN[Ivan Kochurkin]CP[@]SO[https://zagram.org/eidokropki/index.html]TM[300]OT[0+25]AP[https\\://zagram.org/eidokropki/index.html:1])",
+            "(;GM[40]FF[4]CA[UTF-8]SZ[17:21]RU[russian]GN[Test Game]PB[Player1]BR[256]BT[Player1's Team]PW[Player2]WR[512]WT[Player2's Team]KM[0.5]DT[2025-01-19]GC[A game for SGF parser testing]C[Comment to node]PC[Amsterdam, Netherlands]EV[Test event]ON[Empty]AN[Ivan Kochurkin]CP[@]SO[https://zagram.org/eidokropki/index.html]TM[300]OT[0+25]AP[https\\://zagram.org/eidokropki/index.html:1]RO[1 (final)])",
             ).single()
         with (gameInfo) {
             assertEquals(17, rules.width)
@@ -43,6 +45,7 @@ class SgfConverterTests {
             assertEquals(300.0, time)
             assertEquals("0+25", overtime)
             assertEquals(AppInfo("https://zagram.org/eidokropki/index.html", "1"), appInfo)
+            assertEquals("1 (final)", round)
         }
     }
 
@@ -329,4 +332,25 @@ internal fun checkMoveDisregardExtraInfo(expectedPosition: Position, expectedPla
 
 internal fun GameTreeNode.getNextNode(x: Int, y: Int, player: Player): GameTreeNode? {
     return nextNodes[PositionPlayer(Position(x, y), player)]
+}
+
+fun validateSgfFile(sgfFile: File, onError: (String) -> Unit) {
+    val sgf = SgfParser.parse(sgfFile.readText()) {
+        onError("${sgfFile.absolutePath}: {$it}")
+    }
+    val games = SgfConverter.convert(sgf) {
+        onError("${sgfFile.absolutePath}: {$it}")
+    }
+    for (game in games) {
+        val gameTree = game.gameTree
+        val field = gameTree.field
+        val gameResult = game.gameInfo.result
+        if (gameResult is GameResult.ScoreWin) {
+            while (gameTree.next()) { }
+            val scoreFromField = abs(field.getScoreDiff())
+            if (gameResult.score != scoreFromField.toDouble()) {
+                println("${sgfFile.absolutePath}: Result value from RE property `${gameResult.score}` doesn't match score from field `${scoreFromField}`")
+            }
+        }
+    }
 }

@@ -30,6 +30,7 @@ class GameInfo(
     val time: Double?,
     val overtime: String?,
     val result: GameResult?,
+    val round: String?,
 )
 
 data class AppInfo(val name: String, val version: String?) {

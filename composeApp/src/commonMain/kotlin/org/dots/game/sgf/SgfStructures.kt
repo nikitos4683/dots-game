@@ -139,6 +139,7 @@ object SgfMetaInfo {
     const val PLAYER2_ADD_DOTS_KEY = "A${PLAYER2_MARKER}"
     const val PLAYER1_TIME_LEFT_KEY = "${PLAYER1_MARKER}L"
     const val PLAYER2_TIME_LEFT_KEY = "${PLAYER2_MARKER}L"
+    const val ROUND_KEY = "RO"
 
     const val PLAYER1_MOVE_KEY = PLAYER1_MARKER.toString()
     const val PLAYER2_MOVE_KEY = PLAYER2_MARKER.toString()
@@ -178,6 +179,7 @@ object SgfMetaInfo {
         PLAYER2_ADD_DOTS_KEY to SgfPropertyInfo("Player2 initial dots", SgfPropertyType.Position, multipleValues = true),
         PLAYER1_TIME_LEFT_KEY to SgfPropertyInfo("Player1 time left", SgfPropertyType.Double, scope = SgfPropertyScope.Both),
         PLAYER2_TIME_LEFT_KEY to SgfPropertyInfo("Player2 time left", SgfPropertyType.Double, scope = SgfPropertyScope.Both),
+        ROUND_KEY to SgfPropertyInfo("Round"),
 
         PLAYER1_MOVE_KEY to SgfPropertyInfo("Player1 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
         PLAYER2_MOVE_KEY to SgfPropertyInfo("Player2 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
