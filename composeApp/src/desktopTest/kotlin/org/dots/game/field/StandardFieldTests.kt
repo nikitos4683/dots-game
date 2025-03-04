@@ -311,6 +311,55 @@ class StandardFieldTests : FieldTests() {
     }
 
     @Test
+    fun enemyEmptyBaseInsideBase() {
+        testFieldWithRollback("""
+            ..   ..  *5  .. ..
+            ..   *4  +0 *6  ..
+             *11 +3  .. +1 *7
+            ..   *10 +2 *8  ..
+            ..   ..  *9  .. ..
+        """) {
+            assertEquals(4, it.player1Score)
+            assertNull(it.makeMove(3 x 3, Player.First))
+            assertNull(it.makeMove(3 x 3, Player.Second))
+        }
+    }
+
+    @Test
+    fun enemyEmptyBasesInsideBase() {
+        testFieldWithRollback("""
+            ... ... ... *45 *46 *20 *21 *22 ... ... ...
+            ... ... ... ... ... ... ... ... *23 ... ...
+            ... *44 ... ... +19 +04 +05 ... ... *24 ...
+            *43 ... ... +18 ... ... ... +06 ... ... *25
+            *42 ... +17 ... ... +00 ... ... +07 ... *26
+            *41 ... +16 ... +03 ... +01 ... +08 ... *27
+            *40 ... +15 ... ... +02 ... ... +09 ... *28
+            *39 ... ... +14 ... ... ... +10 ... ... *29
+            ... *38 ... ... +13 +12 +11 ... ... *30 ...
+            ... ... *37 ... ... ... ... ... *31 ... ...
+            ... ... ... *36 *35 *34 *33 *32 ... ... ...
+        """) {
+            assertNotNull(it.makeMove(3 x 2, Player.First))
+            assertNull(it.makeMove(6 x 6, Player.First))
+            assertNull(it.makeMove(6 x 6, Player.Second))
+            assertNull(it.makeMove(4 x 6, Player.First))
+            assertNull(it.makeMove(2 x 6, Player.First))
+            assertEquals(20, it.player1Score)
+            assertNotNull(it.unmakeMove())
+
+            assertNotNull(it.makeMove(6 x 6, Player.First))
+            assertEquals(1, it.player2Score)
+            assertNotNull(it.makeMove(3 x 2, Player.First))
+            assertEquals(20, it.player1Score)
+            assertEquals(0, it.player2Score)
+            assertNull(it.makeMove(4 x 6, Player.First))
+            assertNull(it.makeMove(2 x 6, Player.First))
+            assertNotNull(it.unmakeMove())
+        }
+    }
+
+    @Test
     fun checkTopEdge() {
         testFieldWithRollback("""
             .  *0 .

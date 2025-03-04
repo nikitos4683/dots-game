@@ -342,7 +342,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         territoryFirstPosition: Position,
         playerPlaced: DotState,
         outerEmptyBase: Base?,
-        forceCapturingEmptyTerritory: Boolean,
+        capturingByOppositePlayer: Boolean,
     ): Set<Position> {
         val walkStack = mutableListOf<Position>()
         val closurePositionsSet = closurePositions.toSet()
@@ -353,19 +353,14 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         fun Position.checkAndAdd() {
             val state = getState()
             if (state.checkTerritory(playerTerritory)) return // Ignore already captured territory
-            if (!forceCapturingEmptyTerritory) {
+            // Walk into inner empty territory in case of normal capturing (by the current player)
+            // or if only it's a territory of `outerEmptyBase` of the current player.
+            // Otherwise, it's a territory of a more inner base, and we shouldn't walk into it,
+            // because it's handled by an existing smaller inner base.
+            if (!capturingByOppositePlayer) {
                 val emptyBaseAtPosition = emptyBasePositions[this]
-                if (emptyBaseAtPosition != null) {
-                    if (outerEmptyBase != null) {
-                        // Walk into inner empty territory if only it's a territory of `outerEmptyBase`
-                        // Otherwise, it's a territory of a more inner base.
-                        if (emptyBaseAtPosition != outerEmptyBase) {
-                            return
-                        }
-                    } else {
-                        // Don't walk into inner empty territory, it's handled by an existing inner base
-                        return
-                    }
+                if (emptyBaseAtPosition?.player == player && emptyBaseAtPosition != outerEmptyBase) {
+                    return
                 }
             }
 
