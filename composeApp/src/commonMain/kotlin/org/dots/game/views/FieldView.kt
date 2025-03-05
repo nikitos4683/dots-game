@@ -34,7 +34,7 @@ import org.dots.game.core.Position
 import kotlin.math.round
 
 private val borderPaddingRatio = 1.0f
-private val textPaddingRatio = 0.2f
+private val textPaddingRatio = 0.5f
 private val cellSize = 22.dp
 private val linesColor = Color.hsv(0.0f, 0.0f, 0.25f)
 
@@ -76,7 +76,7 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
                             PointerEventType.Press -> {
                                 val fieldPosition = event.toFieldPositionIfFree(field, currentDensity)
                                 if (fieldPosition != null &&
-                                    field.makeMoveUnsafe(fieldPosition, field.getCurrentPlayer(moveMode.getMovePlayer())) != null
+                                    field.makeMoveUnsafe(fieldPosition, moveMode.getMovePlayer() ?: field.getCurrentPlayer()) != null
                                 ) {
                                     onMovePlaced(field.lastMove!!)
                                 }
@@ -236,7 +236,7 @@ private fun Pointer(position: Position?, moveMode: MoveMode, field: Field, uiSet
     if (position == null) return
 
     val dpOffset = position.toDpOffset()
-    val currentPlayer = field.getCurrentPlayer(moveMode.getMovePlayer())
+    val currentPlayer = moveMode.getMovePlayer() ?: field.getCurrentPlayer()
     Box(Modifier
         .offset(dpOffset.x - dotRadius, dpOffset.y - dotRadius)
         .size(dotSize)

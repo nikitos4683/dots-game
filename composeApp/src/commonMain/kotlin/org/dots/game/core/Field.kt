@@ -56,11 +56,11 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     val emptyBasePositionsSequence: Map<Position, Base>
         get() = emptyBasePositions
 
+    val currentMoveNumber: Int
+        get() = moveResults.size - initialMovesCount
+
     val lastMove: MoveResult?
         get() = moveResults.lastOrNull()
-
-    val currentMoveNumber: Int
-        get() = moveResults.count()
 
     var player1Score: Int = 0
         private set
@@ -158,7 +158,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         return MoveResult(
             position,
             currentPlayer,
-            currentMoveNumber,
+            currentMoveNumber + 1,
             PreviousState(originalState, emptyBaseAtPosition),
             resultBases
         ).also { moveResults.add(it) }

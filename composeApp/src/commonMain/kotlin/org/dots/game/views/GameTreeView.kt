@@ -26,8 +26,8 @@ import org.dots.game.UiSettings
 import org.dots.game.VerticalScrollbar
 import org.dots.game.core.*
 
-private val stepSize = 40.dp
-private val nodeRatio = 0.33f
+private val stepSize = 55.dp
+private val nodeRatio = 0.34f
 private val rootNodeColor = Color.LightGray
 private val lineColor = Color(0f, 0f, 0f, 0.8f)
 private val textColor: Color = Color.White
@@ -36,7 +36,7 @@ private val lineThickness = 1.dp
 private val nodeRadius = stepSize * nodeRatio
 private val nodeSize = nodeRadius * 2
 
-private val gameTreeViewWidth = 300.dp
+private val gameTreeViewWidth = 400.dp
 private val gameTreeViewHeight = 200.dp
 private val scrollbarSize = 10.dp
 

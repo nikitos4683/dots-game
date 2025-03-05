@@ -6,6 +6,10 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import java.io.File
+
+actual val isDesktop: Boolean
+    get() = true
 
 @Composable
 actual fun HorizontalScrollbar(
@@ -18,3 +22,5 @@ actual fun VerticalScrollbar(
     scrollState: ScrollState,
     modifier: Modifier
 ) = VerticalScrollbar(rememberScrollbarAdapter(scrollState), modifier)
+
+actual fun readFile(filePath: String): String = File(filePath).readText()

@@ -17,7 +17,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         var result: Boolean
         currentNode = if (existingNode == null) {
             result = true
-            GameTreeNode(move, previousNode = currentNode, move.number - field.initialMovesCount + 1, timeLeft = timeLeft).also {
+            GameTreeNode(move, previousNode = currentNode, move.number, timeLeft = timeLeft).also {
                 currentNode.nextNodes[positionPlayer] = it
                 allNodes.add(it)
             }
@@ -37,6 +37,10 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         field.unmakeMove()
         currentNode = previousNode
         return true
+    }
+
+    fun rewindForward() {
+        while (next()) {}
     }
 
     /**

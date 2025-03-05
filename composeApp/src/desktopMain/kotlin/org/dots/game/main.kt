@@ -9,7 +9,7 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "DotsGame",
-        state = WindowState(width = 1024.dp, height = 768.dp)
+        state = WindowState(width = 1280.dp, height = 1024.dp)
     ) {
         App()
     }

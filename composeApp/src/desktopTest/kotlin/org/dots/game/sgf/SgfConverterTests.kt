@@ -334,7 +334,7 @@ internal fun GameTreeNode.getNextNode(x: Int, y: Int, player: Player): GameTreeN
     return nextNodes[PositionPlayer(Position(x, y), player)]
 }
 
-fun validateSgfFile(sgfFile: File, onError: (String) -> Unit) {
+fun validateSgfFile(sgfFile: File, onError: (String) -> Unit): List<Game> {
     val sgf = SgfParser.parse(sgfFile.readText()) {
         onError("${sgfFile.absolutePath}: {$it}")
     }
@@ -346,11 +346,12 @@ fun validateSgfFile(sgfFile: File, onError: (String) -> Unit) {
         val field = gameTree.field
         val gameResult = game.gameInfo.result
         if (gameResult is GameResult.ScoreWin) {
-            while (gameTree.next()) { }
+            gameTree.rewindForward()
             val scoreFromField = abs(field.getScoreDiff())
             if (gameResult.score != scoreFromField.toDouble()) {
-                println("${sgfFile.absolutePath}: Result value from RE property `${gameResult.score}` doesn't match score from field `${scoreFromField}`")
+                onError("${sgfFile.absolutePath}: Result value from RE property `${gameResult.score}` doesn't match score from field `${scoreFromField}`")
             }
         }
     }
+    return games
 }

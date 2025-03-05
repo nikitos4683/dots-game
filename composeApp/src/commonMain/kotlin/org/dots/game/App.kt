@@ -18,7 +18,7 @@ import org.dots.game.core.*
 import org.dots.game.views.*
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-private val startRules = Rules(10, 10, captureEmptyBase = true, captureByBorder = true)
+private val startRules = Rules(initialMoves = InitialPositionType.Cross.generateDefaultInitialPositions(39, 32)!!)
 private val uiSettings = UiSettings.Standard
 
 @Composable
@@ -33,14 +33,17 @@ fun App() {
 
         var lastMove: MoveResult? by remember { mutableStateOf<MoveResult?>(null) }
         var currentGameTreeNode by remember { mutableStateOf<GameTreeNode?>(null) }
-        var player1Score by remember { mutableStateOf("0") }
-        var player2Score by remember { mutableStateOf("0") }
+        var player1Score by remember { mutableStateOf(0) }
+        var player2Score by remember { mutableStateOf(0) }
+        var moveNumber by remember { mutableStateOf(0) }
         val showNewGameDialog = remember { mutableStateOf(false) }
+        val openGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
 
         fun updateCurrentNode() {
-            player1Score = field.player1Score.toString()
-            player2Score = field.player2Score.toString()
+            player1Score = field.player1Score
+            player2Score = field.player2Score
+            moveNumber = field.currentMoveNumber
             lastMove = field.lastMove
             currentGameTreeNode = gameTree.currentNode
         }
@@ -74,18 +77,38 @@ fun App() {
             start = false
         }
 
+        if (openGameDialog.value) {
+            OpenSgfDialog(
+                onDismiss = {
+                    openGameDialog.value = false
+                },
+                onConfirmation = { game ->
+                    openGameDialog.value = false
+
+                    field = game.gameTree.field
+                    fieldViewData = FieldViewData(field)
+                    gameTree = game.gameTree
+
+                    updateFieldAndGameTree()
+                }
+            )
+        }
+
         Row {
             Column(Modifier.padding(5.dp)) {
                 Row(Modifier.width(fieldViewData.fieldSize.width), horizontalArrangement = Arrangement.Center) {
-                    Text(player1Score, color = uiSettings.playerFirstColor)
+                    Text(player1Score.toString(), color = uiSettings.playerFirstColor)
                     Text(" : ")
-                    Text(player2Score, color = uiSettings.playerSecondColor)
+                    Text(player2Score.toString(), color = uiSettings.playerSecondColor)
                 }
                 Row {
                     FieldView(lastMove, moveMode, fieldViewData, uiSettings) {
                         gameTree.add(it)
                         updateFieldAndGameTree()
                     }
+                }
+                Row(Modifier.width(fieldViewData.fieldSize.width), horizontalArrangement = Arrangement.Center) {
+                    Text(moveNumber.toString())
                 }
             }
             Column(Modifier.padding(start = 5.dp)) {
@@ -101,6 +124,9 @@ fun App() {
                     Button(onClick = { initializeFieldAndGameTree(field.rules) }, playerButtonModifier) {
                         Text("Reset")
                     }
+                    Button(onClick = { openGameDialog.value = true }, playerButtonModifier) {
+                        Text("Load SGF")
+                    }
                 }
 
                 Row(rowModifier) {
@@ -111,7 +137,7 @@ fun App() {
                     ) {
                         Box {
                             Box(
-                                modifier = Modifier.offset(-5.dp).size(16.dp).border(1.dp, Color.White, CircleShape).clip(CircleShape).background(uiSettings.playerFirstColor)
+                                modifier = Modifier.offset((-5).dp).size(16.dp).border(1.dp, Color.White, CircleShape).clip(CircleShape).background(uiSettings.playerFirstColor)
                             )
                             Box(
                                 modifier = Modifier.offset(5.dp).size(16.dp).border(1.dp, Color.White, CircleShape).clip(CircleShape).background(uiSettings.playerSecondColor)
