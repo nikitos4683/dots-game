@@ -37,7 +37,7 @@ private val nodeRadius = stepSize * nodeRatio
 private val nodeSize = nodeRadius * 2
 
 private val gameTreeViewWidth = 400.dp
-private val gameTreeViewHeight = 200.dp
+private val gameTreeViewHeight = 300.dp
 private val scrollbarSize = 10.dp
 
 private val horizontalLineModifier = Modifier
@@ -214,10 +214,19 @@ private fun CurrentNode(currentNode: GameTreeNode?, gameTreeViewData: GameTreeVi
 
 private fun handleKeyEvent(keyEvent: KeyEvent, gameTree: GameTree): Boolean {
     if (keyEvent.type == KeyEventType.KeyDown) {
-        if (keyEvent.key == Key.DirectionLeft) {
-            return gameTree.back()
-        } else if (keyEvent.key == Key.DirectionRight) {
-            return gameTree.next()
+        when (keyEvent.key) {
+            Key.DirectionLeft -> {
+                return gameTree.back()
+            }
+            Key.DirectionRight -> {
+                return gameTree.next()
+            }
+            Key.DirectionUp -> {
+                return gameTree.prevSibling()
+            }
+            Key.DirectionDown -> {
+                return gameTree.nextSibling()
+            }
         }
     }
 

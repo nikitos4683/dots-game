@@ -5,6 +5,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
     val allNodes: MutableSet<GameTreeNode> = mutableSetOf(rootNode)
     var currentNode: GameTreeNode = rootNode
         private set
+    private val memorizedNextChild: MutableMap<GameTreeNode, GameTreeNode> = mutableMapOf()
 
     /**
      * @return `false` if such a node with the current @param[move] already exists,
@@ -29,28 +30,63 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         return result
     }
 
+    fun rewindForward() {
+        while (next()) {}
+    }
+
     /**
      * @return `false` if the @property[currentNode] is root, otherwise move it to the previous node and returns `true`
      */
     fun back(): Boolean {
         val previousNode = currentNode.previousNode ?: return false
-        field.unmakeMove()
+        previousNode.memorizeCurrentNodeIfNeeded()
+        requireNotNull(field.unmakeMove())
         currentNode = previousNode
         return true
-    }
-
-    fun rewindForward() {
-        while (next()) {}
     }
 
     /**
      * @return `false` if there are no next nodes, otherwise move it to the next node on the main line returns `true`
      */
     fun next(): Boolean {
-        val nextNode = currentNode.nextNodes.values.firstOrNull() ?: return false
+        val nextNode = (memorizedNextChild[currentNode] ?: currentNode.nextNodes.values.firstOrNull()) ?: return false
         val moveResult = nextNode.moveResult!!
-        field.makeMoveUnsafe(moveResult.position, moveResult.player)
+        requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
         currentNode = nextNode
+        return true
+    }
+
+    fun prevSibling(): Boolean {
+        return switchToSibling(next = false)
+    }
+
+    fun nextSibling(): Boolean {
+        return switchToSibling(next = true)
+    }
+
+    private fun switchToSibling(next: Boolean): Boolean {
+        val previousNode = currentNode.previousNode ?: return false
+        var currentNodeFound = false
+        var targetSiblingNode: GameTreeNode? = null
+        val siblings = if (next) previousNode.nextNodes.values else previousNode.nextNodes.values.reversed()
+        for (node in siblings) {
+            if (node == currentNode) {
+                currentNodeFound = true
+            } else if (currentNodeFound) {
+                targetSiblingNode = node
+                break
+            }
+        }
+        require(currentNodeFound)
+        if (targetSiblingNode == null) return false
+
+        val moveResult = targetSiblingNode.moveResult!!
+        requireNotNull(field.unmakeMove())
+        requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
+        currentNode = targetSiblingNode
+
+        previousNode.memorizeCurrentNodeIfNeeded()
+
         return true
     }
 
@@ -87,7 +123,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         val numberOfNodesToRollback = currentNode.number - commonRootNode.number
         (0 until numberOfNodesToRollback).forEach { i ->
             requireNotNull(field.unmakeMove())
-            currentNode = currentNode.previousNode!!
+            currentNode = currentNode.previousNode!!.also { it.memorizeCurrentNodeIfNeeded() }
         }
 
         for (nextNode in nextNodes) {
@@ -111,6 +147,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
 
         fun removeRecursively(node: GameTreeNode) {
             require(allNodes.remove(node))
+            memorizedNextChild.remove(node)
             for (nextNode in node.nextNodes.values) {
                 removeRecursively(nextNode)
             }
@@ -125,6 +162,12 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         requireNotNull(currentNode.nextNodes.remove(currentNodePositionPlayer))
 
         return true
+    }
+
+    private fun GameTreeNode.memorizeCurrentNodeIfNeeded() {
+        if (nextNodes.size > 1) {
+            memorizedNextChild[this] = currentNode
+        }
     }
 
     private inline fun GameTreeNode.walkMovesReversed(action: (GameTreeNode) -> Boolean) {

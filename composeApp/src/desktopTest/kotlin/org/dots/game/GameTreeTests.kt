@@ -23,9 +23,62 @@ class GameTreeTests : FieldTests() {
             assertTrue(back())
             assertTrue(makeMove(2, 1)) // True, because it's a new node
             assertTrue(back())
-            assertTrue(next()) // True, the current node should be (1;1) (first branch)
-            assertEquals(Position(1, 1), field.lastMove!!.positionPlayer.position)
+            assertTrue(next()) // True, the current node should be (2;1) (the second branch, because the previous path is memorized)
+            assertEquals(Position(2, 1), field.lastMove!!.positionPlayer.position)
             assertFalse(next()) // False, there are no more moves
+        }
+    }
+
+    @Test
+    fun nextPrevSiblingCommands() {
+        with(initializeGameTree()) {
+            assertTrue(makeMove(1, 1))
+            val firstNode = currentNode
+            back()
+
+            assertTrue(makeMove(2, 1))
+            val secondNode = currentNode
+            back()
+
+            assertTrue(makeMove(3, 1))
+            val thirdNode = currentNode
+
+            assertTrue(prevSibling())
+            assertEquals(secondNode, currentNode)
+            assertTrue(prevSibling())
+            assertEquals(firstNode, currentNode)
+            assertFalse(prevSibling())
+
+            assertTrue(nextSibling())
+            assertEquals(secondNode, currentNode)
+            assertTrue(nextSibling())
+            assertEquals(thirdNode, currentNode)
+            assertFalse(nextSibling())
+        }
+    }
+
+    @Test
+    fun memorizedNodes() {
+        with(initializeGameTree()) {
+            val initNode = currentNode
+
+            assertTrue(makeMove(1, 1))
+            back()
+            assertTrue(makeMove(2, 1))
+
+            val secondNode = currentNode
+
+            assertTrue(makeMove(2, 2))
+            back()
+            assertTrue(makeMove(3, 2))
+
+            val thirdNode = currentNode
+
+            switch(initNode)
+            next()
+            assertEquals(secondNode, currentNode)
+            next()
+            assertEquals(thirdNode, currentNode)
         }
     }
 
