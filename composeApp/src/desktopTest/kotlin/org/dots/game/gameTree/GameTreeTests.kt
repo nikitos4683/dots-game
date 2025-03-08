@@ -1,4 +1,4 @@
-package org.dots.game
+package org.dots.game.gameTree
 
 import org.dots.game.core.Field
 import org.dots.game.core.GameTree
