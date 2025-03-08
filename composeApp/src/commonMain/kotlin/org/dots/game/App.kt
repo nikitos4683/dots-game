@@ -54,12 +54,18 @@ fun App() {
             gameTreeViewData = GameTreeViewData(gameTree)
         }
 
-        fun initializeFieldAndGameTree(rules: Rules) {
-            field = Field(rules)
+        fun initializeFieldAndGameTree(newField: Field, newGameTree: GameTree) {
+            field = newField
             fieldViewData = FieldViewData(field)
-            gameTree = GameTree(field)
+            gameTree = newGameTree
+            gameTree.rewindForward()
 
             updateFieldAndGameTree()
+        }
+
+        fun resetFieldAndGameTree(rules: Rules) {
+            val newField = Field(rules)
+            initializeFieldAndGameTree(newField, GameTree(newField))
         }
 
         if (showNewGameDialog.value) {
@@ -69,11 +75,11 @@ fun App() {
                 },
                 onConfirmation = { rules ->
                     showNewGameDialog.value = false
-                    initializeFieldAndGameTree(rules)
+                    resetFieldAndGameTree(rules)
                 }
             )
         } else if (start) {
-            initializeFieldAndGameTree(startRules)
+            resetFieldAndGameTree(startRules)
             start = false
         }
 
@@ -84,12 +90,7 @@ fun App() {
                 },
                 onConfirmation = { game ->
                     openGameDialog.value = false
-
-                    field = game.gameTree.field
-                    fieldViewData = FieldViewData(field)
-                    gameTree = game.gameTree
-
-                    updateFieldAndGameTree()
+                    initializeFieldAndGameTree(game.gameTree.field, game.gameTree)
                 }
             )
         }
@@ -121,7 +122,7 @@ fun App() {
                     Button(onClick = { showNewGameDialog.value = true }, playerButtonModifier) {
                         Text("New")
                     }
-                    Button(onClick = { initializeFieldAndGameTree(field.rules) }, playerButtonModifier) {
+                    Button(onClick = { resetFieldAndGameTree(field.rules) }, playerButtonModifier) {
                         Text("Reset")
                     }
                     Button(onClick = { openGameDialog.value = true }, playerButtonModifier) {

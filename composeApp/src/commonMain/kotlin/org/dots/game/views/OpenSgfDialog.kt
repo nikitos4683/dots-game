@@ -26,10 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import org.dots.game.core.Game
-import org.dots.game.isDesktop
-import org.dots.game.readFile
-import org.dots.game.sgf.SgfConverter
-import org.dots.game.sgf.SgfParser
+import org.dots.game.openSgf
 
 @Composable
 fun OpenSgfDialog(
@@ -44,24 +41,12 @@ fun OpenSgfDialog(
         Card(modifier = Modifier.width(400.dp).wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Sgf${if (isDesktop) " Path" else ""}: ", Modifier.fillMaxWidth(0.2f))
+                    Text("Sgf Path or Content: ", Modifier.fillMaxWidth(0.3f))
                     TextField(sgfPathOrContent, {
                         sgfPathOrContent = it
                         diagnostics = buildList {
-                            try {
-                                val sgf = if (isDesktop) readFile(sgfPathOrContent) else sgfPathOrContent
-                                val sgfParseTree = SgfParser.parse(sgf) { parseError ->
-                                    add(parseError.toString())
-                                }
-                                val games = SgfConverter.convert(sgfParseTree) { convertError ->
-                                    add(convertError.toString())
-                                }
-                                game = games.firstOrNull()
-                                if (games.size != 1) {
-                                    add("Only single game inside one SGF is supported.")
-                                }
-                            } catch (e: Exception) {
-                                add("${e.message}")
+                            game = openSgf(sgfPathOrContent) { error ->
+                                add(error)
                             }
                         }
                     }, Modifier.height(60.dp), singleLine = true)

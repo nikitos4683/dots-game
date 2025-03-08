@@ -11,6 +11,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -18,26 +19,30 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.dots.game.HorizontalScrollbar
 import org.dots.game.UiSettings
 import org.dots.game.VerticalScrollbar
 import org.dots.game.core.*
+import kotlin.math.round
 
-private val stepSize = 55.dp
-private val nodeRatio = 0.34f
+private val stepSize = 40.dp
+private val nodeRadius = 15.dp
 private val rootNodeColor = Color.LightGray
 private val lineColor = Color(0f, 0f, 0f, 0.8f)
 private val textColor: Color = Color.White
 private val lineThickness = 1.dp
+private val selectedNodeVisibleRange = stepSize * 1.5f
 
-private val nodeRadius = stepSize * nodeRatio
 private val nodeSize = nodeRadius * 2
 
-private val gameTreeViewWidth = 400.dp
-private val gameTreeViewHeight = 300.dp
+private val gameTreeViewWidth = 350.dp
+private val gameTreeViewHeight = 250.dp
 private val scrollbarSize = 10.dp
 
 private val horizontalLineModifier = Modifier
@@ -67,13 +72,16 @@ fun GameTreeView(
     uiSettings: UiSettings,
     onChangeCurrentNode: () -> Unit
 ) {
-    val requester = remember { FocusRequester() }
+    val focusRequester = remember { FocusRequester() }
+    val horizontalScrollState = rememberScrollState()
+    val verticalScrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     Box(
         Modifier
             .padding(top = 10.dp)
             .size(gameTreeViewWidth, gameTreeViewHeight)
-            .focusRequester(requester)
+            .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
                 handleKeyEvent(keyEvent, gameTree).also {
@@ -83,8 +91,6 @@ fun GameTreeView(
                 }
             }
     ) {
-        val horizontalScrollState = rememberScrollState()
-        val verticalScrollState = rememberScrollState()
         Box(Modifier
             .horizontalScroll(horizontalScrollState)
             .verticalScroll(verticalScrollState)
@@ -110,11 +116,56 @@ fun GameTreeView(
         )
     }
     LaunchedEffect(gameTree) {
-        requester.requestFocus()
+        focusRequester.requestFocus()
+    }
+    LaunchedEffect(gameTreeViewData.size, currentNode) {
+        scrollToSelectedNodeIfNeeded(
+            gameTreeViewData,
+            horizontalScrollState,
+            verticalScrollState,
+            coroutineScope
+        )
     }
 }
 
-class GameTreeViewData(gameTree: GameTree) {
+private fun scrollToSelectedNodeIfNeeded(
+    gameTreeViewData: GameTreeViewData,
+    horizontalScrollState: ScrollState,
+    verticalScrollState: ScrollState,
+    coroutineScope: CoroutineScope,
+) {
+    val (xIndex, yIndex) = gameTreeViewData.nodeToIndexMap.getValue(gameTreeViewData.gameTree.currentNode)
+
+    horizontalScrollState.scrollToSelectedNodeIfNeeded(xIndex, gameTreeViewData.size.width, coroutineScope)
+    verticalScrollState.scrollToSelectedNodeIfNeeded(yIndex, gameTreeViewData.size.height, coroutineScope)
+}
+
+private fun ScrollState.scrollToSelectedNodeIfNeeded(
+    coordinateIndex: Int,
+    dimension: Dp,
+    coroutineScope: CoroutineScope,
+) {
+    val offset = stepSize * coordinateIndex + nodeSize / 2
+    val minOffset = offset - selectedNodeVisibleRange
+    val maxOffset = offset + selectedNodeVisibleRange
+
+    val maxScrollAndViewportSize = maxValue + viewportSize
+
+    val minNodeScrollValue = round(minOffset / dimension * maxScrollAndViewportSize).toInt()
+    val maxNodeScrollValue = round(maxOffset / dimension * maxScrollAndViewportSize).toInt()
+
+    if (minNodeScrollValue < value) {
+        coroutineScope.launch {
+            animateScrollTo(minNodeScrollValue)
+        }
+    } else if (maxNodeScrollValue > value + viewportSize) {
+        coroutineScope.launch {
+            animateScrollTo(maxNodeScrollValue - viewportSize)
+        }
+    }
+}
+
+class GameTreeViewData(val gameTree: GameTree) {
     val elements: GameTreeElements = gameTree.getElements(mainBranchIsAlwaysStraight = true)
 
     val size: DpSize = DpSize(

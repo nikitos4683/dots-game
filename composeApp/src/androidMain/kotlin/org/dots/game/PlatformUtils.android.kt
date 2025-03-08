@@ -4,9 +4,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
-actual val isDesktop: Boolean
-    get() = false
-
 @Composable
 actual fun VerticalScrollbar(
     scrollState: ScrollState,
@@ -19,4 +16,4 @@ actual fun HorizontalScrollbar(
     modifier: Modifier
 ) {}
 
-actual fun readFile(filePath: String): String = error("Not supported")
+actual fun readFileIfExists(filePath: String): String? = null
