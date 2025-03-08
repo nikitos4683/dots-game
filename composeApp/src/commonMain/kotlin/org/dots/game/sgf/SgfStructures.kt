@@ -190,4 +190,4 @@ object SgfMetaInfo {
     }
 }
 
-class SgfProperty<T>(val info: SgfPropertyInfo, val value: T?)
+class SgfProperty<T>(val info: SgfPropertyInfo, val node: SgfPropertyNode, val value: T?)

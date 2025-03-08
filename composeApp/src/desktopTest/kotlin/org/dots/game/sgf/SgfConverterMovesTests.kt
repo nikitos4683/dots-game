@@ -103,16 +103,15 @@ class SgfConverterMovesTests {
         val rootNode = parseAndConvert(
             "(;GM[40]FF[4]SZ[39:32];B[bb](;B[bc];W[bd])(;B[cc];W[cd]))"
         ).single().gameTree.rootNode
-        assertEquals(3, rootNode.nextNodes.size)
+        assertEquals(1, rootNode.nextNodes.size)
+        val mainBranchNode = rootNode.getNextNode(2, 2, Player.First)!!
+        assertEquals(2, mainBranchNode.nextNodes.size)
 
-        val branch0Node = rootNode.getNextNode(2, 2, Player.First)!!
-        assertTrue(branch0Node.nextNodes.isEmpty())
-
-        var branch1Node = rootNode.getNextNode(2, 3, Player.First)!!
+        var branch1Node = mainBranchNode.getNextNode(2, 3, Player.First)!!
         branch1Node = branch1Node.getNextNode(2, 4, Player.Second)!!
         assertTrue(branch1Node.nextNodes.isEmpty())
 
-        var branch2Node = rootNode.getNextNode(3, 3, Player.First)!!
+        var branch2Node = mainBranchNode.getNextNode(3, 3, Player.First)!!
         branch2Node = branch2Node.getNextNode(3, 4, Player.Second)!!
         assertTrue(branch2Node.nextNodes.isEmpty())
     }
@@ -185,6 +184,26 @@ class SgfConverterMovesTests {
                 Position(1, 2),
             ),
             node.moveResult!!.bases.single().closurePositions
+        )
+    }
+
+    @Test
+    fun definedWinGameResultByRePropertyDoesntMatchResultFromField() {
+        parseAndConvert(
+            "(;GM[40]FF[4]SZ[39:32]RE[W+2];B[bb];W[ab];W[ba];W[cb];W[bc])", listOf(
+                SgfDiagnostic(
+                    "Property RE (Result) has value `2` that doesn't match score from field `1`.",
+                    LineColumn(1, 23),
+                    SgfDiagnosticSeverity.Warning
+                )
+            )
+        )
+    }
+
+    @Test
+    fun ignoreFieldResultScoreValidationInSecondaryBranches() {
+        parseAndConvert(
+            "(;GM[40]FF[4]SZ[39:32]RE[W+1];B[bb];W[ab];W[ba];W[cb];W[bc](;B[dd])(;B[cc];W[dc];W[cd]))"
         )
     }
 }

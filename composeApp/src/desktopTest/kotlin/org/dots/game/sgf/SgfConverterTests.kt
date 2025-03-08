@@ -9,8 +9,6 @@ import org.dots.game.core.MoveInfo
 import org.dots.game.core.Player
 import org.dots.game.core.PositionPlayer
 import org.dots.game.core.Position
-import java.io.File
-import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -298,17 +296,22 @@ class SgfConverterTests {
     @Test
     fun gameResultValid() {
         val valuesToGameResults = listOf(
-            "0" to GameResult.Draw,
-            "B+R" to GameResult.ResignWin(Player.First),
-            "B+T" to GameResult.TimeWin(Player.First),
-            "B+?" to GameResult.UnknownWin(Player.First),
-            "B+10" to GameResult.ScoreWin(10.0, Player.First),
-            "W+5" to GameResult.ScoreWin(5.0, Player.Second),
+            Triple("0", GameResult.Draw, null),
+            Triple("B+R", GameResult.ResignWin(Player.First), null),
+            Triple("B+T" , GameResult.TimeWin(Player.First), null),
+            Triple("B+?" , GameResult.UnknownWin(Player.First), null),
+            Triple("B+10" , GameResult.ScoreWin(10.0, Player.First),
+                SgfDiagnostic("Property RE (Result) has value `10` that doesn't match score from field `0`.", LineColumn(1, 23), SgfDiagnosticSeverity.Warning)
+            ),
+            Triple("W+5" , GameResult.ScoreWin(5.0, Player.Second),
+                SgfDiagnostic("Property RE (Result) has value `5` that doesn't match score from field `0`.", LineColumn(1, 23), SgfDiagnosticSeverity.Warning)
+            ),
         )
 
-        for ((value, expectedGameResult) in valuesToGameResults) {
+        for ((value, expectedGameResult, diagnostic) in valuesToGameResults) {
             val actualGameResult = parseAndConvert(
                 "(;GM[40]FF[4]SZ[39:32]RE[$value])",
+                listOfNotNull(diagnostic)
             ).single().gameInfo.result
             assertEquals(expectedGameResult, actualGameResult)
         }
@@ -332,26 +335,4 @@ internal fun checkMoveDisregardExtraInfo(expectedPosition: Position, expectedPla
 
 internal fun GameTreeNode.getNextNode(x: Int, y: Int, player: Player): GameTreeNode? {
     return nextNodes[PositionPlayer(Position(x, y), player)]
-}
-
-fun validateSgfFile(sgfFile: File, onError: (String) -> Unit): List<Game> {
-    val sgf = SgfParser.parse(sgfFile.readText()) {
-        onError("${sgfFile.absolutePath}: {$it}")
-    }
-    val games = SgfConverter.convert(sgf) {
-        onError("${sgfFile.absolutePath}: {$it}")
-    }
-    for (game in games) {
-        val gameTree = game.gameTree
-        val field = gameTree.field
-        val gameResult = game.gameInfo.result
-        if (gameResult is GameResult.ScoreWin) {
-            gameTree.rewindForward()
-            val scoreFromField = abs(field.getScoreDiff())
-            if (gameResult.score != scoreFromField.toDouble()) {
-                onError("${sgfFile.absolutePath}: Result value from RE property `${gameResult.score}` doesn't match score from field `${scoreFromField}`")
-            }
-        }
-    }
-    return games
 }

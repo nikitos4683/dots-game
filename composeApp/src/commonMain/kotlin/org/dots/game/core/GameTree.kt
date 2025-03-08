@@ -5,7 +5,8 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
     val allNodes: MutableSet<GameTreeNode> = mutableSetOf(rootNode)
     var currentNode: GameTreeNode = rootNode
         private set
-    private val memorizedNextChild: MutableMap<GameTreeNode, GameTreeNode> = mutableMapOf()
+    var memoizeNodes: Boolean = true
+    private val memoizedNextChild: MutableMap<GameTreeNode, GameTreeNode> = mutableMapOf()
 
     /**
      * @return `false` if such a node with the current @param[move] already exists,
@@ -39,7 +40,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
      */
     fun back(): Boolean {
         val previousNode = currentNode.previousNode ?: return false
-        previousNode.memorizeCurrentNodeIfNeeded()
+        previousNode.memoizeCurrentNodeIfNeeded()
         requireNotNull(field.unmakeMove())
         currentNode = previousNode
         return true
@@ -49,7 +50,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
      * @return `false` if there are no next nodes, otherwise move it to the next node on the main line returns `true`
      */
     fun next(): Boolean {
-        val nextNode = (memorizedNextChild[currentNode] ?: currentNode.nextNodes.values.firstOrNull()) ?: return false
+        val nextNode = (memoizedNextChild[currentNode] ?: currentNode.nextNodes.values.firstOrNull()) ?: return false
         val moveResult = nextNode.moveResult!!
         requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
         currentNode = nextNode
@@ -85,7 +86,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
         currentNode = targetSiblingNode
 
-        previousNode.memorizeCurrentNodeIfNeeded()
+        previousNode.memoizeCurrentNodeIfNeeded()
 
         return true
     }
@@ -123,7 +124,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         val numberOfNodesToRollback = currentNode.number - commonRootNode.number
         (0 until numberOfNodesToRollback).forEach { i ->
             requireNotNull(field.unmakeMove())
-            currentNode = currentNode.previousNode!!.also { it.memorizeCurrentNodeIfNeeded() }
+            currentNode = currentNode.previousNode!!.also { it.memoizeCurrentNodeIfNeeded() }
         }
 
         for (nextNode in nextNodes) {
@@ -147,7 +148,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
 
         fun removeRecursively(node: GameTreeNode) {
             require(allNodes.remove(node))
-            memorizedNextChild.remove(node)
+            memoizedNextChild.remove(node)
             for (nextNode in node.nextNodes.values) {
                 removeRecursively(nextNode)
             }
@@ -164,9 +165,9 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         return true
     }
 
-    private fun GameTreeNode.memorizeCurrentNodeIfNeeded() {
-        if (nextNodes.size > 1) {
-            memorizedNextChild[this] = currentNode
+    private fun GameTreeNode.memoizeCurrentNodeIfNeeded() {
+        if (memoizeNodes && nextNodes.size > 1) {
+            memoizedNextChild[this] = currentNode
         }
     }
 
