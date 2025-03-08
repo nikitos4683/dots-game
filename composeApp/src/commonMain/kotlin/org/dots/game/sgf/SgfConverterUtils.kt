@@ -88,10 +88,8 @@ fun CharSequence.buildLineOffsets(): List<Int> {
                     index++
                     if (this@buildLineOffsets.elementAtOrNull(index) == '\n') {
                         index++
-                        add(index)
-                    } else {
-                        add(index)
                     }
+                    add(index)
                 }
                 '\n' -> {
                     index++

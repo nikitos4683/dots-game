@@ -319,13 +319,15 @@ class SgfConverterTests {
 }
 
 internal fun parseAndConvert(input: String, expectedDiagnostics: List<SgfDiagnostic> = emptyList()): List<Game> {
-    val sgf = SgfParser.parse(input)
     val actualDiagnostics = mutableListOf<SgfDiagnostic>()
-    val result = SgfConverter.convert(sgf) {
+    val sgf = SgfParser.parse(input) {
+        actualDiagnostics.add(it)
+    }
+    val games = SgfConverter.convert(sgf) {
         actualDiagnostics.add(it)
     }
     assertEquals(expectedDiagnostics, actualDiagnostics)
-    return result
+    return games
 }
 
 internal fun checkMoveDisregardExtraInfo(expectedPosition: Position, expectedPlayer: Player, actualMoveInfo: MoveInfo) {

@@ -15,16 +15,18 @@ package org.dots.game.sgf
  * UcLetter   = 'A'..'Z'
  * ```
  */
-class SgfParser private constructor(val text: CharSequence, val errorReporter: (SgfToken) -> Unit) {
+class SgfParser private constructor(val text: CharSequence, val diagnosticReporter: (SgfDiagnostic) -> Unit) {
     companion object {
         val whitespaceChars = setOf(' ', '\n', '\r', '\t')
 
-        fun parse(sgfText: String, errorReporter: (SgfToken) -> Unit = {}): SgfRoot {
-            return SgfParser(sgfText, errorReporter).parse()
+        fun parse(sgfText: String, diagnosticReporter: (SgfDiagnostic) -> Unit): SgfRoot {
+            return SgfParser(sgfText, diagnosticReporter).parse()
         }
     }
 
     private var currentIndex = 0
+
+    private val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { text.buildLineOffsets() }
 
     private fun parse(): SgfRoot {
         skipWhitespaces()
@@ -166,7 +168,13 @@ class SgfParser private constructor(val text: CharSequence, val errorReporter: (
 
     private fun SgfToken.reportIfError() {
         if (isError) {
-            errorReporter(this)
+            val errorText = when {
+                textSpan.size == 0 -> "Missing `${value}`"
+                this is UnparsedTextToken -> "Unrecognized text `${value}`"
+                else -> error("Unexpected error token")
+            }
+
+            diagnosticReporter(SgfDiagnostic(errorText, textSpan.start.getLineColumn(lineOffsets), SgfDiagnosticSeverity.Error))
         }
     }
 

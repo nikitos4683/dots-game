@@ -721,19 +721,3 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         diagnosticReporter(SgfDiagnostic(message, textSpan.start.getLineColumn(lineOffsets), severity))
     }
 }
-
-data class SgfDiagnostic(
-    val message: String,
-    val lineColumn: LineColumn,
-    val severity: SgfDiagnosticSeverity,
-) {
-    override fun toString(): String {
-        return "$severity at $lineColumn: $message"
-    }
-}
-
-enum class SgfDiagnosticSeverity {
-    Warning,
-    Error,
-    Critical,
-}
