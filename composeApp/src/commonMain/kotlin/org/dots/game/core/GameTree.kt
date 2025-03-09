@@ -13,14 +13,14 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
      * @return `false` if such a node with the current @param[move] already exists,
      * otherwise add the new passed node and returns `true`
      */
-    fun add(move: MoveResult?, timeLeft: Double? = null): Boolean {
+    fun add(move: MoveResult?, timeLeft: Double? = null, comment: String? = null): Boolean {
         val positionPlayer = move?.positionPlayer
         val existingNode = currentNode.nextNodes[positionPlayer]
 
         var result: Boolean
         currentNode = if (existingNode == null) {
             result = true
-            GameTreeNode(move, previousNode = currentNode, currentNode.number + 1, timeLeft = timeLeft).also {
+            GameTreeNode(move, previousNode = currentNode, currentNode.number + 1, timeLeft = timeLeft, comment = comment).also {
                 currentNode.nextNodes[positionPlayer] = it
                 allNodes.add(it)
             }
@@ -229,6 +229,7 @@ class GameTreeNode(
     val number: Int,
     val nextNodes: MutableMap<PositionPlayer?, GameTreeNode> = mutableMapOf(),
     val timeLeft: Double? = null,
+    val comment: String? = null,
 ) {
     val isRoot = previousNode == null
 

@@ -165,7 +165,7 @@ object SgfMetaInfo {
         KOMI_KEY to SgfPropertyInfo("Komi", SgfPropertyType.Double),
         DATE_KEY to SgfPropertyInfo("Date"),
         GAME_COMMENT_KEY to SgfPropertyInfo("Game Comment", SgfPropertyType.Text),
-        COMMENT_KEY to SgfPropertyInfo("Comment", SgfPropertyType.Text),
+        COMMENT_KEY to SgfPropertyInfo("Comment", SgfPropertyType.Text, scope = SgfPropertyScope.Both),
         PLACE_KEY to SgfPropertyInfo("Place"),
         EVENT_KEY to SgfPropertyInfo("Event"),
         OPENING_KEY to SgfPropertyInfo("Opening"),

@@ -237,6 +237,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         val player2Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER2_MOVE_KEY)
         val player1TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER1_TIME_LEFT_KEY)
         val player2TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER2_TIME_LEFT_KEY)
+        val comment = convertedProperties.getPropertyValue<String>(COMMENT_KEY)
         var movesCount = 0
 
         fun processMoves(moveInfos: List<MoveInfo>?) {
@@ -253,7 +254,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     withinBounds = false
                 }
                 val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
-                gameTree.add(moveResult, timeLeft)
+                gameTree.add(moveResult, timeLeft, comment)
                 movesCount++
 
                 if (moveResult == null) {

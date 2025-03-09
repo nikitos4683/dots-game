@@ -206,4 +206,20 @@ class SgfConverterMovesTests {
             "(;GM[40]FF[4]SZ[39:32]RE[W+1];B[bb];W[ab];W[ba];W[cb];W[bc](;B[dd])(;B[cc];W[dc];W[cd]))"
         )
     }
+
+    @Test
+    fun movesComment() {
+        val firstComment = "Player 1 starts the game"
+        val secondComment = "Player 2 surrounds a dot"
+
+        val gameTree = parseConvertAndCheck(
+            "(;GM[40]FF[4]SZ[39:32];B[bb]C[$firstComment];W[ab];W[ba];W[cb];W[bc]C[$secondComment])"
+        ).single().gameTree
+
+        gameTree.next()
+        assertEquals(firstComment, gameTree.currentNode.comment)
+
+        gameTree.rewindForward()
+        assertEquals(secondComment, gameTree.currentNode.comment)
+    }
 }
