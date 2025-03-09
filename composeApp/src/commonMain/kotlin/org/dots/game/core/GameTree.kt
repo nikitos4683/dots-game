@@ -13,14 +13,14 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
      * @return `false` if such a node with the current @param[move] already exists,
      * otherwise add the new passed node and returns `true`
      */
-    fun add(move: MoveResult, timeLeft: Double? = null): Boolean {
-        val positionPlayer = move.positionPlayer
+    fun add(move: MoveResult?, timeLeft: Double? = null): Boolean {
+        val positionPlayer = move?.positionPlayer
         val existingNode = currentNode.nextNodes[positionPlayer]
 
         var result: Boolean
         currentNode = if (existingNode == null) {
             result = true
-            GameTreeNode(move, previousNode = currentNode, move.number, timeLeft = timeLeft).also {
+            GameTreeNode(move, previousNode = currentNode, currentNode.number + 1, timeLeft = timeLeft).also {
                 currentNode.nextNodes[positionPlayer] = it
                 allNodes.add(it)
             }
@@ -52,7 +52,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         while (counter < count) {
             val previousNode = currentNode.previousNode ?: break
             previousNode.memoizeCurrentNodeIfNeeded()
-            requireNotNull(field.unmakeMove())
+            unmakeMoveIfNeeded()
             currentNode = previousNode
             counter++
         }
@@ -70,8 +70,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         while (counter < count) {
             val nextNode =
                 (memoizedNextChild[currentNode] ?: currentNode.nextNodes.values.firstOrNull()) ?: break
-            val moveResult = nextNode.moveResult!!
-            requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
+            nextNode.moveResult.makeMoveIfNeeded()
             currentNode = nextNode
             counter++
         }
@@ -112,9 +111,8 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
             }
         }
 
-        val moveResult = targetSiblingNode.moveResult!!
-        requireNotNull(field.unmakeMove())
-        requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
+        unmakeMoveIfNeeded()
+        targetSiblingNode.moveResult.makeMoveIfNeeded()
         currentNode = targetSiblingNode
 
         previousNode.memoizeCurrentNodeIfNeeded()
@@ -154,15 +152,14 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
 
         val numberOfNodesToRollback = currentNode.number - commonRootNode.number
         (0 until numberOfNodesToRollback).forEach { i ->
-            requireNotNull(field.unmakeMove())
+            unmakeMoveIfNeeded()
             currentNode = currentNode.previousNode!!.also { it.memoizeCurrentNodeIfNeeded() }
         }
 
         for (nextNode in nextNodes) {
-            val moveResult = nextNode.moveResult ?: continue
-            val nextMovePosition = moveResult.position
-            requireNotNull(field.makeMoveUnsafe(nextMovePosition, moveResult.player))
-            currentNode = currentNode.nextNodes.getValue(moveResult.positionPlayer)
+            val moveResult = nextNode.moveResult
+            moveResult.makeMoveIfNeeded()
+            currentNode = currentNode.nextNodes.getValue(moveResult?.positionPlayer)
         }
 
         require(currentNode == targetNode)
@@ -202,6 +199,18 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
         }
     }
 
+    private fun MoveResult?.makeMoveIfNeeded() {
+        if (this != null) {
+            requireNotNull(field.makeMoveUnsafe(position, player))
+        }
+    }
+
+    private fun unmakeMoveIfNeeded() {
+        if (currentNode.moveResult != null) {
+            requireNotNull(field.unmakeMove())
+        }
+    }
+
     private inline fun GameTreeNode.walkMovesReversed(action: (GameTreeNode) -> Boolean) {
         var move = this
         var distance = 0
@@ -218,10 +227,10 @@ class GameTreeNode(
     val moveResult: MoveResult?,
     val previousNode: GameTreeNode?,
     val number: Int,
-    val nextNodes: MutableMap<PositionPlayer, GameTreeNode> = mutableMapOf(),
+    val nextNodes: MutableMap<PositionPlayer?, GameTreeNode> = mutableMapOf(),
     val timeLeft: Double? = null,
 ) {
-    val isRoot = moveResult == null
+    val isRoot = previousNode == null
 
     override fun toString(): String {
         return "#$number: " + (moveResult?.position?.toString() ?: "root")

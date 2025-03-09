@@ -128,7 +128,7 @@ class SgfConverterMovesTests {
             )
         ).single().gameTree.rootNode
         val nextNode = rootNode.getNextNode(2, 2, Player.First)!!
-        assertTrue(nextNode.nextNodes.isEmpty())
+        assertEquals(1, nextNode.nextNodes.size)
     }
 
     @Test

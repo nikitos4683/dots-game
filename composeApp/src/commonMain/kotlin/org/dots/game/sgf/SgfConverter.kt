@@ -95,7 +95,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         }
 
         var initializedGame: Game? = game
-        val movesInfoToResult = mutableListOf<Pair<MoveInfo, MoveResult?>>()
+        var movesCount = 0
         var rootConverterProperties: Map<String, SgfProperty<*>>? = null
 
         for ((index, sgfNode) in sgfGameTree.nodes.withIndex()) {
@@ -106,7 +106,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 initializedGame = convertGameInfo(sgfNode, convertedProperties, hasCriticalError)
             }
             if (initializedGame?.gameTree != null) {
-                movesInfoToResult.convertMovesInfo(initializedGame.gameTree, convertedProperties)
+                movesCount += convertMovesInfo(initializedGame.gameTree, convertedProperties)
             }
         }
 
@@ -119,7 +119,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 convertGameTree(childGameTree, initializedGame, mainBranch = index == 0)
             }
 
-            movesInfoToResult.rollbackMoves(initializedGame.gameTree)
+            initializedGame.gameTree.back(movesCount)
         }
 
         return initializedGame
@@ -228,15 +228,16 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         return Game(gameInfo, gameTree)
     }
 
-    private fun MutableList<Pair<MoveInfo, MoveResult?>>.convertMovesInfo(
+    private fun convertMovesInfo(
         gameTree: GameTree,
         convertedProperties: Map<String, SgfProperty<*>>,
-    ) {
+    ): Int {
         val field = gameTree.field
         val player1Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER1_MOVE_KEY)
         val player2Moves = convertedProperties.getPropertyValue<List<MoveInfo>>(PLAYER2_MOVE_KEY)
         val player1TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER1_TIME_LEFT_KEY)
         val player2TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER2_TIME_LEFT_KEY)
+        var movesCount = 0
 
         fun processMoves(moveInfos: List<MoveInfo>?) {
             if (moveInfos == null) return
@@ -245,15 +246,16 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 var moveResult: MoveResult?
                 val withinBounds: Boolean
                 if (field.checkPositionWithinBounds(moveInfo.position)) {
-                    moveResult = field.makeMove(moveInfo.position, moveInfo.player)?.also {
-                        val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
-                        gameTree.add(it, timeLeft)
-                    }
+                    moveResult = field.makeMove(moveInfo.position, moveInfo.player)
                     withinBounds = true
                 } else {
                     moveResult = null
                     withinBounds = false
                 }
+                val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
+                gameTree.add(moveResult, timeLeft)
+                movesCount++
+
                 if (moveResult == null) {
                     moveInfo.reportPositionThatViolatesRules(
                         withinBounds = withinBounds,
@@ -262,12 +264,13 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                         field.currentMoveNumber
                     )
                 }
-                add(moveInfo to moveResult)
             }
         }
 
         processMoves(player1Moves)
         processMoves(player2Moves)
+
+        return movesCount
     }
 
     private fun MoveInfo.reportPositionThatViolatesRules(withinBounds: Boolean, width: Int, height: Int, currentMoveNumber: Int) {
@@ -282,14 +285,6 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             textSpan,
             SgfDiagnosticSeverity.Error
         )
-    }
-
-    private fun MutableList<Pair<MoveInfo, MoveResult?>>.rollbackMoves(initializedGameTree: GameTree) {
-        for ((_, moveResult) in this) {
-            if (moveResult != null) {
-                require(initializedGameTree.back())
-            }
-        }
     }
 
     private fun convertProperties(node: SgfNode, isRootScope: Boolean): Pair<Map<String, SgfProperty<*>>, Boolean> {

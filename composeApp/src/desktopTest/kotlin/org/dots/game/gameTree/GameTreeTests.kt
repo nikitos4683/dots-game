@@ -83,7 +83,7 @@ class GameTreeTests : FieldTests() {
     }
 
     @Test
-    fun memorizedNodes() {
+    fun memoizedNodes() {
         with(initializeGameTree()) {
             val initNode = currentNode
 
@@ -115,6 +115,25 @@ class GameTreeTests : FieldTests() {
             assertFalse(makeMove(1, 1, Player.First)) // False, because such a node already exists
             assertTrue(back())
             assertTrue(makeMove(1, 1, Player.Second)) // True, same position, but player is another
+        }
+    }
+
+    @Test
+    fun incorrectMoves() {
+        with (initializeGameTree()) {
+            assertTrue(makeMove(1, 1, Player.First))
+            assertEquals(1,  currentNode.number)
+            assertTrue(add(null))
+            assertEquals(2,  currentNode.number)
+            assertTrue(makeMove(2, 2, Player.First))
+            assertEquals(3,  currentNode.number)
+
+            assertTrue(back())
+            assertTrue(back())
+            assertTrue(back())
+            assertFalse(back())
+
+            assertEquals(rootNode, currentNode)
         }
     }
 

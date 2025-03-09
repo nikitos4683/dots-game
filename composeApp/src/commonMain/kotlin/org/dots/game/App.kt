@@ -43,9 +43,11 @@ fun App() {
         fun updateCurrentNode() {
             player1Score = field.player1Score
             player2Score = field.player2Score
-            moveNumber = field.currentMoveNumber
-            lastMove = field.lastMove
-            currentGameTreeNode = gameTree.currentNode
+
+            val currentNode = gameTree.currentNode
+            currentGameTreeNode = currentNode
+            lastMove = currentNode.moveResult
+            moveNumber = currentNode.number
         }
 
         fun updateFieldAndGameTree() {
