@@ -19,4 +19,4 @@ actual fun VerticalScrollbar(
     modifier: Modifier
 ) = VerticalScrollbar(rememberScrollbarAdapter(scrollState), modifier)
 
-actual fun readFileIfExists(filePath: String): String? = null
+actual fun readFileIfExists(filePath: String): FileInfo? = null

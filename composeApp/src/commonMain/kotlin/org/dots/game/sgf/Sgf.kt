@@ -13,7 +13,7 @@ object Sgf {
             }
             return games
         } catch(e: Exception) {
-            diagnosticReporter(SgfDiagnostic(e.message ?: e.toString(), LineColumn.NONE, SgfDiagnosticSeverity.Critical))
+            diagnosticReporter(SgfDiagnostic(e.message ?: e.toString(), textSpan = null, SgfDiagnosticSeverity.Critical))
         }
         return emptyList()
     }

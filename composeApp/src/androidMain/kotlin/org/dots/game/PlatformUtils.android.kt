@@ -16,4 +16,4 @@ actual fun HorizontalScrollbar(
     modifier: Modifier
 ) {}
 
-actual fun readFileIfExists(filePath: String): String? = null
+actual fun readFileIfExists(filePath: String): FileInfo? = null

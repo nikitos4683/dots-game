@@ -26,8 +26,6 @@ class SgfParser private constructor(val text: CharSequence, val diagnosticReport
 
     private var currentIndex = 0
 
-    private val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { text.buildLineOffsets() }
-
     private fun parse(): SgfRoot {
         skipWhitespaces()
 
@@ -174,7 +172,7 @@ class SgfParser private constructor(val text: CharSequence, val diagnosticReport
                 else -> error("Unexpected error token")
             }
 
-            diagnosticReporter(SgfDiagnostic(errorText, textSpan.start.getLineColumn(lineOffsets), SgfDiagnosticSeverity.Error))
+            diagnosticReporter(SgfDiagnostic(errorText, textSpan, SgfDiagnosticSeverity.Error))
         }
     }
 

@@ -1,5 +1,6 @@
 package org.dots.game.views
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,18 +24,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import org.dots.game.core.Game
 import org.dots.game.openOrLoadSgf
+import org.dots.game.sgf.SgfDiagnostic
+import org.dots.game.sgf.buildLineOffsets
+import org.dots.game.sgf.toLineColumnDiagnostic
 
 @Composable
 fun OpenSgfDialog(
     onDismiss: () -> Unit,
     onConfirmation: (game: Game) -> Unit,
 ) {
-    var sgfPathOrContent by remember { mutableStateOf("") }
-    var diagnostics by remember { mutableStateOf<List<String>>(listOf()) }
+    var sgfPathOrContent by remember { mutableStateOf(TextFieldValue("")) }
+    var diagnostics by remember { mutableStateOf<List<SgfDiagnostic>>(listOf()) }
+    var fileName by remember { mutableStateOf<String?>(null) }
     var game by remember { mutableStateOf<Game?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -42,14 +49,20 @@ fun OpenSgfDialog(
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Sgf Path or Content: ", Modifier.fillMaxWidth(0.3f))
-                    TextField(sgfPathOrContent, {
-                        sgfPathOrContent = it
-                        diagnostics = buildList {
-                            game = openOrLoadSgf(sgfPathOrContent) { error ->
-                                add(error.toString())
+                    TextField(
+                        sgfPathOrContent, {
+                            sgfPathOrContent = it
+                            diagnostics = buildList {
+                                val result = openOrLoadSgf(sgfPathOrContent.text) { diagnostic ->
+                                    add(diagnostic)
+                                }
+                                fileName = result.first
+                                game = result.second
                             }
-                        }
-                    }, Modifier.height(60.dp), singleLine = true)
+                        },
+                        singleLine = fileName != null,
+                        maxLines = if (fileName == null) 5 else 1
+                    )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -57,20 +70,26 @@ fun OpenSgfDialog(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp).padding(vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { sgfPathOrContent.text.buildLineOffsets() }
                         items(diagnostics.size) { index ->
+                            val diagnostic = diagnostics[index]
+                            var cardModifier = Modifier.fillMaxWidth()
+                            if (fileName == null && diagnostic.textSpan != null) {
+                                cardModifier = cardModifier.then(Modifier.clickable(onClick = {
+                                    sgfPathOrContent = sgfPathOrContent.copy(selection = TextRange(diagnostic.textSpan.start, diagnostic.textSpan.end))
+                                }))
+                            }
                             Card(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = cardModifier,
                                 elevation = 4.dp
                             ) {
-                                SelectionContainer {
-                                    Text(
-                                        text = diagnostics[index],
-                                        style = MaterialTheme.typography.body1,
-                                        modifier = Modifier
-                                            .padding(16.dp)
-                                            .fillMaxWidth()
-                                    )
-                                }
+                                Text(
+                                    text = diagnostic.toLineColumnDiagnostic(lineOffsets).toString(),
+                                    style = MaterialTheme.typography.body1,
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth()
+                                )
                             }
                         }
                     }

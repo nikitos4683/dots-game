@@ -13,7 +13,7 @@ class SgfParserTests {
         assertEquals(TextSpan(4, 0), whitespaceSgf.textSpan)
 
         val incorrectSgf = parseAndCheck("  ---",
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(1, 3))
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(1, 3))
         )
         assertEquals(TextSpan(2, 3), incorrectSgf.textSpan)
     }
@@ -37,28 +37,28 @@ class SgfParserTests {
 
     @Test
     fun unparsedText() {
-        fun check(expectedToken: UnparsedTextToken, text: String, vararg diagnostics: SgfDiagnostic = arrayOf()) {
+        fun check(expectedToken: UnparsedTextToken, text: String, vararg diagnostics: SgfLineColumnDiagnostic = arrayOf()) {
             val actualToken = parseAndCheck(text, *diagnostics).unparsedText!!
             checkTokens(expectedToken, actualToken)
         }
 
         check(UnparsedTextToken("---", TextSpan(0, 3)), "---",
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(1, 1))
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(1, 1))
         )
         check(UnparsedTextToken("---", TextSpan(1, 3)), "(---",
-            SgfDiagnostic("Missing `)`", LineColumn(1, 2)),
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(1, 2)),
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 2)),
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(1, 2)),
         )
         check(UnparsedTextToken("---", TextSpan(2, 3)), "(;---",
-            SgfDiagnostic("Missing `)`", LineColumn(1, 3)),
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(1, 3)),
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 3)),
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(1, 3)),
         )
         check(UnparsedTextToken("---", TextSpan(4, 3)), "(;GM---",
-            SgfDiagnostic("Missing `)`", LineColumn(1, 5)),
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(1, 5)),
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 5)),
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(1, 5)),
         )
         check(UnparsedTextToken("---", TextSpan(2, 3)), "  ---",
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(1, 3)),
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(1, 3)),
         )
     }
 
@@ -67,12 +67,12 @@ class SgfParserTests {
         checkTokens(
             RParenToken(TextSpan(10, 0)),
             parseAndCheck("(;GC[info]",
-                SgfDiagnostic("Missing `)`", LineColumn(1, 11))
+                SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 11))
                 ).gameTree.single().rParen
         )
 
         val gameTreeWithMissingOuterRParen = parseAndCheck("(;GC[info](;B[ee])",
-            SgfDiagnostic("Missing `)`", LineColumn(1, 19))
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 19))
             ).gameTree.single()
         checkTokens(
             RParenToken(TextSpan(17, 1)),
@@ -84,15 +84,15 @@ class SgfParserTests {
         )
 
         val missingRSquare = parseAndCheck("(;GC[",
-            SgfDiagnostic("Missing `]`", LineColumn(1, 6)),
-            SgfDiagnostic("Missing `)`", LineColumn(1, 6)
+            SgfLineColumnDiagnostic("Missing `]`", LineColumn(1, 6)),
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 6)
         )).gameTree.single().nodes.single().properties.single().value.single().rSquareBracket
         checkTokens(RSquareBracketToken(TextSpan(5, 0)), missingRSquare)
     }
 
     @Test
     fun propertyValue() {
-        fun checkValue(expectedToken: SgfToken, input: String, vararg diagnostics: SgfDiagnostic) {
+        fun checkValue(expectedToken: SgfToken, input: String, vararg diagnostics: SgfLineColumnDiagnostic) {
             val root = parseAndCheck(input, *diagnostics)
             val propertyValueType =
                 root.gameTree.single().nodes.single().properties.single().value.single().propertyValueToken
@@ -109,27 +109,27 @@ class SgfParserTests {
         // Check escaping at the end
         checkValue(
             PropertyValueToken("""\""", TextSpan(5, 1)), """(;GC[\""",
-            SgfDiagnostic("Missing `]`", LineColumn(1, 7)),
-            SgfDiagnostic("Missing `)`", LineColumn(1, 7))
+            SgfLineColumnDiagnostic("Missing `]`", LineColumn(1, 7)),
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 7))
         )
     }
 
     @Test
     fun diagnosticReporter() {
         parseAndCheck("(;GC[info]---",
-            SgfDiagnostic("Missing `)`", LineColumn(1, 11)),
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(1, 11))
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 11)),
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(1, 11))
         )
         parseAndCheck("""(;GC[\""",
-            SgfDiagnostic("Missing `]`", LineColumn(1, 7)),
-            SgfDiagnostic("Missing `)`", LineColumn(1, 7)),
+            SgfLineColumnDiagnostic("Missing `]`", LineColumn(1, 7)),
+            SgfLineColumnDiagnostic("Missing `)`", LineColumn(1, 7)),
         )
     }
 
     @Test
     fun whitespaces() {
         val sgf = parseAndCheck(" ( ;\nGC [info1 info2 ] ) ---",
-            SgfDiagnostic("Unrecognized text `---`", LineColumn(2, 21)),
+            SgfLineColumnDiagnostic("Unrecognized text `---`", LineColumn(2, 21)),
         )
         assertEquals(TextSpan(25, 3), sgf.unparsedText!!.textSpan)
 
@@ -148,10 +148,11 @@ class SgfParserTests {
         checkTokens(PropertyValueToken("info1 info2 ", TextSpan(9, 12)), propertyValue.propertyValueToken)
     }
 
-    private fun parseAndCheck(input: String, vararg expectedDiagnostics: SgfDiagnostic): SgfRoot {
-        val actualDiagnostics = mutableListOf<SgfDiagnostic>()
+    private fun parseAndCheck(input: String, vararg expectedDiagnostics: SgfLineColumnDiagnostic): SgfRoot {
+        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { input.buildLineOffsets() }
+        val actualDiagnostics = mutableListOf<SgfLineColumnDiagnostic>()
         val sgfRoot = SgfParser.parse(input) {
-            actualDiagnostics.add(it)
+            actualDiagnostics.add(it.toLineColumnDiagnostic(lineOffsets))
         }
         assertEquals(expectedDiagnostics.toList(), actualDiagnostics)
         return sgfRoot

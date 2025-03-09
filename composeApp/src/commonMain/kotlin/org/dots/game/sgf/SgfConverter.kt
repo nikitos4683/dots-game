@@ -70,8 +70,6 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         }
     }
 
-    private val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { sgf.text.buildLineOffsets() }
-
     private fun TextSpan.getText() = sgf.text.substring(start, end)
 
     private fun convert(): List<Game> {
@@ -704,8 +702,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
 
     private fun SgfPropertyInfo.reportPropertyDiagnostic(message: String, textSpan: TextSpan, severity: SgfDiagnosticSeverity) {
         val messageWithPropertyInfo = "Property ${getFullName()} $message"
-        val lineColumn = textSpan.start.getLineColumn(lineOffsets)
-        diagnosticReporter(SgfDiagnostic(messageWithPropertyInfo, lineColumn, severity))
+        diagnosticReporter(SgfDiagnostic(messageWithPropertyInfo, textSpan, severity))
     }
 
     private fun SgfPropertyInfo.getFullName(): String {
@@ -722,6 +719,6 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
     }
 
     private fun reportDiagnostic(message: String, textSpan: TextSpan, severity: SgfDiagnosticSeverity) {
-        diagnosticReporter(SgfDiagnostic(message, textSpan.start.getLineColumn(lineOffsets), severity))
+        diagnosticReporter(SgfDiagnostic(message, textSpan, severity))
     }
 }
