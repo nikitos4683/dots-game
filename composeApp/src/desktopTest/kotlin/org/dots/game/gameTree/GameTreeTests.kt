@@ -30,8 +30,19 @@ class GameTreeTests : FieldTests() {
     }
 
     @Test
-    fun nextPrevSiblingCommands() {
+    fun nextPrevSiblingCommandsLooped() {
+        nextPrevSiblingCommands(loopedSiblingNavigation = true)
+    }
+
+    @Test
+    fun nextPrevSiblingCommandsNoLooped() {
+        nextPrevSiblingCommands(loopedSiblingNavigation = false)
+    }
+
+    private fun nextPrevSiblingCommands(loopedSiblingNavigation: Boolean) {
         with(initializeGameTree()) {
+            this.loopedSiblingNavigation = loopedSiblingNavigation
+
             assertTrue(makeMove(1, 1))
             val firstNode = currentNode
             back()
@@ -47,13 +58,27 @@ class GameTreeTests : FieldTests() {
             assertEquals(secondNode, currentNode)
             assertTrue(prevSibling())
             assertEquals(firstNode, currentNode)
-            assertFalse(prevSibling())
+            val prevSiblingResult = prevSibling()
+            if (loopedSiblingNavigation) {
+                assertTrue(prevSiblingResult)
+                assertEquals(thirdNode, currentNode)
+            } else {
+                assertFalse(prevSiblingResult)
+            }
+
+            switch(firstNode)
 
             assertTrue(nextSibling())
             assertEquals(secondNode, currentNode)
             assertTrue(nextSibling())
             assertEquals(thirdNode, currentNode)
-            assertFalse(nextSibling())
+            val nextSiblingResult = nextSibling()
+            if (loopedSiblingNavigation) {
+                assertTrue(nextSiblingResult)
+                assertEquals(firstNode, currentNode)
+            } else {
+                assertFalse(nextSiblingResult)
+            }
         }
     }
 

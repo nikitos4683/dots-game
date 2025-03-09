@@ -6,6 +6,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
     var currentNode: GameTreeNode = rootNode
         private set
     var memoizePaths: Boolean = true
+    var loopedSiblingNavigation: Boolean = true
     private val memoizedNextChild: MutableMap<GameTreeNode, GameTreeNode> = mutableMapOf()
 
     /**
@@ -67,9 +68,12 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
 
     private fun switchToSibling(next: Boolean): Boolean {
         val previousNode = currentNode.previousNode ?: return false
+        val nextNodeValues = previousNode.nextNodes.values
+        if (nextNodeValues.size <= 1) return false
+
         var currentNodeFound = false
         var targetSiblingNode: GameTreeNode? = null
-        val siblings = if (next) previousNode.nextNodes.values else previousNode.nextNodes.values.reversed()
+        val siblings = if (next) nextNodeValues else nextNodeValues.reversed()
         for (node in siblings) {
             if (node == currentNode) {
                 currentNodeFound = true
@@ -79,7 +83,13 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
             }
         }
         require(currentNodeFound)
-        if (targetSiblingNode == null) return false
+        if (targetSiblingNode == null) {
+            if (loopedSiblingNavigation) {
+                targetSiblingNode = siblings.first()
+            } else {
+                return false
+            }
+        }
 
         val moveResult = targetSiblingNode.moveResult!!
         requireNotNull(field.unmakeMove())
