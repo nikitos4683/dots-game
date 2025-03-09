@@ -6,7 +6,8 @@ data class SgfDiagnostic(
     val severity: SgfDiagnosticSeverity = SgfDiagnosticSeverity.Error,
 ) {
     override fun toString(): String {
-        return "$severity at $lineColumn: $message"
+        val lineColumnSuffix = if (lineColumn != LineColumn.NONE) " at $lineColumn" else ""
+        return "$severity$lineColumnSuffix: $message"
     }
 }
 

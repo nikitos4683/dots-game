@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 class SgfConverterMovesTests {
     @Test
     fun initialPositionsAreCorrect() {
-        val rules = parseAndConvert(
+        val rules = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[100:100]AB[az][mm]AW[AZ][])"
         ).single().rules
         assertEquals(3, rules.initialMoves.size)
@@ -20,7 +20,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun initialPositionsAreIncorrect() {
-        val rules = parseAndConvert(
+        val rules = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]AB[a!]AW[-Z][1234])", listOf(
                 SgfDiagnostic(
                     "Property AB (Player1 initial dots) has incorrect y coordinate `!`.",
@@ -54,7 +54,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun initialPositionsOverwriting() {
-        val rules = parseAndConvert(
+        val rules = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]AB[ab][mm][ab])", listOf(
                 SgfDiagnostic(
                     "Property AB (Player1 initial dots) value `ab` overwrites one the previous position.",
@@ -70,7 +70,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun initialPositionsOfPlayer2OverwritesPlayer1() {
-        val rules = parseAndConvert(
+        val rules = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]AB[ab]AW[ab])", listOf(
                 SgfDiagnostic(
                     "Property AW (Player2 initial dots) value `ab` overwrites one the previous position of first player AB (Player1 initial dots).",
@@ -87,7 +87,7 @@ class SgfConverterMovesTests {
         // . .  *1 *2 .
         // . *0 +6 +7 *3
         // . .  *5 *4 .
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]AB[bb][ca][da][eb][dc][cc]AW[cb][db])", listOf(
                 SgfDiagnostic(
                     "Property AW (Player2 initial dots) has incorrect value `db`. The dot at position (4;2) is already placed or captured (move number: 8).",
@@ -100,7 +100,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun branches() {
-        val rootNode = parseAndConvert(
+        val rootNode = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32];B[bb](;B[bc];W[bd])(;B[cc];W[cd]))"
         ).single().gameTree.rootNode
         assertEquals(1, rootNode.nextNodes.size)
@@ -118,7 +118,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun incorrectMovesSequence() {
-        val rootNode = parseAndConvert(
+        val rootNode = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[10:10];B[bb];B[__];W[bb];W[c];W[ml])", listOf(
                 SgfDiagnostic("Property B (Player1 move) has incorrect x coordinate `_`.", LineColumn(1, 32), SgfDiagnosticSeverity.Error),
                 SgfDiagnostic("Property B (Player1 move) has incorrect y coordinate `_`.", LineColumn(1, 33), SgfDiagnosticSeverity.Error),
@@ -133,7 +133,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun movesInRootNode() {
-        val rootNode = parseAndConvert(
+        val rootNode = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]B[cc]W[dd])",
             listOf(
                 SgfDiagnostic("Property B (Player1 move) declared in Root scope, but should be declared in Move scope.", LineColumn(1, 23), SgfDiagnosticSeverity.Warning),
@@ -147,7 +147,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun gameInfoInMoveNode() {
-        val gameTree = parseAndConvert(
+        val gameTree = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32];GN[Game name not in root]B[cc])",
             listOf(
                 SgfDiagnostic("Property GN (Game Name) declared in Move scope, but should be declared in Root scope. The value is ignored.", LineColumn(1, 24), SgfDiagnosticSeverity.Error),
@@ -162,7 +162,7 @@ class SgfConverterMovesTests {
         // .  *2  .
         // *1 +0 *3
         // .  *4  .
-        val gameTree = parseAndConvert(
+        val gameTree = parseConvertAndCheck(
             "(;GM[40]FF[4]AP[zagram.org]SZ[39:32];B[bb];W[ab];W[ba];W[cb];W[bc.bccbbaabbc])", listOf(
                 SgfDiagnostic("Property W (Player2 move) has capturing positions that are not yet supported: (2;3), (3;2), (2;1), (1;2), (2;3) (`bccbbaabbc`). The capturing is calculated automatically according game rules.",
                     LineColumn(1, 67),
@@ -189,7 +189,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun definedWinGameResultByRePropertyDoesntMatchResultFromField() {
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]RE[W+2];B[bb];W[ab];W[ba];W[cb];W[bc])", listOf(
                 SgfDiagnostic(
                     "Property RE (Result) has value `2` that doesn't match score from field `1`.",
@@ -202,7 +202,7 @@ class SgfConverterMovesTests {
 
     @Test
     fun ignoreFieldResultScoreValidationInSecondaryBranches() {
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]RE[W+1];B[bb];W[ab];W[ba];W[cb];W[bc](;B[dd])(;B[cc];W[dc];W[cd]))"
         )
     }

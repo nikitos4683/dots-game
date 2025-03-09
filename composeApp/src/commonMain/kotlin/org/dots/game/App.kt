@@ -59,6 +59,7 @@ fun App() {
             fieldViewData = FieldViewData(field)
             gameTree = newGameTree
             gameTree.rewindForward()
+            gameTree.memoizePaths = true
 
             updateFieldAndGameTree()
         }

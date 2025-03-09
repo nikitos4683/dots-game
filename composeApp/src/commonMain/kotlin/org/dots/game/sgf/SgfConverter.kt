@@ -52,7 +52,7 @@ import org.dots.game.sgf.SgfMetaInfo.propertyInfoToKey
 import org.dots.game.sgf.SgfMetaInfo.propertyInfos
 import kotlin.math.abs
 
-class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter: (SgfDiagnostic) -> Unit) {
+class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames: Boolean = false, val diagnosticReporter: (SgfDiagnostic) -> Unit) {
     companion object {
         private const val LOWER_CHAR_OFFSET = 'a' - Field.OFFSET
         private const val UPPER_CHAR_OFFSET = 'A' - ('z' - 'a' + 1) - Field.OFFSET
@@ -65,8 +65,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
          *   * Unsupported mode (not Kropki)
          *   * Incorrect or unspecified size
          */
-        fun convert(sgf: SgfRoot, diagnosticReporter: (SgfDiagnostic) -> Unit): List<Game> {
-            return SgfConverter(sgf, diagnosticReporter).convert()
+        fun convert(sgf: SgfRoot, warnOnMultipleGames: Boolean = false, diagnosticReporter: (SgfDiagnostic) -> Unit): List<Game> {
+            return SgfConverter(sgf, warnOnMultipleGames, diagnosticReporter).convert()
         }
     }
 
@@ -80,8 +80,12 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
         }
 
         return buildList {
-            for (sgfGameTree in sgf.gameTree) {
+            for ((index, sgfGameTree) in sgf.gameTree.withIndex()) {
                 convertGameTree(sgfGameTree, game = null, mainBranch = true)?.let { add(it) }
+
+                if (warnOnMultipleGames && index > 0) {
+                    reportDiagnostic("Only single game is supported. Other games will be ignored.", sgfGameTree.textSpan, SgfDiagnosticSeverity.Warning)
+                }
             }
         }
     }
@@ -221,7 +225,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val diagnosticReporter:
             moveInfo.reportPositionThatViolatesRules(withinBounds, width, height, currentMoveNumber)
         }
 
-        val gameTree = GameTree(field, player1TimeLeft, player2TimeLeft).also { it.memoizeNodes = false }
+        val gameTree = GameTree(field, player1TimeLeft, player2TimeLeft).also { it.memoizePaths = false }
 
         return Game(gameInfo, gameTree)
     }

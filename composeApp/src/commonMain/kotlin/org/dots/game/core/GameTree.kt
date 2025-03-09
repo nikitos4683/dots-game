@@ -5,7 +5,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
     val allNodes: MutableSet<GameTreeNode> = mutableSetOf(rootNode)
     var currentNode: GameTreeNode = rootNode
         private set
-    var memoizeNodes: Boolean = true
+    var memoizePaths: Boolean = true
     private val memoizedNextChild: MutableMap<GameTreeNode, GameTreeNode> = mutableMapOf()
 
     /**
@@ -166,7 +166,7 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
     }
 
     private fun GameTreeNode.memoizeCurrentNodeIfNeeded() {
-        if (memoizeNodes && nextNodes.size > 1) {
+        if (memoizePaths && nextNodes.size > 1) {
             memoizedNextChild[this] = currentNode
         }
     }

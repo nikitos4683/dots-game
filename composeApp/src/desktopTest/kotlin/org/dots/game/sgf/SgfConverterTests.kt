@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 class SgfConverterTests {
     @Test
     fun gameInfo() {
-        val (gameInfo, rules) = parseAndConvert(
+        val (gameInfo, rules) = parseConvertAndCheck(
             "(;GM[40]FF[4]CA[UTF-8]SZ[17:21]RU[russian]GN[Test Game]PB[Player1]BR[256]BT[Player1's Team]PW[Player2]WR[512]WT[Player2's Team]KM[0.5]DT[2025-01-19]GC[A game for SGF parser testing]C[Comment to node]PC[Amsterdam, Netherlands]EV[Test event]ON[Empty]AN[Ivan Kochurkin]CP[@]SO[https://zagram.org/eidokropki/index.html]TM[300]OT[0+25]AP[https\\://zagram.org/eidokropki/index.html:1]RO[1 (final)])",
             ).single()
         with (gameInfo) {
@@ -47,13 +47,14 @@ class SgfConverterTests {
         }
     }
 
-    @Test
-    fun multipleGames() {
-        val games = parseAndConvert("""
+    private val multiGamesSgf = """
             (;GM[40]FF[4]SZ[39:32]GN[game 1])
             (;GM[40]FF[4]SZ[20:20]GN[game 2])
         """.trimIndent()
-        )
+
+    @Test
+    fun multipleGames() {
+        val games = parseConvertAndCheck(multiGamesSgf)
         val (gameInfo0, rules0) = games[0]
         assertEquals(39, rules0.width)
         assertEquals(32, rules0.height)
@@ -65,9 +66,23 @@ class SgfConverterTests {
     }
 
     @Test
+    fun multipleGamesWarning() {
+        parseConvertAndCheck(
+            multiGamesSgf,
+            listOf(
+                SgfDiagnostic(
+                    "Only single game is supported. Other games will be ignored.", LineColumn(2, 1),
+                    SgfDiagnosticSeverity.Warning
+                )
+            ),
+            warnOnMultipleGames = true
+        )
+    }
+
+    @Test
     fun emptyFile() {
         assertTrue(
-            parseAndConvert(
+            parseConvertAndCheck(
                 "", listOf(
                     SgfDiagnostic(
                         "Empty game trees.",
@@ -82,7 +97,7 @@ class SgfConverterTests {
     @Test
     fun noNodes() {
         assertTrue(
-            parseAndConvert(
+            parseConvertAndCheck(
                 "()", listOf(
                     SgfDiagnostic(
                         "Root node with game info is missing.",
@@ -97,7 +112,7 @@ class SgfConverterTests {
     @Test
     fun requiredPropertiesWithInvalidValues() {
         assertTrue(
-            parseAndConvert(
+            parseConvertAndCheck(
                 "(;GM[1]FF[3]SZ[1234:5678])",
                 listOf(
                     SgfDiagnostic(
@@ -127,7 +142,7 @@ class SgfConverterTests {
 
     @Test
     fun differentGameModeAndSizeValues() {
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[100]FF[4]SZ[20])", listOf(
                 SgfDiagnostic(
                     "Property GM (Game Mode) has unsupported value `100`. The only `40` (Kropki) is supported.",
@@ -136,8 +151,8 @@ class SgfConverterTests {
                 )
             )
         )
-        parseAndConvert("(;GM[40]FF[4]SZ[20])")
-        parseAndConvert(
+        parseConvertAndCheck("(;GM[40]FF[4]SZ[20])")
+        parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[str])", listOf(
                 SgfDiagnostic(
                     "Property SZ (Size) has invalid value `str`. Expected: 0..254.",
@@ -146,7 +161,7 @@ class SgfConverterTests {
                 )
             )
         )
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[30:31:32])",
             listOf(
                 SgfDiagnostic(
@@ -161,7 +176,7 @@ class SgfConverterTests {
     @Test
     fun requiredPropertiesMissing() {
         assertTrue(
-            parseAndConvert(
+            parseConvertAndCheck(
                 "(;)", listOf(
                     SgfDiagnostic(
                         "Property GM (Game Mode) should be specified.",
@@ -185,7 +200,7 @@ class SgfConverterTests {
 
     @Test
     fun duplicatedProperties() {
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[40]GM[40]FF[4]PB[Player1]SZ[39:32]PB[Player11]PB)", listOf(
                 SgfDiagnostic(
                     "Property GM (Game Mode) is duplicated and ignored.",
@@ -213,7 +228,7 @@ class SgfConverterTests {
 
     @Test
     fun propertyHasMultipleValues() {
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[40][1]FF[4]PB[Player1][Player11]SZ[39:32])",
             listOf(
                 SgfDiagnostic("Property GM (Game Mode) has unsupported value `1` (Go). The only `40` (Kropki) is supported.", LineColumn(1, 10), SgfDiagnosticSeverity.Critical),
@@ -225,7 +240,7 @@ class SgfConverterTests {
 
     @Test
     fun unknownProperties() {
-        parseAndConvert(
+        parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]UP[text value]UP)", listOf(
                 SgfDiagnostic("Property UP is unknown.", LineColumn(1, 23), SgfDiagnosticSeverity.Warning),
                 SgfDiagnostic("Property UP is unknown.", LineColumn(1, 37), SgfDiagnosticSeverity.Warning),
@@ -235,7 +250,7 @@ class SgfConverterTests {
 
     @Test
     fun timeLeft() {
-        val gameTree = parseAndConvert(
+        val gameTree = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]BL[315]WL[312];B[bc]BL[308.3];W[de]WL[294.23])",
         ).single().gameTree
         assertEquals(gameTree.player1TimeLeft, 315.0)
@@ -248,7 +263,7 @@ class SgfConverterTests {
 
     @Test
     fun incorrectFormatWarnings() {
-        val gameInfo = parseAndConvert(
+        val gameInfo = parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]BR[asdf])", listOf(
                 SgfDiagnostic(
                     "Property BR (Player1 Rating) has incorrect format: `asdf`. Expected: Real Number.",
@@ -262,7 +277,7 @@ class SgfConverterTests {
 
     @Test
     fun playdotsSgf() {
-        val gameInfo = parseAndConvert(
+        val gameInfo = parseConvertAndCheck(
             "(;AP[Спортивные Точки (playdots.ru)]GM[40]FF[4]SZ[39:32]BR[Нет звания, 1200]WR[Второй разряд, 1300])"
         ).single().gameInfo
 
@@ -283,7 +298,7 @@ class SgfConverterTests {
         )
 
         for ((value, diagnostic, expectedGameResult) in valuesToErrors) {
-            val actualGameResult = parseAndConvert(
+            val actualGameResult = parseConvertAndCheck(
                 "(;GM[40]FF[4]SZ[39:32]RE[$value])",
                 listOf(diagnostic)
             ).single().gameInfo.result
@@ -309,7 +324,7 @@ class SgfConverterTests {
         )
 
         for ((value, expectedGameResult, diagnostic) in valuesToGameResults) {
-            val actualGameResult = parseAndConvert(
+            val actualGameResult = parseConvertAndCheck(
                 "(;GM[40]FF[4]SZ[39:32]RE[$value])",
                 listOfNotNull(diagnostic)
             ).single().gameInfo.result
@@ -318,12 +333,9 @@ class SgfConverterTests {
     }
 }
 
-internal fun parseAndConvert(input: String, expectedDiagnostics: List<SgfDiagnostic> = emptyList()): List<Game> {
+internal fun parseConvertAndCheck(input: String, expectedDiagnostics: List<SgfDiagnostic> = emptyList(), warnOnMultipleGames: Boolean = false): List<Game> {
     val actualDiagnostics = mutableListOf<SgfDiagnostic>()
-    val sgf = SgfParser.parse(input) {
-        actualDiagnostics.add(it)
-    }
-    val games = SgfConverter.convert(sgf) {
+    val games = Sgf.parseAndConvert(input, warnOnMultipleGames) {
         actualDiagnostics.add(it)
     }
     assertEquals(expectedDiagnostics, actualDiagnostics)

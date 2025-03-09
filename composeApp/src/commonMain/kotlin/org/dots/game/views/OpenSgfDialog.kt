@@ -26,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import org.dots.game.core.Game
-import org.dots.game.openSgf
+import org.dots.game.openOrLoadSgf
 
 @Composable
 fun OpenSgfDialog(
@@ -45,8 +45,8 @@ fun OpenSgfDialog(
                     TextField(sgfPathOrContent, {
                         sgfPathOrContent = it
                         diagnostics = buildList {
-                            game = openSgf(sgfPathOrContent) { error ->
-                                add(error)
+                            game = openOrLoadSgf(sgfPathOrContent) { error ->
+                                add(error.toString())
                             }
                         }
                     }, Modifier.height(60.dp), singleLine = true)

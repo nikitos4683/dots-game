@@ -73,6 +73,10 @@ private fun String.convertTextInternal(simpleText: Boolean): String {
 }
 
 data class LineColumn(val line: Int, val column: Int) {
+    companion object {
+        val NONE = LineColumn(-1, -1)
+    }
+
     override fun toString(): String {
         return "$line:$column"
     }
