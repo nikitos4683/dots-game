@@ -265,19 +265,14 @@ private fun CurrentNode(currentNode: GameTreeNode?, gameTreeViewData: GameTreeVi
 
 private fun handleKeyEvent(keyEvent: KeyEvent, gameTree: GameTree): Boolean {
     if (keyEvent.type == KeyEventType.KeyDown) {
-        when (keyEvent.key) {
-            Key.DirectionLeft -> {
-                return gameTree.back()
-            }
-            Key.DirectionRight -> {
-                return gameTree.next()
-            }
-            Key.DirectionUp -> {
-                return gameTree.prevSibling()
-            }
-            Key.DirectionDown -> {
-                return gameTree.nextSibling()
-            }
+        return when (keyEvent.key) {
+            Key.DirectionLeft -> gameTree.back()
+            Key.DirectionRight -> gameTree.next()
+            Key.DirectionUp -> gameTree.prevSibling()
+            Key.DirectionDown -> gameTree.nextSibling()
+            Key.MoveHome -> gameTree.rewindBack()
+            Key.MoveEnd -> gameTree.rewindForward()
+            else -> false
         }
     }
 
