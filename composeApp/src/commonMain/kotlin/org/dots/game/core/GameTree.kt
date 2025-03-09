@@ -43,25 +43,40 @@ class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player
     }
 
     /**
-     * @return `false` if the @property[currentNode] is root, otherwise move it to the previous node and returns `true`
+     * @return `false` if the @property[currentNode] is root, otherwise move it to the previous nodes and returns `true`
      */
-    fun back(): Boolean {
-        val previousNode = currentNode.previousNode ?: return false
-        previousNode.memoizeCurrentNodeIfNeeded()
-        requireNotNull(field.unmakeMove())
-        currentNode = previousNode
-        return true
+    fun back(count: Int = 1): Boolean {
+        require(count >= 0) { "Count must be non-negative, got $count" }
+        var counter = 0
+
+        while (counter < count) {
+            val previousNode = currentNode.previousNode ?: break
+            previousNode.memoizeCurrentNodeIfNeeded()
+            requireNotNull(field.unmakeMove())
+            currentNode = previousNode
+            counter++
+        }
+
+        return counter > 0
     }
 
     /**
-     * @return `false` if there are no next nodes, otherwise move it to the next node on the main line returns `true`
+     * @return `false` if there are no next nodes, otherwise move it to the next nodes on the main line returns `true`
      */
-    fun next(): Boolean {
-        val nextNode = (memoizedNextChild[currentNode] ?: currentNode.nextNodes.values.firstOrNull()) ?: return false
-        val moveResult = nextNode.moveResult!!
-        requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
-        currentNode = nextNode
-        return true
+    fun next(count: Int = 1): Boolean {
+        require(count >= 0) { "Count must be non-negative, got $count" }
+        var counter = 0
+
+        while (counter < count) {
+            val nextNode =
+                (memoizedNextChild[currentNode] ?: currentNode.nextNodes.values.firstOrNull()) ?: break
+            val moveResult = nextNode.moveResult!!
+            requireNotNull(field.makeMoveUnsafe(moveResult.position, moveResult.player))
+            currentNode = nextNode
+            counter++
+        }
+
+        return counter > 0
     }
 
     fun prevSibling(): Boolean {

@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -77,6 +78,11 @@ fun GameTreeView(
     val verticalScrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
+    val viewportDpSize: DpSize
+    with (LocalDensity.current) {
+        viewportDpSize = DpSize(horizontalScrollState.viewportSize.toDp(), verticalScrollState.viewportSize.toDp())
+    }
+
     Box(
         Modifier
             .padding(top = 10.dp)
@@ -84,7 +90,7 @@ fun GameTreeView(
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
-                handleKeyEvent(keyEvent, gameTree).also {
+                handleKeyEvent(keyEvent, gameTree, gameTreeViewData, viewportDpSize).also {
                     if (it) {
                         onChangeCurrentNode()
                     }
@@ -172,6 +178,10 @@ class GameTreeViewData(val gameTree: GameTree) {
         stepSize * (elements.size - 1) + nodeSize,
         stepSize * (elements.maxOf { yLine -> yLine.size } - 1) + nodeSize
     )
+
+    fun getElementsCountOnViewport(viewportDimension: Dp): Int {
+        return ((viewportDimension - nodeSize) / stepSize + 1).toInt()
+    }
 
     val nodeToIndexMap: Map<GameTreeNode, Pair<Int, Int>> by lazy {
         buildMap {
@@ -263,7 +273,12 @@ private fun CurrentNode(currentNode: GameTreeNode?, gameTreeViewData: GameTreeVi
     )
 }
 
-private fun handleKeyEvent(keyEvent: KeyEvent, gameTree: GameTree): Boolean {
+private fun handleKeyEvent(
+    keyEvent: KeyEvent,
+    gameTree: GameTree,
+    gameTreeViewData: GameTreeViewData,
+    viewportDpSize: DpSize,
+): Boolean {
     if (keyEvent.type == KeyEventType.KeyDown) {
         return when (keyEvent.key) {
             Key.DirectionLeft -> gameTree.back()
@@ -272,6 +287,8 @@ private fun handleKeyEvent(keyEvent: KeyEvent, gameTree: GameTree): Boolean {
             Key.DirectionDown -> gameTree.nextSibling()
             Key.MoveHome -> gameTree.rewindBack()
             Key.MoveEnd -> gameTree.rewindForward()
+            Key.PageUp -> gameTree.back(gameTreeViewData.getElementsCountOnViewport(viewportDpSize.width))
+            Key.PageDown -> gameTree.next(gameTreeViewData.getElementsCountOnViewport(viewportDpSize.width))
             else -> false
         }
     }
