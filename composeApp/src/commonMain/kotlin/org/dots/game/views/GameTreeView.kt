@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,9 +81,9 @@ fun GameTreeView(
     gameTree: GameTree,
     gameTreeViewData: GameTreeViewData,
     uiSettings: UiSettings,
+    focusRequester: FocusRequester,
     onChangeCurrentNode: () -> Unit
 ) {
-    val focusRequester = remember { FocusRequester() }
     val horizontalScrollState = rememberScrollState()
     val verticalScrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()

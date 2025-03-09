@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.dots.game.core.*
@@ -39,6 +40,8 @@ fun App() {
         val showNewGameDialog = remember { mutableStateOf(false) }
         val openGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
+
+        val focusRequester = remember { FocusRequester() }
 
         fun updateCurrentNode() {
             player1Score = field.player1Score
@@ -75,6 +78,7 @@ fun App() {
             NewGameDialog(
                 onDismiss = {
                     showNewGameDialog.value = false
+                    focusRequester.requestFocus()
                 },
                 onConfirmation = { rules ->
                     showNewGameDialog.value = false
@@ -90,6 +94,7 @@ fun App() {
             OpenSgfDialog(
                 onDismiss = {
                     openGameDialog.value = false
+                    focusRequester.requestFocus()
                 },
                 onConfirmation = { game ->
                     openGameDialog.value = false
@@ -168,7 +173,7 @@ fun App() {
                     }
                 }
 
-                GameTreeView(currentGameTreeNode, gameTree, gameTreeViewData, uiSettings) {
+                GameTreeView(currentGameTreeNode, gameTree, gameTreeViewData, uiSettings, focusRequester) {
                     updateCurrentNode()
                 }
             }

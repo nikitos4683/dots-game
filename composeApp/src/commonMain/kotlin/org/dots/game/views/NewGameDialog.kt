@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.Checkbox
 import androidx.compose.material.DropdownMenu
@@ -120,7 +121,7 @@ fun NewGameDialog(
                     Checkbox(captureEmptyBase, onCheckedChange = { captureEmptyBase = it })
                 }
 
-                TextButton(
+                Button(
                     onClick = {
                         val initialMoves = initialPositionTypeSelected.generateDefaultInitialPositions(width, height)!!
                         onConfirmation(Rules(width, height, captureByBorder, captureEmptyBase, initialMoves))
