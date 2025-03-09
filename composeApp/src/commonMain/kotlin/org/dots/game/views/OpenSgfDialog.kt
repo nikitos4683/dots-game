@@ -76,7 +76,21 @@ fun OpenSgfDialog(
                             var cardModifier = Modifier.fillMaxWidth()
                             if (fileName == null && diagnostic.textSpan != null) {
                                 cardModifier = cardModifier.then(Modifier.clickable(onClick = {
-                                    sgfPathOrContent = sgfPathOrContent.copy(selection = TextRange(diagnostic.textSpan.start, diagnostic.textSpan.end))
+                                    val textSpan = diagnostic.textSpan
+                                    val start = textSpan.start
+                                    val end = textSpan.end
+                                    sgfPathOrContent = sgfPathOrContent.copy(selection = TextRange(start,
+                                        if (end == start) {
+                                            if (end < sgfPathOrContent.text.length - 1)
+                                                end + 1
+                                            else if (end > 0)
+                                                end - 1
+                                            else
+                                                end
+                                        } else {
+                                            end
+                                        }
+                                    ))
                                 }))
                             }
                             Card(
