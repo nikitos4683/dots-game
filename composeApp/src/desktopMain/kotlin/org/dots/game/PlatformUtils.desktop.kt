@@ -20,6 +20,6 @@ actual fun VerticalScrollbar(
     modifier: Modifier
 ) = VerticalScrollbar(rememberScrollbarAdapter(scrollState), modifier)
 
-actual fun readFileIfExists(filePath: String): FileInfo? = File(filePath).let {
+actual fun readFileIfExists(filePath: String): FileInfo? = File(filePath.removeSurrounding("\"")).let {
     if (it.exists()) FileInfo(it.name, it.readText()) else null
 }

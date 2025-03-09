@@ -5,17 +5,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -109,9 +107,10 @@ fun OpenSgfDialog(
                     }
                 }
 
-                TextButton(
+                Button(
                     onClick = { game?.let { onConfirmation(it) } },
                     modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 10.dp),
+                    enabled = game != null
                 ) {
                     Text("Open game")
                 }
