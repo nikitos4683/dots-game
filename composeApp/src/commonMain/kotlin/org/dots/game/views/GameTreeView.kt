@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -31,6 +32,7 @@ import org.dots.game.UiSettings
 import org.dots.game.VerticalScrollbar
 import org.dots.game.core.*
 import kotlin.math.round
+import kotlin.math.sqrt
 
 private val stepSize = 40.dp
 private val nodeRadius = 15.dp
@@ -55,6 +57,14 @@ private val verticalLineModifier = Modifier
     .size(lineThickness, stepSize)
     .background(lineColor)
     .zIndex( 0f)
+
+private val diagonalLineModifier = Modifier
+    .size(stepSize * sqrt(2.0f), lineThickness)
+    .rotate(45f)
+    .background(lineColor)
+    .zIndex(0f)
+
+private val diagonalLineXOffsetConst = 0.5f * (1 + sqrt(2.0f))
 
 private val nodeModifier = Modifier
     .size(nodeSize, nodeSize)
@@ -105,7 +115,7 @@ fun GameTreeView(
         ) {
             ConnectionsAndNodes(
                 gameTree,
-                gameTreeViewData.elements,
+                gameTreeViewData,
                 onChangeCurrentNode,
                 uiSettings
             )
@@ -172,7 +182,9 @@ private fun ScrollState.scrollToSelectedNodeIfNeeded(
 }
 
 class GameTreeViewData(val gameTree: GameTree) {
-    val elements: GameTreeElements = gameTree.getElements(mainBranchIsAlwaysStraight = true)
+    val diagonalConnections: Boolean = true
+
+    val elements: GameTreeElements = gameTree.getElements(diagonalConnections = diagonalConnections)
 
     val size: DpSize = DpSize(
         stepSize * (elements.size - 1) + nodeSize,
@@ -198,10 +210,11 @@ class GameTreeViewData(val gameTree: GameTree) {
 @Composable
 private fun ConnectionsAndNodes(
     gameTree: GameTree,
-    gameTreeElements: GameTreeElements,
+    gameTreeViewData: GameTreeViewData,
     onChangeCurrentNode: () -> Unit,
     uiSettings: UiSettings
 ) {
+    val gameTreeElements = gameTreeViewData.elements
     for (xIndex in gameTreeElements.indices) {
         val offsetX = stepSize * xIndex
 
@@ -221,13 +234,23 @@ private fun ConnectionsAndNodes(
                         color = uiSettings.toColor(node.moveResult!!.player)
                         moveNumber = node.number
 
-                        // Render horizontal connection line
-                        Box(
-                            Modifier.offset(
-                                stepSize * (xIndex - 1) + nodeRadius,
-                                offsetY - lineThickness / 2 + nodeRadius
-                            ).then(horizontalLineModifier)
-                        )
+                        val lineXOffset: Dp
+                        val lineYOffset: Dp
+                        val lineModifier: Modifier
+
+                        if (!gameTreeViewData.diagonalConnections || yIndex == gameTreeViewData.nodeToIndexMap.getValue(node.previousNode!!).second) {
+                            // Render a horizontal connection line
+                            lineXOffset = stepSize * (xIndex - 1)
+                            lineYOffset = offsetY - lineThickness * 0.5f
+                            lineModifier = horizontalLineModifier
+                        } else {
+                            // Render a diagonal connection line
+                            lineXOffset = stepSize * (xIndex - diagonalLineXOffsetConst)
+                            lineYOffset = stepSize * (yIndex - 0.5f)
+                            lineModifier = diagonalLineModifier
+                        }
+
+                        Box(Modifier.offset(lineXOffset + nodeRadius, lineYOffset + nodeRadius).then(lineModifier))
                     }
 
                     // Render node
@@ -252,7 +275,7 @@ private fun ConnectionsAndNodes(
                     // Render vertical connection line
                     Box(
                         Modifier
-                            .offset(stepSize * xIndex - lineThickness / 2 + nodeRadius, offsetY - stepSize + nodeRadius)
+                            .offset(stepSize * xIndex - lineThickness * 0.5f + nodeRadius, offsetY - stepSize + nodeRadius)
                             .then(verticalLineModifier)
                     )
                 }

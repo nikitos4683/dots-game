@@ -29,8 +29,11 @@ object EmptyGameTreeElement : GameTreeElement() {
  * @param[mainBranchIsAlwaysStraight] stands for rendering main branches.
  * The main branch is a branch composed of every first next node.
  * If it's `true`, then such branches are rendered as straight lines (see tests for clarity)
+ *
+ * @param[diagonalConnections] stands for using diagonal connections that are used for first node of secondary branches.
+ * With this parameter, the game tree becomes more compact.
  */
-fun GameTree.getElements(mainBranchIsAlwaysStraight: Boolean = false): GameTreeElements {
+fun GameTree.getElements(mainBranchIsAlwaysStraight: Boolean = true, diagonalConnections: Boolean = true): GameTreeElements {
     val result = mutableListOf<MutableList<GameTreeElement>>(mutableListOf(NodeGameTreeElement(rootNode)))
 
     fun walk(node: GameTreeNode, xIndex: Int) {
@@ -52,13 +55,13 @@ fun GameTree.getElements(mainBranchIsAlwaysStraight: Boolean = false): GameTreeE
 
             fun insertSpacesAndNode(yLine: MutableList<GameTreeElement>, maxYSize: Int, node: GameTreeNode) {
                 val numberOfSpaces = maxYSize - yLine.size - 1
-                (0 until numberOfSpaces).forEach { yLine.add(EmptyGameTreeElement) }
+                (0 until numberOfSpaces).forEach { _ -> yLine.add(EmptyGameTreeElement) }
                 yLine.add(NodeGameTreeElement(node))
             }
 
             fun insertVerticalLines(yLine: MutableList<GameTreeElement>, maxYSize: Int) {
-                val numberOfVerticalLines = maxYSize - yLine.size
-                (0 until numberOfVerticalLines).forEach { yLine.add(VerticalLineGameTreeElement) }
+                val numberOfVerticalLines = maxYSize - yLine.size - (if (diagonalConnections) 1 else 0)
+                (0 until numberOfVerticalLines).forEach { _ -> yLine.add(VerticalLineGameTreeElement) }
             }
 
             val maxYSize: Int
