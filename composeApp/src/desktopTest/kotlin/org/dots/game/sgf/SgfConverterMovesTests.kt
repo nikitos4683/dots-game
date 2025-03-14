@@ -192,8 +192,21 @@ class SgfConverterMovesTests {
         parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]RE[W+2];B[bb];W[ab];W[ba];W[cb];W[bc])", listOf(
                 SgfLineColumnDiagnostic(
-                    "Property RE (Result) has value `2` that doesn't match score from field `1`.",
-                    LineColumn(1, 23),
+                    "Property RE (Result) has value `2` that doesn't match score from game field `1`.",
+                    LineColumn(1, 61),
+                    SgfDiagnosticSeverity.Warning
+                )
+            )
+        )
+    }
+
+    @Test
+    fun definedWinGameResultByRePropertyDoesntMatchResultFromFieldInSubBranch() {
+        parseConvertAndCheck(
+            "(;GM[40]FF[4]SZ[39:32]RE[W+2];B[bb];W[ab];W[ba];W[cb];W[bc](;B[dd]))", listOf(
+                SgfLineColumnDiagnostic(
+                    "Property RE (Result) has value `2` that doesn't match score from game field `1`.",
+                    LineColumn(1, 68),
                     SgfDiagnosticSeverity.Warning
                 )
             )

@@ -316,10 +316,10 @@ class SgfConverterTests {
             Triple("B+T" , GameResult.TimeWin(Player.First), null),
             Triple("B+?" , GameResult.UnknownWin(Player.First), null),
             Triple("B+10" , GameResult.ScoreWin(10.0, Player.First),
-                SgfLineColumnDiagnostic("Property RE (Result) has value `10` that doesn't match score from field `0`.", LineColumn(1, 23), SgfDiagnosticSeverity.Warning)
+                SgfLineColumnDiagnostic("Property RE (Result) has value `10` that doesn't match score from game field `0`.", LineColumn(1, 32), SgfDiagnosticSeverity.Warning)
             ),
             Triple("W+5" , GameResult.ScoreWin(5.0, Player.Second),
-                SgfLineColumnDiagnostic("Property RE (Result) has value `5` that doesn't match score from field `0`.", LineColumn(1, 23), SgfDiagnosticSeverity.Warning)
+                SgfLineColumnDiagnostic("Property RE (Result) has value `5` that doesn't match score from game field `0`.", LineColumn(1, 31), SgfDiagnosticSeverity.Warning)
             ),
         )
 
