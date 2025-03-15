@@ -15,6 +15,7 @@ import org.dots.game.sgf.SgfGameMode.Companion.SUPPORTED_GAME_MODE_KEY
 import org.dots.game.sgf.SgfGameMode.Companion.SUPPORTED_GAME_MODE_NAME
 import org.dots.game.sgf.SgfMetaInfo.ANNOTATOR_KEY
 import org.dots.game.sgf.SgfMetaInfo.APP_INFO_KEY
+import org.dots.game.sgf.SgfMetaInfo.CIRCLE_KEY
 import org.dots.game.sgf.SgfMetaInfo.COMMENT_KEY
 import org.dots.game.sgf.SgfMetaInfo.COPYRIGHT_KEY
 import org.dots.game.sgf.SgfMetaInfo.DATE_KEY
@@ -253,6 +254,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         val player2TimeLeft = convertedProperties.getPropertyValue<Double>(PLAYER2_TIME_LEFT_KEY)
         val comment = convertedProperties.getPropertyValue<String>(COMMENT_KEY)
         val labels = convertedProperties.getPropertyValue<List<Label>>(LABEL_KEY)
+        val circles = convertedProperties.getPropertyValue<List<Position>>(CIRCLE_KEY)
         var movesCount = 0
 
         fun processMoves(moveInfos: List<MoveInfo>?) {
@@ -269,7 +271,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     withinBounds = false
                 }
                 val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
-                gameTree.add(moveResult, timeLeft, comment, labels)
+                gameTree.add(moveResult, timeLeft, comment, labels, circles)
                 movesCount++
 
                 if (moveResult == null) {
@@ -450,8 +452,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 SgfPropertyType.Text -> propertyValue.convertText()
                 SgfPropertyType.Size -> propertyValueToken.convertSize(propertyInfo)
                 SgfPropertyType.AppInfo -> propertyValue.convertAppInfo()
-                SgfPropertyType.Position -> {
-                    propertyValueToken.convertMoveInfo(propertyInfo)?.also { moveInfo ->
+                SgfPropertyType.MovePosition -> {
+                    propertyValueToken.convertPosition<MoveInfo>(propertyInfo)?.also { moveInfo ->
                         if (convertedValues.removeAll { (it as MoveInfo).position == moveInfo.position }) {
                             propertyInfo.reportPropertyDiagnostic(
                                 "value `${propertyValue}` overwrites one the previous position.",
@@ -461,9 +463,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                         }
                     }
                 }
-                SgfPropertyType.Label -> {
-                    propertyValueToken.convertLabel(propertyInfo)
-                }
+                SgfPropertyType.Position -> propertyValueToken.convertPosition<Position>(propertyInfo)
+                SgfPropertyType.Label -> propertyValueToken.convertLabel(propertyInfo)
                 SgfPropertyType.GameResult -> propertyValueToken.convertGameResult(propertyInfo)
             }
 
@@ -580,18 +581,27 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         return Pair(width, height)
     }
 
-    private fun PropertyValueToken.convertMoveInfo(propertyInfo: SgfPropertyInfo): MoveInfo? {
-        val resultMoveInfo = convertPosition(propertyInfo, 0)
+    private inline fun <reified T> PropertyValueToken.convertPosition(propertyInfo: SgfPropertyInfo): T? {
+        val coordinates = if (value.isEmpty()) {
+            // Empty value is treated as pass
+            null
+        } else {
+            convertCoordinates(propertyInfo, 0)
+        }
 
-        if (value.elementAtOrNull(EXTRA_MOVE_INFO_INDEX - 1) == '.') {
+        val isMoveInfo = T::class == MoveInfo::class
+
+        if (isMoveInfo && value.elementAtOrNull(EXTRA_MOVE_INFO_INDEX - 1) == '.') {
             val capturingMoveInfos = buildList {
                 for (internalIndex in EXTRA_MOVE_INFO_INDEX until value.length step 2) {
-                    convertPosition(propertyInfo, internalIndex)?.let { add(it) }
+                    convertCoordinates(propertyInfo, internalIndex).let { coordinates ->
+                        coordinates.toPosition()?.let { add(it) }
+                    }
                 }
             }
             val textSpan = TextSpan(textSpan.start + EXTRA_MOVE_INFO_INDEX, value.length - EXTRA_MOVE_INFO_INDEX)
             propertyInfo.reportPropertyDiagnostic(
-                "has capturing positions that are not yet supported: ${capturingMoveInfos.map { it.position }.joinToString()} (`${textSpan.getText()}`). " +
+                "has capturing positions that are not yet supported: ${capturingMoveInfos.joinToString()} (`${textSpan.getText()}`). " +
                         "The capturing is calculated automatically according game rules.",
                 textSpan,
                 SgfDiagnosticSeverity.Warning,
@@ -605,11 +615,25 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             )
         }
 
-        return resultMoveInfo
+        return if (coordinates == null) {
+            null
+        } else {
+            val position = coordinates.toPosition()
+            if (position != null) {
+                val textSpan = TextSpan(textSpan.start, 2)
+                when {
+                    isMoveInfo -> MoveInfo(position, propertyInfo.getPlayer(), PropertyInfoAndTextSpan(propertyInfo, textSpan)) as T
+                    T::class == Position::class -> position as T
+                    else -> error("Unexpected type ${T::class.simpleName}")
+                }
+            } else {
+                null
+            }
+        }
     }
 
     private fun PropertyValueToken.convertLabel(propertyInfo: SgfPropertyInfo): Label? {
-        val (x, y) = convertCoordinates(propertyInfo, 0)
+        val coordinates = convertCoordinates(propertyInfo, 0)
 
         val labelText: String =
             if (value.elementAtOrNull(EXTRA_MOVE_INFO_INDEX - 1) == ':') {
@@ -620,30 +644,10 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 ""
             }
 
-        return if (x != null && y != null) {
-            Label(Position(x, y), labelText)
-        } else {
-            null
-        }
+        return coordinates.toPosition()?.let { Label(it, labelText) }
     }
 
-    private fun PropertyValueToken.convertPosition(propertyInfo: SgfPropertyInfo, internalIndex: Int): MoveInfo? {
-        if (internalIndex == value.length) {
-            return null // Empty value is treated as pass
-        }
-
-        val (x, y) = convertCoordinates(propertyInfo, internalIndex)
-
-        return if (x != null && y != null) {
-            val textSpan = TextSpan(textSpan.start + internalIndex, 2)
-            MoveInfo(Position(x, y), propertyInfo.getPlayer(), PropertyInfoAndTextSpan(propertyInfo, textSpan))
-        }
-        else {
-            null
-        }
-    }
-
-    private fun PropertyValueToken.convertCoordinates(propertyInfo: SgfPropertyInfo, internalIndex: Int): Pair<Int?, Int?> {
+    private fun PropertyValueToken.convertCoordinates(propertyInfo: SgfPropertyInfo, internalIndex: Int): Coordinates {
         val x = value[internalIndex].convertToCoordinateOrNull() ?: run {
             propertyInfo.reportPropertyDiagnostic(
                 "has incorrect x coordinate `${value[0]}`.",
@@ -661,7 +665,11 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             )
             null
         }
-        return x to y
+        return Coordinates(x, y)
+    }
+
+    private data class Coordinates(val x: Int?, val y: Int?) {
+        fun toPosition(): Position? = if (x != null && y != null) Position(x, y) else null
     }
 
     private fun PropertyValueToken.convertGameResult(propertyInfo: SgfPropertyInfo): GameResult? {

@@ -78,6 +78,7 @@ enum class SgfPropertyType {
     SimpleText,
     Text,
     Size,
+    MovePosition,
     Position,
     Label,
     AppInfo,
@@ -145,6 +146,7 @@ object SgfMetaInfo {
     const val PLAYER1_MOVE_KEY = PLAYER1_MARKER.toString()
     const val PLAYER2_MOVE_KEY = PLAYER2_MARKER.toString()
     const val LABEL_KEY = "LB"
+    const val CIRCLE_KEY = "CR"
 
     const val RESIGN_WIN_GAME_RESULT = 'R'
     const val TIME_WIN_GAME_RESULT = 'T'
@@ -177,15 +179,16 @@ object SgfMetaInfo {
         TIME_KEY to SgfPropertyInfo("Time", SgfPropertyType.Double),
         OVERTIME_KEY to SgfPropertyInfo("Overtime"),
         APP_INFO_KEY to SgfPropertyInfo("App Info", SgfPropertyType.AppInfo),
-        PLAYER1_ADD_DOTS_KEY to SgfPropertyInfo("Player1 initial dots", SgfPropertyType.Position, multipleValues = true),
-        PLAYER2_ADD_DOTS_KEY to SgfPropertyInfo("Player2 initial dots", SgfPropertyType.Position, multipleValues = true),
+        PLAYER1_ADD_DOTS_KEY to SgfPropertyInfo("Player1 initial dots", SgfPropertyType.MovePosition, multipleValues = true),
+        PLAYER2_ADD_DOTS_KEY to SgfPropertyInfo("Player2 initial dots", SgfPropertyType.MovePosition, multipleValues = true),
         PLAYER1_TIME_LEFT_KEY to SgfPropertyInfo("Player1 time left", SgfPropertyType.Double, scope = SgfPropertyScope.Both),
         PLAYER2_TIME_LEFT_KEY to SgfPropertyInfo("Player2 time left", SgfPropertyType.Double, scope = SgfPropertyScope.Both),
         ROUND_KEY to SgfPropertyInfo("Round"),
 
-        PLAYER1_MOVE_KEY to SgfPropertyInfo("Player1 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
-        PLAYER2_MOVE_KEY to SgfPropertyInfo("Player2 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
+        PLAYER1_MOVE_KEY to SgfPropertyInfo("Player1 move", SgfPropertyType.MovePosition, multipleValues = true, scope = SgfPropertyScope.Move),
+        PLAYER2_MOVE_KEY to SgfPropertyInfo("Player2 move", SgfPropertyType.MovePosition, multipleValues = true, scope = SgfPropertyScope.Move),
         LABEL_KEY to SgfPropertyInfo("Label", SgfPropertyType.Label, multipleValues = true, scope = SgfPropertyScope.Move),
+        CIRCLE_KEY to SgfPropertyInfo("Circle", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
     )
 
     val propertyInfoToKey: Map<SgfPropertyInfo, String> = propertyInfos.entries.associateBy({ it.value }) { it.key }.also {

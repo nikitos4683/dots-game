@@ -250,7 +250,7 @@ class SgfConverterMovesTests {
     }
 
     @Test
-    fun labelsCorrect() {
+    fun labels() {
         val gameTree = parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];W[aa]LB[aa:])").single().gameTree
         gameTree.next()
         val label = gameTree.currentNode.labels!!.single()
@@ -261,5 +261,23 @@ class SgfConverterMovesTests {
         gameTree2.next()
         val labels = gameTree2.currentNode.labels
         assertEquals(listOf(Label(Position(1, 1), "label"), Label(Position(2, 2), "label2")), labels)
+    }
+
+    @Test
+    fun circles() {
+        val gameTree = parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];B[bb]CR[ba][cb][bc][ab])").single().gameTree
+        gameTree.next()
+        val circles = gameTree.currentNode.circles
+        assertEquals(listOf(Position(2, 1), Position(3, 2), Position(2, 3), Position(1, 2)), circles)
+    }
+
+    @Test
+    fun circlesIncorrect() {
+        val gameTree = parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];B[bb]CR[ba.cd])", listOf(
+            SgfLineColumnDiagnostic("Property CR (Circle) has incorrect extra chars: `.cd`", LineColumn(1, 34))
+        )).single().gameTree
+        gameTree.next()
+        val circles = gameTree.currentNode.circles
+        assertEquals(listOf(Position(2, 1)), circles)
     }
 }
