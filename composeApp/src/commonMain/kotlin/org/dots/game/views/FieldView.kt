@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -56,9 +57,10 @@ private val lastMoveRadius = cellSize * lastMoveRadiusRatio
 private val lastMoveDotSize = DpSize(lastMoveRadius * 2, lastMoveRadius * 2)
 
 private val drawEmptyBases = false
-private val drawBaseOutline = false
+private val drawBaseOutline = true
 private val connectionThickness = 2.dp
-private val strongConnectionMode = StrongConnectionMode.Lines
+private val outOfBoundDrawRatio = dotRadiusRatio
+private val strongConnectionMode = StrongConnectionMode.None
 
 enum class StrongConnectionMode {
     None,
@@ -233,18 +235,47 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             var maxX: Int = Int.MIN_VALUE
             var maxY: Int = Int.MIN_VALUE
 
-            // Drop out-of-bounds drawing
-            fun Position.coerceInRealSize() = Position(
-                x.coerceIn(Field.OFFSET, field.width),
-                y.coerceIn(Field.OFFSET, field.height),
-            )
+            var coercedMinX: Float = Float.MAX_VALUE
+            var coercedMinY: Float = Float.MAX_VALUE
+            var coercedMaxX: Float = Float.MIN_VALUE
+            var coercedMaxY: Float = Float.MIN_VALUE
+
+            var containsBound = false
 
             for (position in base.closurePositions) {
-                val (x, y) = position.coerceInRealSize()
+                val (x, y) = position
                 if (x < minX) minX = x
                 if (x > maxX) maxX = x
                 if (y < minY) minY = y
                 if (y > maxY) maxY = y
+
+                val coercedX = when (x) {
+                    0 -> {
+                        containsBound = true
+                        1 - outOfBoundDrawRatio
+                    }
+                    field.width + 1 -> {
+                        containsBound = true
+                        field.width + 1 - (1 - outOfBoundDrawRatio)
+                    }
+                    else -> x.toFloat()
+                }
+                val coercedY = when (y) {
+                    0 -> {
+                        containsBound = true
+                        1 - outOfBoundDrawRatio
+                    }
+                    field.height + 1 -> {
+                        containsBound = true
+                        field.height + 1 - (1 - outOfBoundDrawRatio)
+                    }
+                    else -> y.toFloat()
+                }
+
+                if (coercedX < coercedMinX) coercedMinX = coercedX
+                if (coercedX > coercedMaxX) coercedMaxX = coercedX
+                if (coercedY < coercedMinY) coercedMinY = coercedY
+                if (coercedY > coercedMaxY) coercedMaxY = coercedY
             }
 
             val xCount = (maxX - minX).toFloat()
@@ -252,7 +283,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
 
             val polygonShape = GenericShape { size, _ ->
                 for ((index, position) in base.closurePositions.withIndex()) {
-                    val coercedPosition = position.coerceInRealSize()
+                    val coercedPosition = position
                     val x = (coercedPosition.x - minX) / xCount * size.width
                     val y = (coercedPosition.y - minY) / yCount * size.height
                     if (index == 0) {
@@ -261,6 +292,21 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
                         lineTo(x, y)
                     }
                 }
+            }
+
+            val clipShape = if (containsBound) {
+                GenericShape { size, _ ->
+                    val xMinClip = (coercedMinX - minX) / xCount * size.width
+                    val yMinClip = (coercedMinY - minY) / yCount * size.height
+                    val xMaxClip = (1 - (maxX - coercedMaxX) / xCount) * size.width
+                    val yMaxClip = (1 - (maxY - coercedMaxY) / yCount) * size.height
+                    moveTo(xMinClip, yMinClip)
+                    lineTo(xMaxClip, yMinClip)
+                    lineTo(xMaxClip, yMaxClip)
+                    lineTo(xMinClip, yMaxClip)
+                }
+            } else {
+                null
             }
 
             val offsetGraphical = Position(minX, minY).toDpOffset()
@@ -276,6 +322,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
                 Modifier
                     .offset(offsetGraphical.x, offsetGraphical.y)
                     .size(cellSize * (maxX - minX), cellSize * (maxY - minY))
+                    .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
                     .background(baseColor.copy(alpha = baseAlpha), polygonShape)
                     .then(borderModifier)
             )
