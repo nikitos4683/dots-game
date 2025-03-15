@@ -380,6 +380,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         val propertyInfo = propertyInfos[propertyIdentifier] ?: SgfPropertyInfo(
             propertyIdentifier,
             SgfPropertyType.Text,
+            multipleValues = true,
             scope = SgfPropertyScope.Both,
             isKnown = false,
         )
