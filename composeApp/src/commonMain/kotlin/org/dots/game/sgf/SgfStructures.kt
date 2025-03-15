@@ -147,6 +147,7 @@ object SgfMetaInfo {
     const val PLAYER2_MOVE_KEY = PLAYER2_MARKER.toString()
     const val LABEL_KEY = "LB"
     const val CIRCLE_KEY = "CR"
+    const val SQUARE_KEY = "SQ"
 
     const val RESIGN_WIN_GAME_RESULT = 'R'
     const val TIME_WIN_GAME_RESULT = 'T'
@@ -189,6 +190,7 @@ object SgfMetaInfo {
         PLAYER2_MOVE_KEY to SgfPropertyInfo("Player2 move", SgfPropertyType.MovePosition, multipleValues = true, scope = SgfPropertyScope.Move),
         LABEL_KEY to SgfPropertyInfo("Label", SgfPropertyType.Label, multipleValues = true, scope = SgfPropertyScope.Move),
         CIRCLE_KEY to SgfPropertyInfo("Circle", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
+        SQUARE_KEY to SgfPropertyInfo("Square", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
     )
 
     val propertyInfoToKey: Map<SgfPropertyInfo, String> = propertyInfos.entries.associateBy({ it.value }) { it.key }.also {

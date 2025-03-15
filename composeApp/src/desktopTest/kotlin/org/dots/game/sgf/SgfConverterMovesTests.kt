@@ -280,4 +280,12 @@ class SgfConverterMovesTests {
         val circles = gameTree.currentNode.circles
         assertEquals(listOf(Position(2, 1)), circles)
     }
+
+    @Test
+    fun squares() {
+        val gameTree = parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];B[bb]SQ[ba][cb][bc][ab])").single().gameTree
+        gameTree.next()
+        val squares = gameTree.currentNode.squares
+        assertEquals(listOf(Position(2, 1), Position(3, 2), Position(2, 3), Position(1, 2)), squares)
+    }
 }

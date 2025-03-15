@@ -48,6 +48,7 @@ import org.dots.game.sgf.SgfMetaInfo.RESULT_KEY
 import org.dots.game.sgf.SgfMetaInfo.ROUND_KEY
 import org.dots.game.sgf.SgfMetaInfo.SIZE_KEY
 import org.dots.game.sgf.SgfMetaInfo.SOURCE_KEY
+import org.dots.game.sgf.SgfMetaInfo.SQUARE_KEY
 import org.dots.game.sgf.SgfMetaInfo.TIME_KEY
 import org.dots.game.sgf.SgfMetaInfo.TIME_WIN_GAME_RESULT
 import org.dots.game.sgf.SgfMetaInfo.UNKNOWN_WIN_GAME_RESULT
@@ -255,6 +256,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         val comment = convertedProperties.getPropertyValue<String>(COMMENT_KEY)
         val labels = convertedProperties.getPropertyValue<List<Label>>(LABEL_KEY)
         val circles = convertedProperties.getPropertyValue<List<Position>>(CIRCLE_KEY)
+        val squares = convertedProperties.getPropertyValue<List<Position>>(SQUARE_KEY)
         var movesCount = 0
 
         fun processMoves(moveInfos: List<MoveInfo>?) {
@@ -271,7 +273,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     withinBounds = false
                 }
                 val timeLeft = if (moveInfo.player == Player.First) player1TimeLeft else player2TimeLeft
-                gameTree.add(moveResult, timeLeft, comment, labels, circles)
+                gameTree.add(moveResult, timeLeft, comment, labels, circles, squares)
                 movesCount++
 
                 if (moveResult == null) {
