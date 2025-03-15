@@ -79,6 +79,7 @@ enum class SgfPropertyType {
     Text,
     Size,
     Position,
+    Label,
     AppInfo,
     GameResult,
 }
@@ -143,6 +144,7 @@ object SgfMetaInfo {
 
     const val PLAYER1_MOVE_KEY = PLAYER1_MARKER.toString()
     const val PLAYER2_MOVE_KEY = PLAYER2_MARKER.toString()
+    const val LABEL_KEY = "LB"
 
     const val RESIGN_WIN_GAME_RESULT = 'R'
     const val TIME_WIN_GAME_RESULT = 'T'
@@ -183,6 +185,7 @@ object SgfMetaInfo {
 
         PLAYER1_MOVE_KEY to SgfPropertyInfo("Player1 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
         PLAYER2_MOVE_KEY to SgfPropertyInfo("Player2 move", SgfPropertyType.Position, multipleValues = true, scope = SgfPropertyScope.Move),
+        LABEL_KEY to SgfPropertyInfo("Label", SgfPropertyType.Label, multipleValues = true, scope = SgfPropertyScope.Move),
     )
 
     val propertyInfoToKey: Map<SgfPropertyInfo, String> = propertyInfos.entries.associateBy({ it.value }) { it.key }.also {

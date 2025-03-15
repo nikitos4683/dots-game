@@ -1,5 +1,6 @@
 package org.dots.game.sgf
 
+import org.dots.game.core.Label
 import org.dots.game.core.Player
 import org.dots.game.core.Position
 import kotlin.test.Test
@@ -234,5 +235,31 @@ class SgfConverterMovesTests {
 
         gameTree.rewindForward()
         assertEquals(secondComment, gameTree.currentNode.comment)
+    }
+
+    @Test
+    fun labelsIncorrect() {
+        parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];LB[aa])",
+            listOf(
+                SgfLineColumnDiagnostic("Property LB (Label) has unexpected separator ``", LineColumn(1, 29))
+            )).single().gameTree
+        parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];LB[aa.])",
+            listOf(
+                SgfLineColumnDiagnostic("Property LB (Label) has unexpected separator `.`", LineColumn(1, 29))
+            )).single().gameTree
+    }
+
+    @Test
+    fun labelsCorrect() {
+        val gameTree = parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];W[aa]LB[aa:])").single().gameTree
+        gameTree.next()
+        val label = gameTree.currentNode.labels!!.single()
+        assertEquals(Position(1, 1), label.position)
+        assertEquals("", label.text)
+
+        val gameTree2 = parseConvertAndCheck("(;GM[40]FF[4]SZ[39:32];W[cc]LB[aa:label][bb:label2])").single().gameTree
+        gameTree2.next()
+        val labels = gameTree2.currentNode.labels
+        assertEquals(listOf(Label(Position(1, 1), "label"), Label(Position(2, 2), "label2")), labels)
     }
 }

@@ -74,6 +74,8 @@ sealed class GameResult {
 
 data class MoveInfo(val position: Position, val player: Player, val extraInfo: Any? = null)
 
+data class Label(val position: Position, val text: String)
+
 enum class AppType(val value: String) {
     Zagram("zagram.org"),
     Notago("NOTAGO"),

@@ -14,8 +14,8 @@ fun String.convertAppInfo(): AppInfo {
     val name: String
     val version: String?
     if (colonIndex != -1) {
-        name = substring(0, colonIndex) .convertSimpleText()
-        version = substring(colonIndex + 1).convertSimpleText()
+        name = subSequence(0, colonIndex) .convertSimpleText()
+        version = subSequence(colonIndex + 1, length).convertSimpleText()
     } else {
         name = this
         version = null
@@ -24,11 +24,11 @@ fun String.convertAppInfo(): AppInfo {
     return AppInfo(name, version)
 }
 
-fun String.convertSimpleText(): String = convertTextInternal(simpleText = true)
+fun CharSequence.convertSimpleText(): String = convertTextInternal(simpleText = true)
 
-fun String.convertText(): String = convertTextInternal(simpleText = false)
+fun CharSequence.convertText(): String = convertTextInternal(simpleText = false)
 
-private fun String.convertTextInternal(simpleText: Boolean): String {
+private fun CharSequence.convertTextInternal(simpleText: Boolean): String {
     return buildString {
         var index = 0
 
