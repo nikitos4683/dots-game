@@ -39,22 +39,22 @@ fun Field.dump(printNumbers: Boolean = true, padding: Int = Int.MAX_VALUE, print
                             0 -> {
                                 when (y) {
                                     0 -> '┌'
-                                    realHeight - OFFSET -> '└'
+                                    realHeight - 1 -> '└'
                                     else -> '│'
                                 }
                             }
 
-                            realWidth - OFFSET  -> {
+                            realWidth - 1  -> {
                                 when (y) {
                                     0 -> '┐'
-                                    realHeight - OFFSET -> '┘'
+                                    realHeight - 1 -> '┘'
                                     else -> '│'
                                 }
                             }
 
                             else -> {
                                 when (y) {
-                                    0, realHeight - OFFSET -> '─'
+                                    0, realHeight - 1 -> '─'
                                     else -> EMPTY_POSITION
                                 }
                             }
@@ -113,5 +113,21 @@ fun Field.dump(printNumbers: Boolean = true, padding: Int = Int.MAX_VALUE, print
                 append('\n')
             }
         }
+    }
+}
+
+fun Field.getStrongConnectionLinePositions(position: Position): List<Position> {
+    val state = position.getState()
+    if (!state.checkPlaced() || state.checkTerritory()) return emptyList()
+
+    val player = state.getPlacedPlayer()
+    val playerPlaced = player.createPlacedState()
+    val (x, y) = position
+
+    return buildList {
+        Position(x, y - 1).let { if (it.getState().checkActive(playerPlaced)) add(it) }
+        Position(x + 1, y).let { if (it.getState().checkActive(playerPlaced)) add(it) }
+        Position(x, y + 1).let { if (it.getState().checkActive(playerPlaced)) add(it) }
+        Position(x - 1, y).let { if (it.getState().checkActive(playerPlaced)) add(it) }
     }
 }

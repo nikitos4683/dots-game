@@ -1,6 +1,7 @@
 package org.dots.game.views
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -31,10 +32,12 @@ import org.dots.game.core.Field
 import org.dots.game.core.MoveMode
 import org.dots.game.core.MoveResult
 import org.dots.game.core.Position
+import org.dots.game.core.getStrongConnectionLinePositions
+import kotlin.math.abs
 import kotlin.math.round
 
-private val borderPaddingRatio = 1.0f
-private val textPaddingRatio = 0.5f
+private val borderPaddingRatio = 2.0f
+private val textPaddingRatio = 1.0f
 private val cellSize = 22.dp
 private val linesColor = Color.hsv(0.0f, 0.0f, 0.25f)
 
@@ -53,6 +56,14 @@ private val lastMoveRadius = cellSize * lastMoveRadiusRatio
 private val lastMoveDotSize = DpSize(lastMoveRadius * 2, lastMoveRadius * 2)
 
 private val drawEmptyBases = false
+private val drawBaseOutline = false
+private val connectionThickness = 2.dp
+private val strongConnectionMode = StrongConnectionMode.Lines
+
+enum class StrongConnectionMode {
+    None,
+    Lines,
+}
 
 private val linesThickness = 0.75.dp
 
@@ -165,11 +176,53 @@ private fun Grid(field: Field) {
 @Composable
 private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
     for (moveResult in field.moveSequence) {
-        val dotOffset = moveResult.position.toDpOffset()
+        val moveResultPosition = moveResult.position
+        val dotOffset = moveResultPosition.toDpOffset()
+        val color = uiSettings.toColor(moveResult.player)
+
+        if (strongConnectionMode == StrongConnectionMode.Lines) {
+            val connections = field.getStrongConnectionLinePositions(moveResultPosition)
+            for (connection in connections) {
+                val isHorizontal = connection.x - moveResultPosition.x != 0
+
+                val connectionX: Dp
+                val connectionY: Dp
+                val connectionWidth: Dp
+                val connectionHeight: Dp
+
+                if (isHorizontal) {
+                    val widthRatio = when (connection.x) {
+                        0 -> -0.5f
+                        field.realWidth - 1 -> 0.5f
+                        else -> (connection.x - moveResultPosition.x).toFloat()
+                    }
+
+                    connectionX = (moveResultPosition.x + (if (widthRatio >= 0) 0.0f else widthRatio) - Field.OFFSET).toGraphical()
+                    connectionY = dotOffset.y - connectionThickness / 2
+                    connectionWidth = cellSize * abs(widthRatio)
+                    connectionHeight = connectionThickness
+
+                } else {
+                    val heightRaio = when (connection.y) {
+                        0 -> -0.5f
+                        field.realHeight - 1 -> 0.5f
+                        else -> (connection.y - moveResultPosition.y).toFloat()
+                    }
+
+                    connectionX = dotOffset.x - connectionThickness / 2
+                    connectionY = (moveResultPosition.y + (if (heightRaio >= 0) 0.0f else heightRaio) - Field.OFFSET).toGraphical()
+                    connectionWidth = connectionThickness
+                    connectionHeight = cellSize * abs(heightRaio)
+                }
+
+                Box(Modifier.offset(connectionX,connectionY).size(connectionWidth, connectionHeight).background(color))
+            }
+        }
+
         Box(Modifier
             .offset(dotOffset.x - dotRadius, dotOffset.y - dotRadius)
             .size(dotSize)
-            .background(uiSettings.toColor(moveResult.player), CircleShape)
+            .background(color, CircleShape)
         )
 
         for (base in moveResult.bases) {
@@ -211,12 +264,20 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             }
 
             val offsetGraphical = Position(minX, minY).toDpOffset()
+            val baseColor = uiSettings.toColor(base.player)
+
+            val borderModifier = if (drawBaseOutline || strongConnectionMode == StrongConnectionMode.Lines) {
+                Modifier.border(connectionThickness, baseColor, polygonShape)
+            } else {
+                Modifier
+            }
 
             Box(
                 Modifier
                     .offset(offsetGraphical.x, offsetGraphical.y)
                     .size(cellSize * (maxX - minX), cellSize * (maxY - minY))
-                    .background(uiSettings.toColor(base.player).copy(alpha = baseAlpha), polygonShape)
+                    .background(baseColor.copy(alpha = baseAlpha), polygonShape)
+                    .then(borderModifier)
             )
         }
     }
@@ -252,8 +313,8 @@ private fun PointerEvent.toFieldPositionIfFree(field: Field, currentDensity: Den
     val offset = changes.first().position
 
     with (currentDensity) {
-        val x = round((offset.x.toDp() - fieldPadding) / cellSize).toInt()
-        val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt()
+        val x = round((offset.x.toDp() - fieldPadding) / cellSize).toInt().takeIf { it >= 0 } ?: return null
+        val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt().takeIf { it >= 0 } ?: return null
 
         return Position(x + Field.OFFSET, y + Field.OFFSET).takeIf {
             field.checkPositionWithinBounds(it) && field.checkValidMove(it)
@@ -262,3 +323,4 @@ private fun PointerEvent.toFieldPositionIfFree(field: Field, currentDensity: Den
 }
 
 private fun Int.toGraphical(): Dp = cellSize * this + fieldPadding
+private fun Float.toGraphical(): Dp = cellSize * this + fieldPadding
