@@ -32,7 +32,9 @@ import org.dots.game.UiSettings
 import org.dots.game.core.Field
 import org.dots.game.core.MoveMode
 import org.dots.game.core.MoveResult
+import org.dots.game.core.Player
 import org.dots.game.core.Position
+import org.dots.game.core.getPositionsOfConnection
 import org.dots.game.core.getStrongConnectionLinePositions
 import kotlin.math.abs
 import kotlin.math.round
@@ -60,11 +62,12 @@ private val drawEmptyBases = false
 private val drawBaseOutline = true
 private val connectionThickness = 2.dp
 private val outOfBoundDrawRatio = dotRadiusRatio
-private val strongConnectionMode = StrongConnectionMode.None
+private val connectionMode = ConnectionMode.Polygons
 
-enum class StrongConnectionMode {
+enum class ConnectionMode {
     None,
     Lines,
+    Polygons,
 }
 
 private val linesThickness = 0.75.dp
@@ -177,50 +180,24 @@ private fun Grid(field: Field) {
 
 @Composable
 private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
-    for (moveResult in field.moveSequence) {
+    val movesSequence = field.moveSequence.toList()
+
+    field.unmakeAllMoves()
+
+    for (moveResult in movesSequence) {
+        field.makeMove(moveResult.position, moveResult.player)
+
         val moveResultPosition = moveResult.position
-        val dotOffset = moveResultPosition.toDpOffset()
         val color = uiSettings.toColor(moveResult.player)
 
-        if (strongConnectionMode == StrongConnectionMode.Lines) {
-            val connections = field.getStrongConnectionLinePositions(moveResultPosition)
-            for (connection in connections) {
-                val isHorizontal = connection.x - moveResultPosition.x != 0
-
-                val connectionX: Dp
-                val connectionY: Dp
-                val connectionWidth: Dp
-                val connectionHeight: Dp
-
-                if (isHorizontal) {
-                    val widthRatio = when (connection.x) {
-                        0 -> -0.5f
-                        field.realWidth - 1 -> 0.5f
-                        else -> (connection.x - moveResultPosition.x).toFloat()
-                    }
-
-                    connectionX = (moveResultPosition.x + (if (widthRatio >= 0) 0.0f else widthRatio) - Field.OFFSET).toGraphical()
-                    connectionY = dotOffset.y - connectionThickness / 2
-                    connectionWidth = cellSize * abs(widthRatio)
-                    connectionHeight = connectionThickness
-
-                } else {
-                    val heightRaio = when (connection.y) {
-                        0 -> -0.5f
-                        field.realHeight - 1 -> 0.5f
-                        else -> (connection.y - moveResultPosition.y).toFloat()
-                    }
-
-                    connectionX = dotOffset.x - connectionThickness / 2
-                    connectionY = (moveResultPosition.y + (if (heightRaio >= 0) 0.0f else heightRaio) - Field.OFFSET).toGraphical()
-                    connectionWidth = connectionThickness
-                    connectionHeight = cellSize * abs(heightRaio)
-                }
-
-                Box(Modifier.offset(connectionX,connectionY).size(connectionWidth, connectionHeight).background(color))
-            }
+        if (connectionMode == ConnectionMode.Lines) {
+            StrongConnectionLines(field, moveResultPosition, color)
+        } else if (connectionMode == ConnectionMode.Polygons) {
+            val connections = field.getPositionsOfConnection(moveResultPosition)
+            Polygon(connections, moveResult.player, field, uiSettings)
         }
 
+        val dotOffset = moveResultPosition.toDpOffset()
         Box(Modifier
             .offset(dotOffset.x - dotRadius, dotOffset.y - dotRadius)
             .size(dotSize)
@@ -230,102 +207,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
         for (base in moveResult.bases) {
             if (base.isEmpty && !drawEmptyBases) continue
 
-            var minX: Int = Int.MAX_VALUE
-            var minY: Int = Int.MAX_VALUE
-            var maxX: Int = Int.MIN_VALUE
-            var maxY: Int = Int.MIN_VALUE
-
-            var coercedMinX: Float = Float.MAX_VALUE
-            var coercedMinY: Float = Float.MAX_VALUE
-            var coercedMaxX: Float = Float.MIN_VALUE
-            var coercedMaxY: Float = Float.MIN_VALUE
-
-            var containsBound = false
-
-            for (position in base.closurePositions) {
-                val (x, y) = position
-                if (x < minX) minX = x
-                if (x > maxX) maxX = x
-                if (y < minY) minY = y
-                if (y > maxY) maxY = y
-
-                val coercedX = when (x) {
-                    0 -> {
-                        containsBound = true
-                        1 - outOfBoundDrawRatio
-                    }
-                    field.width + 1 -> {
-                        containsBound = true
-                        field.width + 1 - (1 - outOfBoundDrawRatio)
-                    }
-                    else -> x.toFloat()
-                }
-                val coercedY = when (y) {
-                    0 -> {
-                        containsBound = true
-                        1 - outOfBoundDrawRatio
-                    }
-                    field.height + 1 -> {
-                        containsBound = true
-                        field.height + 1 - (1 - outOfBoundDrawRatio)
-                    }
-                    else -> y.toFloat()
-                }
-
-                if (coercedX < coercedMinX) coercedMinX = coercedX
-                if (coercedX > coercedMaxX) coercedMaxX = coercedX
-                if (coercedY < coercedMinY) coercedMinY = coercedY
-                if (coercedY > coercedMaxY) coercedMaxY = coercedY
-            }
-
-            val xCount = (maxX - minX).toFloat()
-            val yCount = (maxY - minY).toFloat()
-
-            val polygonShape = GenericShape { size, _ ->
-                for ((index, position) in base.closurePositions.withIndex()) {
-                    val coercedPosition = position
-                    val x = (coercedPosition.x - minX) / xCount * size.width
-                    val y = (coercedPosition.y - minY) / yCount * size.height
-                    if (index == 0) {
-                        moveTo(x, y)
-                    } else {
-                        lineTo(x, y)
-                    }
-                }
-            }
-
-            val clipShape = if (containsBound) {
-                GenericShape { size, _ ->
-                    val xMinClip = (coercedMinX - minX) / xCount * size.width
-                    val yMinClip = (coercedMinY - minY) / yCount * size.height
-                    val xMaxClip = (1 - (maxX - coercedMaxX) / xCount) * size.width
-                    val yMaxClip = (1 - (maxY - coercedMaxY) / yCount) * size.height
-                    moveTo(xMinClip, yMinClip)
-                    lineTo(xMaxClip, yMinClip)
-                    lineTo(xMaxClip, yMaxClip)
-                    lineTo(xMinClip, yMaxClip)
-                }
-            } else {
-                null
-            }
-
-            val offsetGraphical = Position(minX, minY).toDpOffset()
-            val baseColor = uiSettings.toColor(base.player)
-
-            val borderModifier = if (drawBaseOutline || strongConnectionMode == StrongConnectionMode.Lines) {
-                Modifier.border(connectionThickness, baseColor, polygonShape)
-            } else {
-                Modifier
-            }
-
-            Box(
-                Modifier
-                    .offset(offsetGraphical.x, offsetGraphical.y)
-                    .size(cellSize * (maxX - minX), cellSize * (maxY - minY))
-                    .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
-                    .background(baseColor.copy(alpha = baseAlpha), polygonShape)
-                    .then(borderModifier)
-            )
+            Polygon(base.closurePositions, base.player, field, uiSettings)
         }
     }
 
@@ -337,6 +219,167 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             .background(lastMoveColor, CircleShape)
         )
     }
+}
+
+@Composable
+private fun StrongConnectionLines(
+    field: Field,
+    moveResultPosition: Position,
+    color: Color
+) {
+    val connections = field.getStrongConnectionLinePositions(moveResultPosition)
+    if (connections.isEmpty()) return
+
+    val dotOffset = moveResultPosition.toDpOffset()
+    for (connection in connections) {
+        val isHorizontal = connection.x - moveResultPosition.x != 0
+
+        val connectionX: Dp
+        val connectionY: Dp
+        val connectionWidth: Dp
+        val connectionHeight: Dp
+
+        if (isHorizontal) {
+            val widthRatio = when (connection.x) {
+                0 -> -outOfBoundDrawRatio
+                field.realWidth - 1 -> outOfBoundDrawRatio
+                else -> (connection.x - moveResultPosition.x).toFloat()
+            }
+
+            connectionX =
+                (moveResultPosition.x + (if (widthRatio >= 0) 0.0f else widthRatio) - Field.OFFSET).toGraphical()
+            connectionY = dotOffset.y - connectionThickness / 2
+            connectionWidth = cellSize * abs(widthRatio)
+            connectionHeight = connectionThickness
+        } else {
+            val heightRatio = when (connection.y) {
+                0 -> -outOfBoundDrawRatio
+                field.realHeight - 1 -> outOfBoundDrawRatio
+                else -> (connection.y - moveResultPosition.y).toFloat()
+            }
+
+            connectionX = dotOffset.x - connectionThickness / 2
+            connectionY =
+                (moveResultPosition.y + (if (heightRatio >= 0) 0.0f else heightRatio) - Field.OFFSET).toGraphical()
+            connectionWidth = connectionThickness
+            connectionHeight = cellSize * abs(heightRatio)
+        }
+
+        Box(Modifier.offset(connectionX, connectionY).size(connectionWidth, connectionHeight).background(color))
+    }
+}
+
+@Composable
+private fun Polygon(
+    positions: List<Position>,
+    player: Player,
+    field: Field,
+    uiSettings: UiSettings
+) {
+    if (positions.size <= 1) return
+
+    var minX: Int = Int.MAX_VALUE
+    var minY: Int = Int.MAX_VALUE
+    var maxX: Int = Int.MIN_VALUE
+    var maxY: Int = Int.MIN_VALUE
+
+    var coercedMinX: Float = Float.MAX_VALUE
+    var coercedMinY: Float = Float.MAX_VALUE
+    var coercedMaxX: Float = Float.MIN_VALUE
+    var coercedMaxY: Float = Float.MIN_VALUE
+
+    var containsBound = false
+
+    for (position in positions) {
+        val (x, y) = position
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+
+        val coercedX = when (x) {
+            0 -> {
+                containsBound = true
+                1 - outOfBoundDrawRatio
+            }
+
+            field.width + 1 -> {
+                containsBound = true
+                field.width + 1 - (1 - outOfBoundDrawRatio)
+            }
+
+            else -> x.toFloat()
+        }
+        val coercedY = when (y) {
+            0 -> {
+                containsBound = true
+                1 - outOfBoundDrawRatio
+            }
+
+            field.height + 1 -> {
+                containsBound = true
+                field.height + 1 - (1 - outOfBoundDrawRatio)
+            }
+
+            else -> y.toFloat()
+        }
+
+        if (coercedX < coercedMinX) coercedMinX = coercedX
+        if (coercedX > coercedMaxX) coercedMaxX = coercedX
+        if (coercedY < coercedMinY) coercedMinY = coercedY
+        if (coercedY > coercedMaxY) coercedMaxY = coercedY
+    }
+
+    val xCount = maxX - minX
+    val yCount = maxY - minY
+
+    val polygonShape = GenericShape { size, _ ->
+        for ((index, position) in positions.withIndex()) {
+            val x = if (xCount == 0) 0f else (position.x - minX).toFloat() / xCount * size.width
+            val y = if (yCount == 0) 0f else (position.y - minY).toFloat() / yCount * size.height
+            if (index == 0) {
+                moveTo(x, y)
+            } else {
+                lineTo(x, y)
+            }
+        }
+    }
+
+    val clipShape = if (containsBound) {
+        GenericShape { size, _ ->
+            val xMinClip = (coercedMinX - minX) / xCount * size.width
+            val yMinClip = (coercedMinY - minY) / yCount * size.height
+            val xMaxClip = (1 - (maxX - coercedMaxX) / xCount) * size.width
+            val yMaxClip = (1 - (maxY - coercedMaxY) / yCount) * size.height
+            moveTo(xMinClip, yMinClip)
+            lineTo(xMaxClip, yMinClip)
+            lineTo(xMaxClip, yMaxClip)
+            lineTo(xMinClip, yMaxClip)
+        }
+    } else {
+        null
+    }
+
+    val offsetGraphical = Position(minX, minY).toDpOffset()
+    val polygonColor = uiSettings.toColor(player)
+
+    val borderModifier = if (drawBaseOutline || connectionMode == ConnectionMode.Lines) {
+        Modifier.border(connectionThickness, polygonColor, polygonShape)
+    } else {
+        Modifier
+    }
+
+    Box(
+        Modifier
+            .offset(offsetGraphical.x, offsetGraphical.y)
+            .size(
+                xCount.let { if (it == 0) connectionThickness else cellSize * it },
+                yCount.let { if (it == 0) connectionThickness else cellSize * it }
+            )
+            .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
+            .background(polygonColor.copy(alpha = baseAlpha), polygonShape)
+            .then(borderModifier)
+    )
 }
 
 @Composable

@@ -80,7 +80,7 @@ internal inline fun Position.clockwiseWalk(other: Position, action: (Position) -
 private fun calculateWalkIndex(diffX: Int, diffY: Int): Int {
     val diffX = diffX + 1
     val diffY = (diffY + 1) shl OFFSET_Y_BITS_COUNT
-    var index = diffX or diffY
+    val index = diffX or diffY
     return index
 }
 
