@@ -1,7 +1,6 @@
 package org.dots.game.views
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -16,7 +15,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -59,15 +62,24 @@ private val lastMoveRadius = cellSize * lastMoveRadiusRatio
 private val lastMoveDotSize = DpSize(lastMoveRadius * 2, lastMoveRadius * 2)
 
 private val drawEmptyBases = false
-private val drawBaseOutline = true
 private val connectionThickness = 2.dp
 private val outOfBoundDrawRatio = dotRadiusRatio
-private val connectionMode = ConnectionMode.Polygons
+private val baseDrawMode: PolygonDrawMode = PolygonDrawMode.OutlineAndFill
+private val connectionDrawMode: ConnectionDrawMode = ConnectionDrawMode.Polygon(baseDrawMode)
 
-enum class ConnectionMode {
-    None,
-    Lines,
-    Polygons,
+sealed class ConnectionDrawMode {
+    object None : ConnectionDrawMode()
+    object Lines : ConnectionDrawMode()
+    class Polygon(val polygonDrawMode: PolygonDrawMode) : ConnectionDrawMode()
+}
+
+enum class PolygonDrawMode {
+    Outline,
+    Fill,
+    OutlineAndFill;
+
+    fun drawOutline(): Boolean = this == Outline || this == OutlineAndFill
+    fun drawFill(): Boolean = this == Fill || this == OutlineAndFill
 }
 
 private val linesThickness = 0.75.dp
@@ -182,7 +194,7 @@ private fun Grid(field: Field) {
 private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
     val movesSequence = field.moveSequence.toList()
 
-    field.unmakeAllMoves()
+    field.unmakeAllMoves() // TODO: rewrite
 
     for (moveResult in movesSequence) {
         field.makeMove(moveResult.position, moveResult.player)
@@ -190,11 +202,11 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
         val moveResultPosition = moveResult.position
         val color = uiSettings.toColor(moveResult.player)
 
-        if (connectionMode == ConnectionMode.Lines) {
+        if (connectionDrawMode == ConnectionDrawMode.Lines) {
             StrongConnectionLines(field, moveResultPosition, color)
-        } else if (connectionMode == ConnectionMode.Polygons) {
+        } else if (connectionDrawMode is ConnectionDrawMode.Polygon) {
             val connections = field.getPositionsOfConnection(moveResultPosition)
-            Polygon(connections, moveResult.player, field, uiSettings)
+            Polygon(connections, moveResult.player, field, connectionDrawMode.polygonDrawMode, uiSettings)
         }
 
         val dotOffset = moveResultPosition.toDpOffset()
@@ -207,7 +219,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
         for (base in moveResult.bases) {
             if (base.isEmpty && !drawEmptyBases) continue
 
-            Polygon(base.closurePositions, base.player, field, uiSettings)
+            Polygon(base.closurePositions, base.player, field, baseDrawMode, uiSettings)
         }
     }
 
@@ -274,7 +286,8 @@ private fun Polygon(
     positions: List<Position>,
     player: Player,
     field: Field,
-    uiSettings: UiSettings
+    polygonDrawMode: PolygonDrawMode,
+    uiSettings: UiSettings,
 ) {
     if (positions.size <= 1) return
 
@@ -333,14 +346,30 @@ private fun Polygon(
     val xCount = maxX - minX
     val yCount = maxY - minY
 
-    val polygonShape = GenericShape { size, _ ->
+    val size = DpSize(
+        xCount.let { if (it == 0) connectionThickness else cellSize * it },
+        yCount.let { if (it == 0) connectionThickness else cellSize * it }
+    )
+
+    val width: Float
+    val height: Float
+    with(LocalDensity.current) {
+        width = size.width.toPx()
+        height = size.height.toPx()
+    }
+
+    val path = Path().apply {
         for ((index, position) in positions.withIndex()) {
-            val x = if (xCount == 0) 0f else (position.x - minX).toFloat() / xCount * size.width
-            val y = if (yCount == 0) 0f else (position.y - minY).toFloat() / yCount * size.height
+            val xCoordinate = if (xCount == 0) 0f else (position.x - minX).toFloat() / xCount * width
+            val yCoordinate = if (yCount == 0) 0f else (position.y - minY).toFloat() / yCount * height
+
             if (index == 0) {
-                moveTo(x, y)
+                moveTo(xCoordinate, yCoordinate)
             } else {
-                lineTo(x, y)
+                lineTo(xCoordinate, yCoordinate)
+                if (index == positions.size - 1) {
+                    close()
+                }
             }
         }
     }
@@ -363,22 +392,20 @@ private fun Polygon(
     val offsetGraphical = Position(minX, minY).toDpOffset()
     val polygonColor = uiSettings.toColor(player)
 
-    val borderModifier = if (drawBaseOutline || connectionMode == ConnectionMode.Lines) {
-        Modifier.border(connectionThickness, polygonColor, polygonShape)
-    } else {
-        Modifier
-    }
-
     Box(
         Modifier
+            .graphicsLayer()
             .offset(offsetGraphical.x, offsetGraphical.y)
-            .size(
-                xCount.let { if (it == 0) connectionThickness else cellSize * it },
-                yCount.let { if (it == 0) connectionThickness else cellSize * it }
-            )
+            .size(size)
             .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
-            .background(polygonColor.copy(alpha = baseAlpha), polygonShape)
-            .then(borderModifier)
+            .drawBehind {
+                if (polygonDrawMode.drawFill()) {
+                    drawPath(path, polygonColor.copy(alpha = baseAlpha))
+                }
+                if (polygonDrawMode.drawOutline()) {
+                    drawPath(path, polygonColor, style = Stroke(width = connectionThickness.toPx()))
+                }
+            }
     )
 }
 
