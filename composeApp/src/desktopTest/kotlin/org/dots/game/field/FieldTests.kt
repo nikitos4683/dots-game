@@ -12,6 +12,7 @@ import kotlin.test.assertTrue
 abstract class FieldTests {
     open val captureByBorder: Boolean = Rules.Standard.captureByBorder
     open val captureEmptyBase: Boolean = Rules.Standard.captureEmptyBase
+    open val suicideAllowed: Boolean = Rules.Standard.suicideAllowed
 
     fun testFieldWithRollback(fieldData: String, check: (Field) -> Unit) {
         with (initialize(fieldData)) {
@@ -34,7 +35,7 @@ abstract class FieldTests {
 
     fun initialize(fieldData: String): Field {
         val testDataFiled = TestDataParser.parse(fieldData)
-        val rules = Rules(testDataFiled.width, testDataFiled.height, captureByBorder, captureEmptyBase)
+        val rules = Rules(testDataFiled.width, testDataFiled.height, captureByBorder, captureEmptyBase, suicideAllowed)
         val field = Field(rules)
         for ((index, testMove) in testDataFiled.moves.withIndex()) {
             val position = testMove.position

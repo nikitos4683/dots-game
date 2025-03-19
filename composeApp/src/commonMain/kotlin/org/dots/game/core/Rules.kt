@@ -8,6 +8,7 @@ class Rules(
     val height: Int = 32,
     val captureByBorder: Boolean = false,
     val captureEmptyBase: Boolean = false,
+    val suicideAllowed: Boolean = true,
     val initialMoves: List<MoveInfo> = emptyList(),
 ) {
     companion object {

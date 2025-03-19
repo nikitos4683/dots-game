@@ -47,6 +47,7 @@ fun NewGameDialog(
     var height by remember { mutableStateOf(standardRules.height) }
     var captureByBorder by remember { mutableStateOf(standardRules.captureByBorder) }
     var captureEmptyBase by remember { mutableStateOf(standardRules.captureEmptyBase) }
+    var suicideAllowed by remember { mutableStateOf(true) }
 
     var initialPositionExpanded by remember { mutableStateOf(false) }
     val initialPositionTypeItems = InitialPositionType.entries
@@ -121,10 +122,15 @@ fun NewGameDialog(
                     Checkbox(captureEmptyBase, onCheckedChange = { captureEmptyBase = it })
                 }
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Suicide allowed", Modifier.fillMaxWidth(0.5f))
+                    Checkbox(suicideAllowed, onCheckedChange = { suicideAllowed = it })
+                }
+
                 Button(
                     onClick = {
                         val initialMoves = initialPositionTypeSelected.generateDefaultInitialPositions(width, height)!!
-                        onConfirmation(Rules(width, height, captureByBorder, captureEmptyBase, initialMoves))
+                        onConfirmation(Rules(width, height, captureByBorder, captureEmptyBase, suicideAllowed, initialMoves))
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {

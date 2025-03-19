@@ -129,28 +129,33 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     internal fun makeMoveUnsafe(position: Position, player: Player? = null): MoveResult? {
         val currentPlayer = player ?: getCurrentPlayer()
 
-        val emptyBaseAtPosition = emptyBasePositions[position]
+        val emptyBaseAtPosition = emptyBasePositions.remove(position)
         val originalState = position.getState()
 
         val state = currentPlayer.createPlacedState()
         position.setState(state)
-        emptyBasePositions.remove(position)
 
         val bases = tryCapture(position, state, emptyBaseAtPosition)
 
         val oppositePlayer = currentPlayer.opposite()
         val resultBases = if (bases.isEmpty() && emptyBaseAtPosition?.player == oppositePlayer) {
-            // Check capturing by opposite player
-            val firstTerritoryPosition = emptyBaseAtPosition.previousStates.firstNotNullOf { it.key }
+            if (rules.suicideAllowed) {
+                // Check capturing by the opposite player
+                val firstTerritoryPosition = emptyBaseAtPosition.previousStates.firstNotNullOf { it.key }
 
-            val oppositeBase = buildBase(
-                firstTerritoryPosition,
-                emptyBaseAtPosition.closurePositions,
-                oppositePlayer.createPlacedState(),
-                emptyBaseAtPosition,
-                capturingByOppositePlayer = true,
-            )
-            listOf(oppositeBase)
+                val oppositeBase = buildBase(
+                    firstTerritoryPosition,
+                    emptyBaseAtPosition.closurePositions,
+                    oppositePlayer.createPlacedState(),
+                    emptyBaseAtPosition,
+                    capturingByOppositePlayer = true,
+                )
+                listOf(oppositeBase)
+            } else {
+                emptyBasePositions[position] = emptyBaseAtPosition
+                position.setState(originalState)
+                return null
+            }
         } else {
             bases
         }
