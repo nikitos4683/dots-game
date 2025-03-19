@@ -140,7 +140,10 @@ fun App() {
 
                 Row(rowModifier) {
                     Button(
-                        onClick = { moveMode = MoveMode.Next },
+                        onClick = {
+                            moveMode = MoveMode.Next
+                            focusRequester.requestFocus()
+                        },
                         playerButtonModifier,
                         colors = if (moveMode == MoveMode.Next) ButtonDefaults.buttonColors(selectedModeButtonColor) else ButtonDefaults.buttonColors(),
                     ) {
@@ -154,7 +157,10 @@ fun App() {
                         }
                     }
                     Button(
-                        onClick = { moveMode = MoveMode.First },
+                        onClick = {
+                            moveMode = MoveMode.First
+                            focusRequester.requestFocus()
+                        },
                         playerButtonModifier,
                         colors = if (moveMode == MoveMode.First) ButtonDefaults.buttonColors(selectedModeButtonColor) else ButtonDefaults.buttonColors(),
                     ) {
@@ -163,7 +169,10 @@ fun App() {
                         )
                     }
                     Button(
-                        onClick = { moveMode = MoveMode.Second },
+                        onClick = {
+                            moveMode = MoveMode.Second
+                            focusRequester.requestFocus()
+                        },
                         playerButtonModifier,
                         colors = if (moveMode == MoveMode.Second) ButtonDefaults.buttonColors(selectedModeButtonColor) else ButtonDefaults.buttonColors(),
                     ) {
