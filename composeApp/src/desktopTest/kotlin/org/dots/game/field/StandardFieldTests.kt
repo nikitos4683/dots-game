@@ -138,6 +138,9 @@ class StandardFieldTests : FieldTests() {
         ) {
             assertEquals(1, it.player2Score)
 
+            assertNotNull(it.makeMove(6 x 4, Player.Second))
+            assertNull(it.makeMove(6 x 4, Player.Second))
+
             assertNotNull(it.makeMove(4 x 2, Player.First))
             assertEquals(2, it.player2Score)
         }

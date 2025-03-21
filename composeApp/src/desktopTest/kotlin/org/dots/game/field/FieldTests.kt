@@ -39,7 +39,7 @@ abstract class FieldTests {
         val field = Field(rules)
         for ((index, testMove) in testDataFiled.moves.withIndex()) {
             val position = testMove.position
-            assertNotNull(field.makeMove(position, testMove.player), "Can't make move #$index to $position")
+            assertNotNull(field.makeMoveUnsafe(position, testMove.player), "Can't make move #$index to $position")
         }
         return field
     }

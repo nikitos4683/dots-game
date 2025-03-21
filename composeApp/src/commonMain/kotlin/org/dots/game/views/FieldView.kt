@@ -97,14 +97,15 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)
+                        val currentPlayer = moveMode.getMovePlayer() ?: field.getCurrentPlayer()
                         when (event.type) {
                             PointerEventType.Move -> {
-                                pointerFieldPosition = event.toFieldPositionIfFree(field, currentDensity)
+                                pointerFieldPosition = event.toFieldPositionIfFree(field, currentPlayer, currentDensity)
                             }
                             PointerEventType.Press -> {
-                                val fieldPosition = event.toFieldPositionIfFree(field, currentDensity)
+                                val fieldPosition = event.toFieldPositionIfFree(field, currentPlayer, currentDensity)
                                 if (fieldPosition != null &&
-                                    field.makeMoveUnsafe(fieldPosition, moveMode.getMovePlayer() ?: field.getCurrentPlayer()) != null
+                                    field.makeMoveUnsafe(fieldPosition, currentPlayer) != null
                                 ) {
                                     onMovePlaced(field.lastMove!!)
                                 }
@@ -426,7 +427,7 @@ private fun Position.toDpOffset(): DpOffset {
     return DpOffset((x - Field.OFFSET).toGraphical(), (y - Field.OFFSET).toGraphical())
 }
 
-private fun PointerEvent.toFieldPositionIfFree(field: Field, currentDensity: Density): Position? {
+private fun PointerEvent.toFieldPositionIfFree(field: Field, currentPlayer: Player, currentDensity: Density): Position? {
     val offset = changes.first().position
 
     with (currentDensity) {
@@ -434,7 +435,7 @@ private fun PointerEvent.toFieldPositionIfFree(field: Field, currentDensity: Den
         val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt().takeIf { it >= 0 } ?: return null
 
         return Position(x + Field.OFFSET, y + Field.OFFSET).takeIf {
-            field.checkPositionWithinBounds(it) && field.checkValidMove(it)
+            field.checkPositionWithinBounds(it) && field.checkValidMove(it, currentPlayer)
         }
     }
 }

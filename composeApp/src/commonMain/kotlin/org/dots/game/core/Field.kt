@@ -40,7 +40,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 continue
             }
 
-            if (!checkValidMove(position)) {
+            if (!checkValidMove(position, moveInfo.player)) {
                 onIncorrectInitialMove(moveInfo, true, currentMoveNumber)
                 continue
             }
@@ -79,7 +79,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
      * `0` is reserved for the initial position (cross, empty or other).
      */
     fun makeMove(position: Position, player: Player? = null): MoveResult? {
-        return if (checkPositionWithinBounds(position) && checkValidMove(position))
+        return if (checkPositionWithinBounds(position) && checkValidMove(position, player))
             makeMoveUnsafe(position, player)
         else
             null
@@ -90,8 +90,18 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         return x >= OFFSET && x < width + OFFSET && y >= OFFSET && y < height + OFFSET
     }
 
-    fun checkValidMove(position: Position): Boolean {
-        return position.getState().checkValidMove()
+    fun checkValidMove(position: Position, player: Player?): Boolean {
+        return !position.getState().checkPlacedOrTerritory() && (
+                rules.suicideAllowed ||
+                        makeMoveUnsafe(position, player).let { moveResult ->
+                            if (moveResult != null) {
+                                unmakeMove()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                )
     }
 
     fun unmakeAllMoves() {
@@ -452,7 +462,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             }
 
             if (nonCapturingTerritory) {
-                if (territoryPositionState.checkValidMove()) {
+                if (!territoryPositionState.checkPlacedOrTerritory()) {
                     savePreviousStateAndSetNew(DotState.Empty, setEmptyBase = true)
                 }
             } else {

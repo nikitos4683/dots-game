@@ -13,12 +13,13 @@ class StandardFieldWithDisallowedSuicideTests : FieldTests() {
     @Test
     fun failedSuicide() {
         testFieldWithRollback("""
-            . *  .
+            . * .
             * . *
-            . *  .
+            . * .
         """) {
             assertNull(it.makeMove(Position(2, 2), Player.Second))
             assertNotNull(it.makeMove(Position(2, 2), Player.First))
+            assertNull(it.makeMove(Position(2, 2), Player.First))
         }
     }
 

@@ -10,15 +10,15 @@ value class DotState(val value: Int) {
         val Empty = DotState(0)
         val Border = DotState(DotStateFlags.Border.value)
 
-        private val ValidMoveMask = DotStateFlags.Placed.value or DotStateFlags.Territory.value
+        private val PlacedTerritoryMask = DotStateFlags.Placed.value or DotStateFlags.Territory.value
         private val PlacedMask = DotStateFlags.Placed.value or DotStateFlags.PlacedPlayer.value
         private val ActiveMask = DotStateFlags.Placed.value or DotStateFlags.Territory.value or DotStateFlags.PlacedPlayer.value
         private val TerritoryMask = DotStateFlags.Territory.value or DotStateFlags.TerritoryPlayer.value
         private val InvertTerritoryMask = TerritoryMask.inv()
     }
 
-    fun checkValidMove(): Boolean {
-        return value and ValidMoveMask == 0
+    fun checkPlacedOrTerritory(): Boolean {
+        return value and PlacedTerritoryMask != 0
     }
 
     fun checkPlaced(): Boolean {
