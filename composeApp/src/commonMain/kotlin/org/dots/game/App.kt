@@ -38,6 +38,7 @@ fun App() {
         var player2Score by remember { mutableStateOf(0) }
         var moveNumber by remember { mutableStateOf(0) }
         val showNewGameDialog = remember { mutableStateOf(false) }
+        var newGameDialogRules by remember { mutableStateOf(Rules.Standard) }
         val openGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
 
@@ -76,13 +77,15 @@ fun App() {
 
         if (showNewGameDialog.value) {
             NewGameDialog(
+                newGameDialogRules,
                 onDismiss = {
                     showNewGameDialog.value = false
                     focusRequester.requestFocus()
                 },
                 onConfirmation = { rules ->
                     showNewGameDialog.value = false
-                    resetFieldAndGameTree(rules)
+                    newGameDialogRules = rules
+                    resetFieldAndGameTree(newGameDialogRules)
                 }
             )
         } else if (start) {

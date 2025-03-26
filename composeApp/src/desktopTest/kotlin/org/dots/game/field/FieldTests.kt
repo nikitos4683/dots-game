@@ -3,6 +3,7 @@ package org.dots.game.field
 import org.dots.game.core.BaseMode
 import org.dots.game.core.DotState
 import org.dots.game.core.Field
+import org.dots.game.core.MoveInfo
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
 import org.dots.game.infrastructure.TestDataParser
@@ -14,6 +15,9 @@ abstract class FieldTests {
     open val captureByBorder: Boolean = Rules.Standard.captureByBorder
     open val baseMode: BaseMode = Rules.Standard.baseMode
     open val suicideAllowed: Boolean = Rules.Standard.suicideAllowed
+    open val initialMoves: List<MoveInfo> = listOf()
+
+    fun initRules(width: Int, height: Int): Rules =  Rules(width, height, captureByBorder, baseMode, suicideAllowed, initialMoves)
 
     fun testFieldWithRollback(fieldData: String, check: (Field) -> Unit) {
         with (initialize(fieldData)) {
@@ -35,10 +39,9 @@ abstract class FieldTests {
     }
 
     fun initialize(fieldData: String): Field {
-        val testDataFiled = TestDataParser.parse(fieldData)
-        val rules = Rules(testDataFiled.width, testDataFiled.height, captureByBorder, baseMode, suicideAllowed)
-        val field = Field(rules)
-        for ((index, testMove) in testDataFiled.moves.withIndex()) {
+        val testDataField = TestDataParser.parse(fieldData)
+        val field = Field(initRules(testDataField.width, testDataField.height))
+        for ((index, testMove) in testDataField.moves.withIndex()) {
             val position = testMove.position
             assertNotNull(field.makeMoveUnsafe(position, testMove.player), "Can't make move #$index to $position")
         }

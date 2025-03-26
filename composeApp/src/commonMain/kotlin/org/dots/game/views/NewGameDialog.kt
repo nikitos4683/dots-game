@@ -20,6 +20,7 @@ private const val textFraction = 0.4f
 
 @Composable
 fun NewGameDialog(
+    rules: Rules,
     onDismiss: () -> Unit,
     onConfirmation: (newGameRules: Rules) -> Unit,
 ) {
@@ -27,15 +28,14 @@ fun NewGameDialog(
     val maxWidth = 48
     val minHeight = 3
     val maxHeight = 48
-    val standardRules = Rules.Standard
 
-    var width by remember { mutableStateOf(standardRules.width) }
-    var height by remember { mutableStateOf(standardRules.height) }
-    var captureByBorder by remember { mutableStateOf(standardRules.captureByBorder) }
+    var width by remember { mutableStateOf(rules.width) }
+    var height by remember { mutableStateOf(rules.height) }
+    var captureByBorder by remember { mutableStateOf(rules.captureByBorder) }
 
-    var initialPositionType by remember { mutableStateOf(EnumMode(false, InitialPositionType.Cross)) }
-    var baseMode by remember { mutableStateOf(EnumMode(false,standardRules.baseMode)) }
-    var suicideAllowed by remember { mutableStateOf(true) }
+    var initialPositionType by remember { mutableStateOf(EnumMode(expanded = false, selected = rules.initialPositionType)) }
+    var baseMode by remember { mutableStateOf(EnumMode(expanded = false,selected = rules.baseMode)) }
+    var suicideAllowed by remember { mutableStateOf(rules.suicideAllowed) }
 
     @Composable
     fun Dimension(isWidth: Boolean) {
@@ -76,7 +76,7 @@ fun NewGameDialog(
                 Dimension(isWidth = true)
                 Dimension(isWidth = false)
 
-                Mode(initialPositionType) {
+                Mode(initialPositionType, ignoredEntries = setOf(InitialPositionType.Custom)) {
                     initialPositionType = it
                 }
                 Mode(baseMode) {
@@ -110,7 +110,7 @@ fun NewGameDialog(
 private data class EnumMode<E: Enum<E>>(val expanded: Boolean, val selected: E)
 
 @Composable
-private inline fun <reified E : Enum<E>> Mode(enumMode: EnumMode<E>, crossinline onChange: (newMode: EnumMode<E>) -> Unit) {
+private inline fun <reified E : Enum<E>> Mode(enumMode: EnumMode<E>, ignoredEntries: Set<E> = emptySet(), crossinline onChange: (newMode: EnumMode<E>) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 10.dp)) {
         Text("${splitByUppercase(E::class.simpleName!!)} ", Modifier.fillMaxWidth(textFraction))
         Column(Modifier.fillMaxWidth().height(30.dp)
@@ -123,7 +123,7 @@ private inline fun <reified E : Enum<E>> Mode(enumMode: EnumMode<E>, crossinline
                 enumMode.expanded,
                 onDismissRequest = { onChange(enumMode.copy(expanded = false)) },
             ) {
-                enumValues<E>().forEach { entry ->
+                enumValues<E>().filterNot { ignoredEntries.contains(it) } .forEach { entry ->
                     DropdownMenuItem(onClick = { onChange(enumMode.copy(expanded = false, selected = entry)) }) {
                         Text(splitByUppercase(entry.toString()))
                     }

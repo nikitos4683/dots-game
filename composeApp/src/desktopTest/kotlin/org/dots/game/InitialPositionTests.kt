@@ -4,6 +4,7 @@ import org.dots.game.core.InitialPositionType
 import org.dots.game.core.MoveInfo
 import org.dots.game.core.Player
 import org.dots.game.core.Position
+import org.dots.game.core.Rules
 import org.dots.game.core.generateDefaultInitialPositions
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,6 +32,52 @@ class InitialPositionTests {
     @Test
     fun crossDoesntFitField() {
         assertNull(InitialPositionType.Cross.generateDefaultInitialPositions(1, 1))
+    }
+
+    @Test
+    fun initialPositionTypeRecognition() {
+        checkRecognition(InitialPositionType.Empty)
+
+        checkRecognition(InitialPositionType.Custom, MoveInfo(Position(19, 19), Player.First))
+
+        checkRecognition(InitialPositionType.Cross,
+            MoveInfo(Position(19, 19), Player.First),
+            MoveInfo(Position(20, 19), Player.Second),
+            MoveInfo(Position(20, 20), Player.First),
+            MoveInfo(Position(19, 20), Player.Second),
+        )
+
+        checkRecognition(InitialPositionType.Cross,
+            MoveInfo(Position(19, 19), Player.First),
+            MoveInfo(Position(20, 20), Player.First),
+            MoveInfo(Position(20, 19), Player.Second),
+            MoveInfo(Position(19, 20), Player.Second),
+        )
+
+        checkRecognition(InitialPositionType.Cross,
+            MoveInfo(Position(19, 19), Player.Second),
+            MoveInfo(Position(20, 19), Player.First),
+            MoveInfo(Position(20, 20), Player.Second),
+            MoveInfo(Position(19, 20), Player.First),
+        )
+
+        checkRecognition(InitialPositionType.Custom,
+            MoveInfo(Position(19, 19), Player.First),
+            MoveInfo(Position(20, 19), Player.Second),
+            MoveInfo(Position(20, 20), Player.First),
+            MoveInfo(Position(19, 20), Player.First),
+        )
+
+        checkRecognition(InitialPositionType.Custom,
+            MoveInfo(Position(19, 19), Player.First),
+            MoveInfo(Position(20, 19), Player.Second),
+            MoveInfo(Position(21, 21), Player.First),
+            MoveInfo(Position(19, 20), Player.Second),
+        )
+    }
+
+    private fun checkRecognition(expectedInitialPositionType: InitialPositionType, vararg actualMoveInfos: MoveInfo) {
+        assertEquals(expectedInitialPositionType, Rules(initialMoves = actualMoveInfos.toList()).initialPositionType)
     }
 
     private fun List<MoveInfo>.checkCross(x: Int, y: Int) {

@@ -9,14 +9,36 @@ class Rules(
     val captureByBorder: Boolean = false,
     val baseMode: BaseMode = BaseMode.AtLeastOneOpponentDot,
     val suicideAllowed: Boolean = true,
-    val initialMoves: List<MoveInfo> = emptyList(),
+    val initialMoves: List<MoveInfo> = Cross.generateDefaultInitialPositions(width, height) ?: emptyList(),
 ) {
     companion object {
         val Standard = Rules()
     }
 
     val initialPositionType: InitialPositionType by lazy {
-        InitialPositionType.Custom // TODO: implement detection
+        if (initialMoves.isEmpty()) {
+            Empty
+        } else {
+            if (initialMoves.size == 4) {
+                val sortedMoveInfos = initialMoves.sortedBy { it.position.squareDistanceToZero() }
+                val firstMoveInfo =  sortedMoveInfos.first()
+                val secondMoveInfo = sortedMoveInfos[1]
+                val thirdMoveInfo = sortedMoveInfos[2]
+                if (secondMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
+                    thirdMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
+                    secondMoveInfo.position != thirdMoveInfo.position &&
+                    secondMoveInfo.player == thirdMoveInfo.player &&
+                    secondMoveInfo.player != firstMoveInfo.player
+                ) {
+                    val fourthMoveInfo =  sortedMoveInfos[3]
+                    if (fourthMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 2 &&
+                            fourthMoveInfo.player == firstMoveInfo.player) {
+                        return@lazy Cross
+                    }
+                }
+            }
+            InitialPositionType.Custom
+        }
     }
 }
 

@@ -18,7 +18,7 @@ class FieldRepresentationTests : FieldTests() {
 
     @Test
     fun borders() {
-        val field = Field(Rules(1, 1))
+        val field = Field(initRules(1, 1))
         field.makeMove(Position(1, 1))
         assertEquals("""
             ┌ ─ ┐
@@ -29,7 +29,7 @@ class FieldRepresentationTests : FieldTests() {
 
     @Test
     fun maxPadding() {
-        val field = Field(Rules(5, 5))
+        val field = Field(initRules(5, 5))
         field.makeMove(Position(3, 3))
         assertEquals(
             """
