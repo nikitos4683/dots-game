@@ -186,3 +186,73 @@ fun Field.getPositionsOfConnection(position: Position, diagonalConnections: Bool
         }
     }
 }
+
+/**
+ * Returns outer/inner closures that have sorted positions (square distance between adjacent positions <= 2).
+ * It's useful for surrounding drawing.
+ */
+fun Base.getSortedClosurePositions(field: Field): ExtendedClosureInfo {
+    if (field.rules.baseMode != BaseMode.AllOpponentDots) {
+        // Closures are always correctly sorted for surrounding-based formats, and inner closures are never used for them
+        return ExtendedClosureInfo(closurePositions, emptyList())
+    } else {
+        val closureSet = closurePositions.toMutableSet()
+        var outerClosure: List<Position> = emptyList()
+        val innerClosures = mutableListOf<List<Position>>()
+
+        var firstClosure = true
+        while (closureSet.isNotEmpty()) {
+            val positionClosestToHorizontalBorder = closureSet.minBy { it.y }
+            // The outer closure should be minimal, the inner closure should be maximal
+            val newClosure = closureSet.extractClosure(positionClosestToHorizontalBorder, inner = !firstClosure)
+            if (firstClosure) {
+                outerClosure = newClosure
+            } else {
+                innerClosures.add(newClosure)
+            }
+            firstClosure = false
+        }
+
+        return ExtendedClosureInfo(outerClosure, innerClosures)
+    }
+}
+
+data class ExtendedClosureInfo(val outerClosure: List<Position>, val innerClosures: List<List<Position>>)
+
+private fun MutableSet<Position>.extractClosure(initialPosition: Position, inner: Boolean): List<Position> {
+    val closurePositions = mutableListOf(initialPosition)
+    var square = 0
+    var currentPosition: Position = initialPosition
+    // The next position should always be inner for outer closure and outer for inner closure
+    var nextPosition = Position(currentPosition.x, currentPosition.y + (if (!inner) +1 else -1))
+
+    loop@ do {
+        val walkCompleted = currentPosition.clockwiseWalk(nextPosition) {
+            return@clockwiseWalk if (contains(it)) {
+                square += currentPosition.getSquare(it)
+
+                if (it == initialPosition) {
+                    break@loop
+                }
+
+                closurePositions.add(it)
+                nextPosition = currentPosition
+                currentPosition = it
+
+                false
+            } else {
+                true
+            }
+        }
+        if (walkCompleted) {
+            // Exit if `initialPosition` is single
+            break
+        }
+    } while (true)
+
+    require(if (!inner) square >= 0 else square <= 0)
+
+    removeAll(closurePositions)
+
+    return closurePositions
+}

@@ -1,5 +1,6 @@
 package org.dots.game.field
 
+import org.dots.game.core.BaseMode
 import org.dots.game.core.DotState
 import org.dots.game.core.Field
 import org.dots.game.core.Position
@@ -11,7 +12,7 @@ import kotlin.test.assertTrue
 
 abstract class FieldTests {
     open val captureByBorder: Boolean = Rules.Standard.captureByBorder
-    open val captureEmptyBase: Boolean = Rules.Standard.captureEmptyBase
+    open val baseMode: BaseMode = Rules.Standard.baseMode
     open val suicideAllowed: Boolean = Rules.Standard.suicideAllowed
 
     fun testFieldWithRollback(fieldData: String, check: (Field) -> Unit) {
@@ -35,7 +36,7 @@ abstract class FieldTests {
 
     fun initialize(fieldData: String): Field {
         val testDataFiled = TestDataParser.parse(fieldData)
-        val rules = Rules(testDataFiled.width, testDataFiled.height, captureByBorder, captureEmptyBase, suicideAllowed)
+        val rules = Rules(testDataFiled.width, testDataFiled.height, captureByBorder, baseMode, suicideAllowed)
         val field = Field(rules)
         for ((index, testMove) in testDataFiled.moves.withIndex()) {
             val position = testMove.position

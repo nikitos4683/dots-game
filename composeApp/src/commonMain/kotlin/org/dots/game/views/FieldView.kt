@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
@@ -38,6 +39,7 @@ import org.dots.game.core.MoveResult
 import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.getPositionsOfConnection
+import org.dots.game.core.getSortedClosurePositions
 import org.dots.game.core.getStrongConnectionLinePositions
 import kotlin.math.abs
 import kotlin.math.round
@@ -61,7 +63,7 @@ private val dotSize = DpSize(dotRadius * 2, dotRadius * 2)
 private val lastMoveRadius = cellSize * lastMoveRadiusRatio
 private val lastMoveDotSize = DpSize(lastMoveRadius * 2, lastMoveRadius * 2)
 
-private val drawEmptyBases = false
+private val drawHelperBases = false
 private val connectionThickness = 2.dp
 private val outOfBoundDrawRatio = dotRadiusRatio
 private val baseDrawMode: PolygonDrawMode = PolygonDrawMode.OutlineAndFill
@@ -207,7 +209,14 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             StrongConnectionLines(field, moveResultPosition, color)
         } else if (connectionDrawMode is ConnectionDrawMode.Polygon) {
             val connections = field.getPositionsOfConnection(moveResultPosition)
-            Polygon(connections, moveResult.player, field, connectionDrawMode.polygonDrawMode, uiSettings)
+            Polygon(
+                connections,
+                emptyList(),
+                moveResult.player,
+                field,
+                connectionDrawMode.polygonDrawMode,
+                uiSettings
+            )
         }
 
         val dotOffset = moveResultPosition.toDpOffset()
@@ -218,9 +227,10 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
         )
 
         for (base in moveResult.bases) {
-            if (base.isEmpty && !drawEmptyBases) continue
+            if (!base.isReal && !drawHelperBases) continue
 
-            Polygon(base.closurePositions, base.player, field, baseDrawMode, uiSettings)
+            val (outerClosure, innerClosures) = base.getSortedClosurePositions(field)
+            Polygon(outerClosure, innerClosures, base.player, field, baseDrawMode, uiSettings)
         }
     }
 
@@ -284,13 +294,14 @@ private fun StrongConnectionLines(
 
 @Composable
 private fun Polygon(
-    positions: List<Position>,
+    outerClosure: List<Position>,
+    innerClosures: List<List<Position>>,
     player: Player,
     field: Field,
     polygonDrawMode: PolygonDrawMode,
     uiSettings: UiSettings,
 ) {
-    if (positions.size <= 1) return
+    if (outerClosure.size <= 1) return
 
     var minX: Int = Int.MAX_VALUE
     var minY: Int = Int.MAX_VALUE
@@ -304,7 +315,7 @@ private fun Polygon(
 
     var containsBound = false
 
-    for (position in positions) {
+    for (position in outerClosure) {
         val (x, y) = position
         if (x < minX) minX = x
         if (x > maxX) maxX = x
@@ -359,18 +370,32 @@ private fun Polygon(
         height = size.height.toPx()
     }
 
-    val path = Path().apply {
-        for ((index, position) in positions.withIndex()) {
-            val xCoordinate = if (xCount == 0) 0f else (position.x - minX).toFloat() / xCount * width
-            val yCoordinate = if (yCount == 0) 0f else (position.y - minY).toFloat() / yCount * height
+    fun createPath(positions: List<Position>): Path {
+        return Path().apply {
+            for ((index, position) in positions.withIndex()) {
+                val xCoordinate = if (xCount == 0) 0f else (position.x - minX).toFloat() / xCount * width
+                val yCoordinate = if (yCount == 0) 0f else (position.y - minY).toFloat() / yCount * height
 
-            if (index == 0) {
-                moveTo(xCoordinate, yCoordinate)
-            } else {
-                lineTo(xCoordinate, yCoordinate)
-                if (index == positions.size - 1) {
-                    close()
+                if (index == 0) {
+                    moveTo(xCoordinate, yCoordinate)
+                } else {
+                    lineTo(xCoordinate, yCoordinate)
+                    if (index == outerClosure.size - 1) {
+                        close()
+                    }
                 }
+            }
+        }
+    }
+
+    val path = createPath(outerClosure)
+
+    val resultPath = if (innerClosures.isEmpty()) {
+        path
+    } else {
+        Path().apply {
+            for ((index, innerClosure) in innerClosures.withIndex()) {
+                op(if (index == 0) path else this, createPath(innerClosure), PathOperation.Difference)
             }
         }
     }
@@ -401,10 +426,10 @@ private fun Polygon(
             .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
             .drawBehind {
                 if (polygonDrawMode.drawFill()) {
-                    drawPath(path, polygonColor.copy(alpha = baseAlpha))
+                    drawPath(resultPath, polygonColor.copy(alpha = baseAlpha))
                 }
                 if (polygonDrawMode.drawOutline()) {
-                    drawPath(path, polygonColor, style = Stroke(width = connectionThickness.toPx()))
+                    drawPath(resultPath, polygonColor, style = Stroke(width = connectionThickness.toPx()))
                 }
             }
     )

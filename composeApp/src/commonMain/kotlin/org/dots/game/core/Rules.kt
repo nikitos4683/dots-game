@@ -7,7 +7,7 @@ class Rules(
     val width: Int = 39,
     val height: Int = 32,
     val captureByBorder: Boolean = false,
-    val captureEmptyBase: Boolean = false,
+    val baseMode: BaseMode = BaseMode.AtLeastOneOpponentDot,
     val suicideAllowed: Boolean = true,
     val initialMoves: List<MoveInfo> = emptyList(),
 ) {
@@ -24,6 +24,12 @@ enum class InitialPositionType {
     Empty,
     Cross,
     Custom;
+}
+
+enum class BaseMode {
+    AtLeastOneOpponentDot,
+    AnySurrounding,
+    AllOpponentDots;
 }
 
 fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int): List<MoveInfo>? {

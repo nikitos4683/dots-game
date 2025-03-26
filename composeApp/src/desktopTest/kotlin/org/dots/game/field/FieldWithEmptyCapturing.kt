@@ -1,5 +1,6 @@
 package org.dots.game.field
 
+import org.dots.game.core.BaseMode
 import org.dots.game.core.Player
 import org.dots.game.core.x
 import kotlin.test.Test
@@ -7,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class FieldWithEmptyCapturing() : FieldTests() {
-    override val captureEmptyBase: Boolean = true
+    override val baseMode: BaseMode = BaseMode.AnySurrounding
 
     @Test
     fun checkCapturing() {

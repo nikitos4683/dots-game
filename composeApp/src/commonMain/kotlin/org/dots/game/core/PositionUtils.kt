@@ -36,14 +36,14 @@ object OffsetHelpers {
     }.toTypedArray()
 }
 
-fun Position.linkedWith(other: Position): Boolean {
-    return squareDistanceTo(other) <= 2
-}
-
 fun Position.squareDistanceTo(other: Position): Int {
     val diffX = x - other.x
     val diffY = y - other.y
     return diffX * diffX + diffY * diffY
+}
+
+fun Position.squareDistanceToZero(): Int {
+    return x * x + y * y
 }
 
 fun Position.getSquare(other: Position): Int {
@@ -80,8 +80,7 @@ internal inline fun Position.clockwiseWalk(other: Position, action: (Position) -
 private fun calculateWalkIndex(diffX: Int, diffY: Int): Int {
     val diffX = diffX + 1
     val diffY = (diffY + 1) shl OFFSET_Y_BITS_COUNT
-    val index = diffX or diffY
-    return index
+    return diffX or diffY
 }
 
 

@@ -10,9 +10,7 @@ value class Position private constructor(val position: Int) {
         const val MASK = (1 shl COORDINATE_BITS_COUNT) - 1
     }
 
-    constructor(x: Int, y: Int) : this((x shl COORDINATE_BITS_COUNT) or (y and MASK)) {
-        require(x >= 0 && y >= 0)
-    }
+    constructor(x: Int, y: Int) : this((x shl COORDINATE_BITS_COUNT) or (y and MASK))
 
     override fun toString(): String = "($x;$y)"
 
