@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import java.io.File
+import java.net.URI
 
 @Composable
 actual fun HorizontalScrollbar(
@@ -20,6 +21,10 @@ actual fun VerticalScrollbar(
     modifier: Modifier
 ) = VerticalScrollbar(rememberScrollbarAdapter(scrollState), modifier)
 
-actual fun readFileIfExists(filePath: String): FileInfo? = File(filePath.removeSurrounding("\"")).let {
-    if (it.exists()) FileInfo(it.name, it.readText()) else null
+actual fun readFileText(filePath: String): String = File(filePath).readText()
+
+actual fun fileExists(filePath: String): Boolean = File(filePath).exists()
+
+actual suspend fun downloadFileText(fileUrl: String): String = URI.create(fileUrl).toURL().openStream().use {
+    it.readBytes().decodeToString()
 }

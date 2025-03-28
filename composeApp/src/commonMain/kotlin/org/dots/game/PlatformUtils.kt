@@ -10,9 +10,8 @@ expect fun HorizontalScrollbar(scrollState: ScrollState, modifier: Modifier)
 @Composable
 expect fun VerticalScrollbar(scrollState: ScrollState, modifier: Modifier)
 
-expect fun readFileIfExists(filePath: String): FileInfo?
+expect fun readFileText(filePath: String): String
 
-data class FileInfo(
-    val name: String,
-    val content: String,
-)
+expect fun fileExists(filePath: String): Boolean
+
+expect suspend fun downloadFileText(fileUrl: String): String

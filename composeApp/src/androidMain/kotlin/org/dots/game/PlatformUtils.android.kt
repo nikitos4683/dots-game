@@ -3,6 +3,8 @@ package org.dots.game
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import java.io.File
+import java.net.URI
 
 @Composable
 actual fun VerticalScrollbar(
@@ -16,4 +18,10 @@ actual fun HorizontalScrollbar(
     modifier: Modifier
 ) {}
 
-actual fun readFileIfExists(filePath: String): FileInfo? = null
+actual fun readFileText(filePath: String): String = File(filePath).readText()
+
+actual fun fileExists(filePath: String): Boolean = File(filePath).exists()
+
+actual suspend fun downloadFileText(fileUrl: String): String = URI.create(fileUrl).toURL().openStream().use {
+    it.readBytes().decodeToString()
+}

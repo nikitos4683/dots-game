@@ -124,7 +124,7 @@ class StandardFieldTests : FieldTests() {
     }
 
     @Test
-    fun emptyBaseWithinEmptyBase() {
+    fun outerEmptyBaseSurroundsNonEmptyBase() {
         testFieldWithRollback(
             """
             ... ... +04 +05 +06
@@ -147,7 +147,7 @@ class StandardFieldTests : FieldTests() {
     }
 
     @Test
-    fun emptyBaseWithinEmptyBase2() {
+    fun newNonEmptyBaseWithinOuterEmptyBase() {
         testFieldWithRollback("""
             ... ... +00 +01 +02
             ... +03 ... ... ... +04

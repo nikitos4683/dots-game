@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.launch
 import org.dots.game.core.Game
 import org.dots.game.openOrLoadSgf
 import org.dots.game.sgf.SgfDiagnostic
@@ -37,7 +39,9 @@ fun OpenSgfDialog(
     onDismiss: () -> Unit,
     onConfirmation: (game: Game) -> Unit,
 ) {
-    var sgfPathOrContent by remember { mutableStateOf(TextFieldValue("")) }
+    val coroutineScope = rememberCoroutineScope()
+    var sgfPathOrContentTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
+    var previousInput: String? = null
     var diagnostics by remember { mutableStateOf<List<SgfDiagnostic>>(listOf()) }
     var fileName by remember { mutableStateOf<String?>(null) }
     var game by remember { mutableStateOf<Game?>(null) }
@@ -48,14 +52,21 @@ fun OpenSgfDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Sgf Path or Content: ", Modifier.fillMaxWidth(0.3f))
                     TextField(
-                        sgfPathOrContent, {
-                            sgfPathOrContent = it
-                            diagnostics = buildList {
-                                val result = openOrLoadSgf(sgfPathOrContent.text) { diagnostic ->
-                                    add(diagnostic)
+                        sgfPathOrContentTextFieldValue, {
+                            sgfPathOrContentTextFieldValue = it
+                            val text = it.text
+                            if (text != previousInput) {
+                                previousInput = text
+
+                                coroutineScope.launch {
+                                    diagnostics = buildList {
+                                        val result = openOrLoadSgf(text) { diagnostic ->
+                                            add(diagnostic)
+                                        }
+                                        fileName = result.first
+                                        game = result.second
+                                    }
                                 }
-                                fileName = result.first
-                                game = result.second
                             }
                         },
                         singleLine = fileName != null,
@@ -68,7 +79,7 @@ fun OpenSgfDialog(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp).padding(vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { sgfPathOrContent.text.buildLineOffsets() }
+                        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { sgfPathOrContentTextFieldValue.text.buildLineOffsets() }
                         items(diagnostics.size) { index ->
                             val diagnostic = diagnostics[index]
                             var cardModifier = Modifier.fillMaxWidth()
@@ -77,9 +88,9 @@ fun OpenSgfDialog(
                                     val textSpan = diagnostic.textSpan
                                     val start = textSpan.start
                                     val end = textSpan.end
-                                    sgfPathOrContent = sgfPathOrContent.copy(selection = TextRange(start,
+                                    sgfPathOrContentTextFieldValue = sgfPathOrContentTextFieldValue.copy(selection = TextRange(start,
                                         if (end == start) {
-                                            if (end < sgfPathOrContent.text.length - 1)
+                                            if (end < sgfPathOrContentTextFieldValue.text.length - 1)
                                                 end + 1
                                             else if (end > 0)
                                                 end - 1

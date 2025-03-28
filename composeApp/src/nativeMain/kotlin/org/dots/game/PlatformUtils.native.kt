@@ -19,4 +19,8 @@ actual fun VerticalScrollbar(
     modifier: Modifier
 ) = VerticalScrollbar(rememberScrollbarAdapter(scrollState), modifier)
 
-actual fun readFileIfExists(filePath: String): FileInfo? = null
+actual fun readFileText(filePath: String): String = error("File loading is not supported")
+
+actual fun fileExists(filePath: String): Boolean = false
+
+actual suspend fun downloadFileText(fileUrl: String): String = error("File downloading by url is not supported")
