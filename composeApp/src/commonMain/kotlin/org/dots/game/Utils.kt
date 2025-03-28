@@ -2,10 +2,8 @@ package org.dots.game
 
 import org.dots.game.core.Game
 import org.dots.game.sgf.Sgf
-import org.dots.game.sgf.SgfDiagnostic
-import org.dots.game.sgf.SgfDiagnosticSeverity
 
-suspend fun openOrLoadSgf(sgfPathOrContent: String, diagnosticReporter: ((SgfDiagnostic) -> Unit) = { }): Pair<String?, Game?> {
+suspend fun openOrLoadSgf(sgfPathOrContent: String, diagnosticReporter: ((Diagnostic) -> Unit) = { }): Pair<String?, Game?> {
     try {
         val inputType = getInputType(sgfPathOrContent)
         val fileName: String?
@@ -19,7 +17,7 @@ suspend fun openOrLoadSgf(sgfPathOrContent: String, diagnosticReporter: ((SgfDia
 
             is InputType.File -> {
                 if (inputType.isIncorrect) {
-                    diagnosticReporter(SgfDiagnostic("Incorrect file `${inputType.name}`. The only .sgf files are supported", textSpan = null))
+                    diagnosticReporter(Diagnostic("Incorrect file `${inputType.name}`. The only .sgf files are supported", textSpan = null))
                     return null to null
                 }
 
@@ -29,7 +27,7 @@ suspend fun openOrLoadSgf(sgfPathOrContent: String, diagnosticReporter: ((SgfDia
 
             is InputType.Url -> {
                 if (inputType.isIncorrect) {
-                    diagnosticReporter(SgfDiagnostic("Incorrect url. The only `$zagramLinkPrefix` is supported", textSpan = null))
+                    diagnosticReporter(Diagnostic("Incorrect url. The only `$zagramLinkPrefix` is supported", textSpan = null))
                     return null to null
                 }
 
@@ -38,7 +36,7 @@ suspend fun openOrLoadSgf(sgfPathOrContent: String, diagnosticReporter: ((SgfDia
             }
 
             is InputType.Other -> {
-                diagnosticReporter(SgfDiagnostic("Unrecognized input type. Insert a path to .sgf file or a link to zagram.org game", textSpan = null))
+                diagnosticReporter(Diagnostic("Unrecognized input type. Insert a path to .sgf file or a link to zagram.org game", textSpan = null))
                 fileName = null
                 sgf = null
             }
@@ -46,7 +44,7 @@ suspend fun openOrLoadSgf(sgfPathOrContent: String, diagnosticReporter: ((SgfDia
 
         return fileName to sgf?.let { Sgf.parseAndConvert(it, onlySingleGameSupported = true, diagnosticReporter).firstOrNull() }
     } catch (e: Exception) {
-        diagnosticReporter(SgfDiagnostic(e.message ?: e.toString(), textSpan = null, SgfDiagnosticSeverity.Critical))
+        diagnosticReporter(Diagnostic(e.message ?: e.toString(), textSpan = null, DiagnosticSeverity.Critical))
     }
     return null to null
 }

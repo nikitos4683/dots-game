@@ -1,4 +1,4 @@
-package org.dots.game.sgf
+package org.dots.game
 
 import org.dots.game.core.AppInfo
 

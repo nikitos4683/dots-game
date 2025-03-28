@@ -1,5 +1,10 @@
 package org.dots.game.sgf
 
+import org.dots.game.Diagnostic
+import org.dots.game.DiagnosticSeverity
+import org.dots.game.convertAppInfo
+import org.dots.game.convertSimpleText
+import org.dots.game.convertText
 import org.dots.game.core.Field
 import org.dots.game.core.Game
 import org.dots.game.core.GameInfo
@@ -56,7 +61,7 @@ import org.dots.game.sgf.SgfMetaInfo.propertyInfoToKey
 import org.dots.game.sgf.SgfMetaInfo.propertyInfos
 import kotlin.math.abs
 
-class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames: Boolean = false, val diagnosticReporter: (SgfDiagnostic) -> Unit) {
+class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames: Boolean = false, val diagnosticReporter: (Diagnostic) -> Unit) {
     companion object {
         private const val LOWER_CHAR_OFFSET = 'a' - Field.OFFSET
         private const val UPPER_CHAR_OFFSET = 'A' - ('z' - 'a' + 1) - Field.OFFSET
@@ -69,7 +74,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
          *   * Unsupported mode (not Kropki)
          *   * Incorrect or unspecified size
          */
-        fun convert(sgf: SgfRoot, warnOnMultipleGames: Boolean = false, diagnosticReporter: (SgfDiagnostic) -> Unit): List<Game> {
+        fun convert(sgf: SgfRoot, warnOnMultipleGames: Boolean = false, diagnosticReporter: (Diagnostic) -> Unit): List<Game> {
             return SgfConverter(sgf, warnOnMultipleGames, diagnosticReporter).convert()
         }
     }
@@ -78,7 +83,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
 
     private fun convert(): List<Game> {
         if (sgf.gameTree.isEmpty()) {
-            reportDiagnostic("Empty game trees.", sgf.textSpan, SgfDiagnosticSeverity.Warning)
+            reportDiagnostic("Empty game trees.", sgf.textSpan, DiagnosticSeverity.Warning)
         }
 
         return buildList {
@@ -86,7 +91,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 convertGameTree(sgfGameTree, mainBranch = true, game = null, rootConverterProperties = null)?.let { add(it) }
 
                 if (warnOnMultipleGames && index > 0) {
-                    reportDiagnostic("Only single game is supported. Other games will be ignored.", sgfGameTree.textSpan, SgfDiagnosticSeverity.Warning)
+                    reportDiagnostic("Only single game is supported. Other games will be ignored.", sgfGameTree.textSpan, DiagnosticSeverity.Warning)
                 }
             }
         }
@@ -100,7 +105,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
     ): Game? {
         val root = mainBranch && game == null
         if (root && sgfGameTree.nodes.isEmpty()) {
-            reportDiagnostic("Root node with game info is missing.", TextSpan(sgfGameTree.lParen.textSpan.end, 0), SgfDiagnosticSeverity.Error)
+            reportDiagnostic("Root node with game info is missing.", TextSpan(sgfGameTree.lParen.textSpan.end, 0), DiagnosticSeverity.Error)
         }
 
         var initializedGame: Game? = game
@@ -151,7 +156,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 gameResultProperty.info.reportPropertyDiagnostic(
                     "has value `${scoreFromGameResult}` that doesn't match score from game field `${scoreFromField}`.",
                     TextSpan(currentGameTree.textSpan.end, 0),
-                    SgfDiagnosticSeverity.Warning
+                    DiagnosticSeverity.Warning
                 )
             }
         }
@@ -161,8 +166,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         var hasCriticalError = hasCriticalError
 
         // Report only properties that should be specified
-        gameInfoProperties.reportPropertyIfNotSpecified(GAME_MODE_KEY, node, SgfDiagnosticSeverity.Error)
-        gameInfoProperties.reportPropertyIfNotSpecified(FILE_FORMAT_KEY, node, SgfDiagnosticSeverity.Error)
+        gameInfoProperties.reportPropertyIfNotSpecified(GAME_MODE_KEY, node, DiagnosticSeverity.Error)
+        gameInfoProperties.reportPropertyIfNotSpecified(FILE_FORMAT_KEY, node, DiagnosticSeverity.Error)
 
         val sizeProperty = gameInfoProperties[SIZE_KEY]
         val width: Int?
@@ -180,7 +185,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         } else {
             width = null
             height = null
-            gameInfoProperties.reportPropertyIfNotSpecified(SIZE_KEY, node, SgfDiagnosticSeverity.Critical)
+            gameInfoProperties.reportPropertyIfNotSpecified(SIZE_KEY, node, DiagnosticSeverity.Critical)
             hasCriticalError = true
         }
 
@@ -199,7 +204,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                             ).getFullName()
                         }.",
                         textSpan,
-                        SgfDiagnosticSeverity.Warning,
+                        DiagnosticSeverity.Warning,
                     )
                 }
                 add(player2InitialMoveInfo)
@@ -303,7 +308,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         propertyInfo.reportPropertyDiagnostic(
             "has incorrect value `${textSpan.getText()}`. $errorMessageSuffix (move number: ${currentMoveNumber + 1}).",
             textSpan,
-            SgfDiagnosticSeverity.Error
+            DiagnosticSeverity.Error
         )
     }
 
@@ -324,7 +329,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 sgfPropertyInfo.reportPropertyDiagnostic(
                     "is duplicated and ignored.",
                     property.textSpan,
-                    SgfDiagnosticSeverity.Warning
+                    DiagnosticSeverity.Warning
                 )
             }
 
@@ -332,15 +337,15 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 !isRootScope && sgfPropertyInfo.scope == SgfPropertyScope.Root
             ) {
                 val currentScope: SgfPropertyScope
-                val severity: SgfDiagnosticSeverity
+                val severity: DiagnosticSeverity
                 val messageSuffix: String
                 if (isRootScope) {
                     currentScope = SgfPropertyScope.Root
-                    severity = SgfDiagnosticSeverity.Warning
+                    severity = DiagnosticSeverity.Warning
                     messageSuffix = ""
                 } else {
                     currentScope = SgfPropertyScope.Move
-                    severity = SgfDiagnosticSeverity.Error
+                    severity = DiagnosticSeverity.Error
                     messageSuffix = " The value is ignored."
                 }
                 sgfPropertyInfo.reportPropertyDiagnostic(
@@ -357,7 +362,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
     private fun Map<String, SgfProperty<*>>.reportPropertyIfNotSpecified(
         propertyKey: String,
         node: SgfNode,
-        severity: SgfDiagnosticSeverity
+        severity: DiagnosticSeverity
     ) {
         if (this[propertyKey] == null) {
             propertyInfos.getValue(propertyKey).reportPropertyDiagnostic(
@@ -390,7 +395,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 propertyInfo.reportPropertyDiagnostic(
                     "is unspecified.",
                     TextSpan(textSpan.end, 0),
-                    if (propertyIdentifier == SIZE_KEY) SgfDiagnosticSeverity.Critical else SgfDiagnosticSeverity.Error
+                    if (propertyIdentifier == SIZE_KEY) DiagnosticSeverity.Critical else DiagnosticSeverity.Error
                 )
                 reportedCriticalError = propertyIdentifier == SIZE_KEY
             }
@@ -398,7 +403,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             propertyInfo.reportPropertyDiagnostic(
                 "is unknown.",
                 identifier.textSpan,
-                SgfDiagnosticSeverity.Warning,
+                DiagnosticSeverity.Warning,
             )
         }
 
@@ -424,7 +429,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                                 propertyInfo.reportPropertyDiagnostic(
                                     "has incorrect format: `${propertyValue}`. Expected: Number.",
                                     propertyValueToken.textSpan,
-                                    SgfDiagnosticSeverity.Warning,
+                                    DiagnosticSeverity.Warning,
                                 )
                             }
                             false
@@ -446,7 +451,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                             propertyInfo.reportPropertyDiagnostic(
                                 "has incorrect format: `${propertyValue}`. Expected: Real Number.",
                                 propertyValueToken.textSpan,
-                                SgfDiagnosticSeverity.Warning,
+                                DiagnosticSeverity.Warning,
                             )
                         }
                     }
@@ -461,7 +466,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                             propertyInfo.reportPropertyDiagnostic(
                                 "value `${propertyValue}` overwrites one the previous position.",
                                 propertyValueToken.textSpan,
-                                SgfDiagnosticSeverity.Warning,
+                                DiagnosticSeverity.Warning,
                             )
                         }
                     }
@@ -477,7 +482,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 propertyInfo.reportPropertyDiagnostic(
                     "has duplicated value `$propertyValue` that's ignored.",
                     propertyValueToken.textSpan,
-                    SgfDiagnosticSeverity.Warning
+                    DiagnosticSeverity.Warning
                 )
             }
         }
@@ -504,7 +509,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             propertyInfo.reportPropertyDiagnostic(
                 "has unsupported value `${propertyValue}`$parsedGameMode. The only `${SUPPORTED_GAME_MODE_KEY}` (${SUPPORTED_GAME_MODE_NAME}) is supported.",
                 propertyValueToken.textSpan,
-                if (intValue != null) SgfDiagnosticSeverity.Critical else SgfDiagnosticSeverity.Error,
+                if (intValue != null) DiagnosticSeverity.Critical else DiagnosticSeverity.Error,
             )
             return intValue != null
         }
@@ -523,7 +528,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             propertyInfo.reportPropertyDiagnostic(
                 "has unsupported value `${propertyValue}`. The only `$SUPPORTED_FILE_FORMAT` is supported.",
                 propertyValueToken.textSpan,
-                if (intValue != null) SgfDiagnosticSeverity.Critical else SgfDiagnosticSeverity.Error,
+                if (intValue != null) DiagnosticSeverity.Critical else DiagnosticSeverity.Error,
             )
             return intValue != null
         }
@@ -544,7 +549,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     propertyInfo.reportPropertyDiagnostic(
                         "has invalid value `${dimensions[0]}`. Expected: 0..${maxDimension}.",
                         textSpan,
-                        SgfDiagnosticSeverity.Critical,
+                        DiagnosticSeverity.Critical,
                     )
                 } else {
                     width = size
@@ -559,7 +564,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     propertyInfo.reportPropertyDiagnostic(
                         "has invalid width: `${widthString}`. Expected: 0..${Field.MAX_WIDTH}.",
                         TextSpan(textSpan.start, widthString.length),
-                        SgfDiagnosticSeverity.Critical,
+                        DiagnosticSeverity.Critical,
                     )
                 }
                 height = heightString.toIntOrNull()?.takeIf { it >= 0 && it <= Field.MAX_HEIGHT }
@@ -567,7 +572,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     propertyInfo.reportPropertyDiagnostic(
                         "has invalid height: `${heightString}`. Expected: 0..${Field.MAX_HEIGHT}.",
                         TextSpan(textSpan.start + widthString.length + 1, heightString.length),
-                        SgfDiagnosticSeverity.Critical,
+                        DiagnosticSeverity.Critical,
                     )
                 }
             }
@@ -577,7 +582,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 propertyInfo.reportPropertyDiagnostic(
                     "is defined in incorrect format: `${value}`. Expected: INT or INT:INT.",
                     textSpan,
-                    SgfDiagnosticSeverity.Critical,
+                    DiagnosticSeverity.Critical,
                 )
             }
         }
@@ -607,14 +612,14 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 "has capturing positions that are not yet supported: ${capturingMoveInfos.joinToString()} (`${textSpan.getText()}`). " +
                         "The capturing is calculated automatically according game rules.",
                 textSpan,
-                SgfDiagnosticSeverity.Warning,
+                DiagnosticSeverity.Warning,
             )
         } else if (value.length > 2) {
             val textSpan = TextSpan(textSpan.start + 2, value.length - 2)
             propertyInfo.reportPropertyDiagnostic(
                 "has incorrect extra chars: `${value.substring(2)}`",
                 textSpan,
-                SgfDiagnosticSeverity.Error,
+                DiagnosticSeverity.Error,
             )
         }
 
@@ -643,7 +648,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 value.subSequence(EXTRA_MOVE_INFO_INDEX, value.length).toString()
             } else {
                 propertyInfo.reportPropertyDiagnostic("has unexpected separator `${value.elementAtOrNull(EXTRA_MOVE_INFO_INDEX - 1) ?: ""}`",
-                    TextSpan(textSpan.start + EXTRA_MOVE_INFO_INDEX - 1, 1), SgfDiagnosticSeverity.Error)
+                    TextSpan(textSpan.start + EXTRA_MOVE_INFO_INDEX - 1, 1), DiagnosticSeverity.Error)
                 ""
             }
 
@@ -655,7 +660,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             propertyInfo.reportPropertyDiagnostic(
                 "has incorrect x coordinate `${value[0]}`.",
                 TextSpan(textSpan.start + internalIndex, 1),
-                SgfDiagnosticSeverity.Error,
+                DiagnosticSeverity.Error,
             )
             null
         }
@@ -664,7 +669,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             propertyInfo.reportPropertyDiagnostic(
                 "has incorrect y coordinate `${yChar ?: ""}`.",
                 TextSpan(textSpan.start + internalIndex + 1, yChar?.let { 1 } ?: 0),
-                SgfDiagnosticSeverity.Error,
+                DiagnosticSeverity.Error,
             )
             null
         }
@@ -688,7 +693,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     propertyInfo.reportPropertyDiagnostic(
                         "has invalid player `${it ?: ""}`. Allowed values: $PLAYER1_MARKER or $PLAYER2_MARKER",
                         TextSpan(textSpan.start, if (it == null) 0 else 1),
-                        SgfDiagnosticSeverity.Error,
+                        DiagnosticSeverity.Error,
                     )
                     return null
                 }
@@ -700,7 +705,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 propertyInfo.reportPropertyDiagnostic(
                     "value `$value` is written in invalid format. Correct format is 0 (Draw) or X+Y where X is $PLAYER1_MARKER or $PLAYER2_MARKER, Y $GAME_RESULT_DESCRIPTION_SUFFIX",
                     TextSpan(textSpan.start + 1, if (it == null) 0 else 1),
-                    SgfDiagnosticSeverity.Error,
+                    DiagnosticSeverity.Error,
                 )
                 return GameResult.UnknownWin(player)
             }
@@ -711,7 +716,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 propertyInfo.reportPropertyDiagnostic(
                     "has unexpected suffix `${value.substring(3)}`.",
                     TextSpan(textSpan.start + 3, value.length - 3),
-                    SgfDiagnosticSeverity.Error,
+                    DiagnosticSeverity.Error,
                 )
             }
         }
@@ -730,7 +735,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                         propertyInfo.reportPropertyDiagnostic(
                             "has invalid result value `$resultString`. Correct value $GAME_RESULT_DESCRIPTION_SUFFIX",
                             TextSpan(textSpan.start + 2, resultString.length),
-                            SgfDiagnosticSeverity.Error,
+                            DiagnosticSeverity.Error,
                         )
                         GameResult.UnknownWin(player)
                     }
@@ -749,9 +754,9 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         }
     }
 
-    private fun SgfPropertyInfo.reportPropertyDiagnostic(message: String, textSpan: TextSpan, severity: SgfDiagnosticSeverity) {
+    private fun SgfPropertyInfo.reportPropertyDiagnostic(message: String, textSpan: TextSpan, severity: DiagnosticSeverity) {
         val messageWithPropertyInfo = "Property ${getFullName()} $message"
-        diagnosticReporter(SgfDiagnostic(messageWithPropertyInfo, textSpan, severity))
+        diagnosticReporter(Diagnostic(messageWithPropertyInfo, textSpan, severity))
     }
 
     private fun SgfPropertyInfo.getFullName(): String {
@@ -767,7 +772,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         return "$propertyKey$propertyNameInfix"
     }
 
-    private fun reportDiagnostic(message: String, textSpan: TextSpan, severity: SgfDiagnosticSeverity) {
-        diagnosticReporter(SgfDiagnostic(message, textSpan, severity))
+    private fun reportDiagnostic(message: String, textSpan: TextSpan, severity: DiagnosticSeverity) {
+        diagnosticReporter(Diagnostic(message, textSpan, severity))
     }
 }

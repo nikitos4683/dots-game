@@ -1,5 +1,8 @@
 package org.dots.game.sgf
 
+import org.dots.game.Diagnostic
+import org.dots.game.DiagnosticSeverity
+
 /**
  * Reference: https://homepages.cwi.nl/~aeb/go/misc/sgf.html
  *
@@ -15,11 +18,11 @@ package org.dots.game.sgf
  * UcLetter   = 'A'..'Z'
  * ```
  */
-class SgfParser private constructor(val text: CharSequence, val diagnosticReporter: (SgfDiagnostic) -> Unit) {
+class SgfParser private constructor(val text: CharSequence, val diagnosticReporter: (Diagnostic) -> Unit) {
     companion object {
         val whitespaceChars = setOf(' ', '\n', '\r', '\t')
 
-        fun parse(sgfText: String, diagnosticReporter: (SgfDiagnostic) -> Unit): SgfRoot {
+        fun parse(sgfText: String, diagnosticReporter: (Diagnostic) -> Unit): SgfRoot {
             return SgfParser(sgfText, diagnosticReporter).parse()
         }
     }
@@ -172,7 +175,7 @@ class SgfParser private constructor(val text: CharSequence, val diagnosticReport
                 else -> error("Unexpected error token")
             }
 
-            diagnosticReporter(SgfDiagnostic(errorText, textSpan, SgfDiagnosticSeverity.Error))
+            diagnosticReporter(Diagnostic(errorText, textSpan, DiagnosticSeverity.Error))
         }
     }
 

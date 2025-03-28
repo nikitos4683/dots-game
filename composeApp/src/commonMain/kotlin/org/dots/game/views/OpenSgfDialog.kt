@@ -30,9 +30,9 @@ import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import org.dots.game.core.Game
 import org.dots.game.openOrLoadSgf
-import org.dots.game.sgf.SgfDiagnostic
-import org.dots.game.sgf.buildLineOffsets
-import org.dots.game.sgf.toLineColumnDiagnostic
+import org.dots.game.Diagnostic
+import org.dots.game.buildLineOffsets
+import org.dots.game.toLineColumnDiagnostic
 
 @Composable
 fun OpenSgfDialog(
@@ -42,7 +42,7 @@ fun OpenSgfDialog(
     val coroutineScope = rememberCoroutineScope()
     var sgfPathOrContentTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     var previousInput: String? = null
-    var diagnostics by remember { mutableStateOf<List<SgfDiagnostic>>(listOf()) }
+    var diagnostics by remember { mutableStateOf<List<Diagnostic>>(listOf()) }
     var fileName by remember { mutableStateOf<String?>(null) }
     var game by remember { mutableStateOf<Game?>(null) }
 

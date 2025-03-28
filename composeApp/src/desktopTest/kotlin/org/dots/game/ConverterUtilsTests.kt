@@ -1,10 +1,10 @@
-package org.dots.game.sgf
+package org.dots.game
 
 import org.dots.game.core.AppInfo
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class SgfConverterUtilsTests {
+class ConverterUtilsTests {
     @Test
     fun convertSimpleText() {
         assertEquals("simple", "simple".convertSimpleText())
