@@ -6,7 +6,7 @@ import org.dots.game.core.Field
 import org.dots.game.core.MoveInfo
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
-import org.dots.game.infrastructure.FieldParser
+import org.dots.game.dump.FieldParser
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 

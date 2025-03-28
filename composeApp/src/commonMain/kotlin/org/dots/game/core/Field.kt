@@ -1,5 +1,7 @@
 package org.dots.game.core
 
+import render
+
 class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }) {
     companion object {
         const val OFFSET: Int = 1
@@ -681,7 +683,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         return x < OFFSET || x >= width + OFFSET || y < OFFSET || y >= height + OFFSET
     }
 
-    override fun toString(): String = dump()
+    override fun toString(): String = render()
 }
 
 data class MoveResult(

@@ -2,13 +2,13 @@ package org.dots.game.field
 
 import org.dots.game.core.Position
 import org.dots.game.core.getPositionsOfConnection
-import org.dots.game.infrastructure.FieldParser
+import org.dots.game.dump.FieldParser
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class FieldUtilsTests : FieldTests() {
-    val sampleField = FieldParser.parseEmptyField("""
+    val sampleField = FieldParser.parseFieldWithNoInitialMoves("""
             . . . . . . .
             . . * * * * *
             . * + . * . .

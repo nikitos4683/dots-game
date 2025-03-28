@@ -2,13 +2,13 @@ package org.dots.game.field
 
 import org.dots.game.core.Field
 import org.dots.game.core.Position
-import org.dots.game.core.dump
-import org.dots.game.infrastructure.FieldParser
+import org.dots.game.dump.FieldParser
+import render
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class FieldRepresentationTests : FieldTests() {
-    val sampleField = FieldParser.parseEmptyField("""
+class FieldRenderTests : FieldTests() {
+    val sampleField = FieldParser.parseFieldWithNoInitialMoves("""
             .   *3  *4  *5 .  * * *
             *14 +1  .   .  *6 . . . *
             *13 .   *0  .  *7 . *2 . *
@@ -24,7 +24,7 @@ class FieldRepresentationTests : FieldTests() {
             ┌ ─ ┐
             │ * │
             └ ─ ┘
-        """.trimIndent(), field.dump(printNumbers = false, padding = 1, printCoordinates = false, debugInfo = false))
+        """.trimIndent(), field.render(printNumbers = false, padding = 1, printCoordinates = false, debugInfo = false))
     }
 
     @Test
@@ -41,7 +41,7 @@ class FieldRepresentationTests : FieldTests() {
                 │ . . . . . │
                 └ ─ ─ ─ ─ ─ ┘
             """.trimIndent(),
-            field.dump(printNumbers = false, padding = Int.MAX_VALUE, printCoordinates = false, debugInfo = false)
+            field.render(printNumbers = false, padding = Int.MAX_VALUE, printCoordinates = false, debugInfo = false)
         )
     }
 
@@ -58,7 +58,7 @@ class FieldRepresentationTests : FieldTests() {
             5  │  .  *  *  *  .  *  *  *  .  │
             6  └  ─  ─  ─  ─  ─  ─  ─  ─  ─  ┘
         """.trimIndent(),
-            sampleField.dump(printNumbers = false, padding = 1, printCoordinates = true, debugInfo = false)
+            sampleField.render(printNumbers = false, padding = 1, printCoordinates = true, debugInfo = false)
         )
     }
 
@@ -72,7 +72,7 @@ class FieldRepresentationTests : FieldTests() {
             *13 .   .   .   *9  .   .   .   *21
             .   *12 *11 *10 .   *22 *23 *24 .
         """.trimIndent(),
-            sampleField.dump(printNumbers = true, padding = 0, printCoordinates = false, debugInfo = false)
+            sampleField.render(printNumbers = true, padding = 0, printCoordinates = false, debugInfo = false)
         )
     }
 
@@ -86,7 +86,7 @@ class FieldRepresentationTests : FieldTests() {
                 *  *^ *^ *^ *  `* `* `* *
                 .  *  *  *  .  *  *  *  .
             """.trimIndent(),
-            sampleField.dump(printNumbers = false, padding = 0, printCoordinates = false, debugInfo = true)
+            sampleField.render(printNumbers = false, padding = 0, printCoordinates = false, debugInfo = true)
         )
     }
 }

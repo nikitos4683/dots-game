@@ -1,4 +1,4 @@
-package org.dots.game.infrastructure
+package org.dots.game.dump
 
 import org.dots.game.core.EMPTY_POSITION
 import org.dots.game.core.FIRST_PLAYER_MARKER
@@ -7,12 +7,17 @@ import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
 import org.dots.game.core.SECOND_PLAYER_MARKER
-import kotlin.collections.iterator
 
 object FieldParser {
     private val WHITESPACE_REGEX = Regex("\\s+")
 
-    fun parseEmptyField(data: String): Field = parse(data, { width, height -> Rules(width, height, initialMoves = emptyList()) })
+    fun parseFieldWithNoInitialMoves(data: String): Field = parse(data, { width, height ->
+        Rules(
+            width,
+            height,
+            initialMoves = emptyList()
+        )
+    })
 
     fun parse(data: String, initializeRules: (Int, Int) -> Rules = { width, height -> Rules(width, height) }): Field {
         val lines = data.trim().split("\n", "\r\n")
@@ -20,7 +25,7 @@ object FieldParser {
         if (lines.isEmpty()) error("Field should have at least one cell")
 
         val movesWithNumberMap = mutableMapOf<Int, LightMove>()
-        val movesWithoutNumbersList = mutableListOf<LightMove>()
+        val movesWithoutNumberList = mutableListOf<LightMove>()
         var width = 0
 
         for ((lineIndex, line) in lines.withIndex()) {
@@ -42,7 +47,7 @@ object FieldParser {
                     }
                 }
 
-                val move = LightMove(Position(cellIndex + Field.OFFSET, lineIndex + Field.OFFSET), player)
+                val move = LightMove(Position(cellIndex + Field.Companion.OFFSET, lineIndex + Field.Companion.OFFSET), player)
 
                 if (cell.length > 1) {
                     val parsedMoveNumber = cell.drop(1).toUIntOrNull()?.toInt()
@@ -54,36 +59,41 @@ object FieldParser {
 
                     movesWithNumberMap[parsedMoveNumber] = move
                 } else {
-                    movesWithoutNumbersList.add(move)
+                    movesWithoutNumberList.add(move)
                 }
             }
         }
 
-        val allMoves = movesWithNumberMap.toSortedMap()
-        var currentMoveNumber = 0
-        for (move in movesWithoutNumbersList) {
-            while (allMoves.containsKey(currentMoveNumber)) {
-                currentMoveNumber++
-            }
-            allMoves[currentMoveNumber++] = move
-        }
+        val sortedMoves = movesWithNumberMap.entries.sortedBy { it.key }
+        var moveNumberForUnnumberedMoves = 0
+        var previousMoveNumber = -1
 
-        val moves = buildList {
-            var lastMoveNumber: Int? = null
-            for ((moveNumber, move) in allMoves) {
-                if (lastMoveNumber != null && moveNumber - lastMoveNumber > 1) {
-                    error("The moves are missing: ${IntRange(lastMoveNumber + 1, moveNumber - 1)}")
+        val allMoves = buildList {
+            for ((number, move) in sortedMoves) {
+                val maxMoveCountToInsert = number - previousMoveNumber - 1
+                if (maxMoveCountToInsert > 0) {
+                    val moveCountToInsert =
+                        minOf(movesWithoutNumberList.size - moveNumberForUnnumberedMoves, maxMoveCountToInsert)
+                    (0 until moveCountToInsert).forEach { _ ->
+                        add(movesWithoutNumberList[moveNumberForUnnumberedMoves++])
+                    }
+                    if (number - size > 0) {
+                        error("The moves are missing: ${IntRange(size, number - 1)}")
+                    }
                 }
-
                 add(move)
-                lastMoveNumber = moveNumber
+                previousMoveNumber = number
+            }
+
+            while (moveNumberForUnnumberedMoves < movesWithoutNumberList.size) {
+                add(movesWithoutNumberList[moveNumberForUnnumberedMoves++])
             }
         }
 
         val height = lines.size
 
         return Field(initializeRules(width, height)).apply {
-            for ((index, move) in moves.withIndex()) {
+            for ((index, move) in allMoves.withIndex()) {
                 val position = move.position
                 requireNotNull(makeMoveUnsafe(position, move.player), { "Can't make move #$index to $position" })
             }
