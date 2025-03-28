@@ -6,9 +6,8 @@ import org.dots.game.core.Field
 import org.dots.game.core.MoveInfo
 import org.dots.game.core.Position
 import org.dots.game.core.Rules
-import org.dots.game.infrastructure.TestDataParser
+import org.dots.game.infrastructure.FieldParser
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 abstract class FieldTests {
@@ -20,7 +19,7 @@ abstract class FieldTests {
     fun initRules(width: Int, height: Int): Rules =  Rules(width, height, captureByBorder, baseMode, suicideAllowed, initialMoves)
 
     fun testFieldWithRollback(fieldData: String, check: (Field) -> Unit) {
-        with (initialize(fieldData)) {
+        with (FieldParser.parse(fieldData) { width, height -> initRules(width, height) }) {
             check(this)
             unmakeAllMoves()
 
@@ -36,15 +35,5 @@ abstract class FieldTests {
                 }
             }
         }
-    }
-
-    fun initialize(fieldData: String): Field {
-        val testDataField = TestDataParser.parse(fieldData)
-        val field = Field(initRules(testDataField.width, testDataField.height))
-        for ((index, testMove) in testDataField.moves.withIndex()) {
-            val position = testMove.position
-            assertNotNull(field.makeMoveUnsafe(position, testMove.player), "Can't make move #$index to $position")
-        }
-        return field
     }
 }

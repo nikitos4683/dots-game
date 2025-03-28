@@ -5,19 +5,22 @@ import org.dots.game.core.FIRST_PLAYER_MARKER
 import org.dots.game.core.Field
 import org.dots.game.core.Player
 import org.dots.game.core.Position
+import org.dots.game.core.Rules
 import org.dots.game.core.SECOND_PLAYER_MARKER
 import kotlin.collections.iterator
 
-object TestDataParser {
+object FieldParser {
     private val WHITESPACE_REGEX = Regex("\\s+")
 
-    fun parse(data: String): TestDataField {
+    fun parseEmptyField(data: String): Field = parse(data, { width, height -> Rules(width, height, initialMoves = emptyList()) })
+
+    fun parse(data: String, initializeRules: (Int, Int) -> Rules = { width, height -> Rules(width, height) }): Field {
         val lines = data.trim().split("\n", "\r\n")
 
         if (lines.isEmpty()) error("Field should have at least one cell")
 
-        val movesWithNumberMap = mutableMapOf<Int, TestMove>()
-        val movesWithoutNumbersList = mutableListOf<TestMove>()
+        val movesWithNumberMap = mutableMapOf<Int, LightMove>()
+        val movesWithoutNumbersList = mutableListOf<LightMove>()
         var width = 0
 
         for ((lineIndex, line) in lines.withIndex()) {
@@ -39,7 +42,7 @@ object TestDataParser {
                     }
                 }
 
-                val testMove = TestMove(Position(cellIndex + Field.OFFSET, lineIndex + Field.OFFSET), player)
+                val move = LightMove(Position(cellIndex + Field.OFFSET, lineIndex + Field.OFFSET), player)
 
                 if (cell.length > 1) {
                     val parsedMoveNumber = cell.drop(1).toUIntOrNull()?.toInt()
@@ -49,9 +52,9 @@ object TestDataParser {
                         error("The move with number $parsedMoveNumber is already in use.")
                     }
 
-                    movesWithNumberMap[parsedMoveNumber] = testMove
+                    movesWithNumberMap[parsedMoveNumber] = move
                 } else {
-                    movesWithoutNumbersList.add(testMove)
+                    movesWithoutNumbersList.add(move)
                 }
             }
         }
@@ -65,7 +68,7 @@ object TestDataParser {
             allMoves[currentMoveNumber++] = move
         }
 
-        val testMoves = buildList {
+        val moves = buildList {
             var lastMoveNumber: Int? = null
             for ((moveNumber, move) in allMoves) {
                 if (lastMoveNumber != null && moveNumber - lastMoveNumber > 1) {
@@ -79,19 +82,16 @@ object TestDataParser {
 
         val height = lines.size
 
-        return TestDataField(width, height, testMoves)
+        return Field(initializeRules(width, height)).apply {
+            for ((index, move) in moves.withIndex()) {
+                val position = move.position
+                requireNotNull(makeMoveUnsafe(position, move.player), { "Can't make move #$index to $position" })
+            }
+        }
     }
-}
 
-data class TestDataField(
-    val width: Int,
-    val height: Int,
-    val moves: List<TestMove>,
-)
-
-data class TestMove(
-    val position: Position,
-    val player: Player,
-) {
-    constructor(x: Int, y: Int, player: Player) : this(Position(x, y), player)
+    private data class LightMove(
+        val position: Position,
+        val player: Player,
+    )
 }

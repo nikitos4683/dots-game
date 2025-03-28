@@ -2,13 +2,13 @@ package org.dots.game.field
 
 import org.dots.game.core.Field
 import org.dots.game.core.Position
-import org.dots.game.core.Rules
 import org.dots.game.core.dump
+import org.dots.game.infrastructure.FieldParser
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class FieldRepresentationTests : FieldTests() {
-    val sampleField = initialize("""
+    val sampleField = FieldParser.parseEmptyField("""
             .   *3  *4  *5 .  * * *
             *14 +1  .   .  *6 . . . *
             *13 .   *0  .  *7 . *2 . *
