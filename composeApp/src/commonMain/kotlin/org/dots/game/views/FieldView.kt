@@ -1,5 +1,6 @@
 package org.dots.game.views
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,6 +39,7 @@ import org.dots.game.core.MoveMode
 import org.dots.game.core.MoveResult
 import org.dots.game.core.Player
 import org.dots.game.core.Position
+import org.dots.game.core.createPlacedState
 import org.dots.game.core.getPositionsOfConnection
 import org.dots.game.core.getSortedClosurePositions
 import org.dots.game.core.getStrongConnectionLinePositions
@@ -68,6 +70,7 @@ private val connectionThickness = 2.dp
 private val outOfBoundDrawRatio = dotRadiusRatio
 private val baseDrawMode: PolygonDrawMode = PolygonDrawMode.OutlineAndFill
 private val connectionDrawMode: ConnectionDrawMode = ConnectionDrawMode.Polygon(baseDrawMode)
+private val drawDiagonalConnections: Boolean = true
 
 sealed class ConnectionDrawMode {
     object None : ConnectionDrawMode()
@@ -80,8 +83,10 @@ enum class PolygonDrawMode {
     Fill,
     OutlineAndFill;
 
-    fun drawOutline(): Boolean = this == Outline || this == OutlineAndFill
-    fun drawFill(): Boolean = this == Fill || this == OutlineAndFill
+    val drawOutline: Boolean
+        get() = this == Outline || this == OutlineAndFill
+    val drawFill: Boolean
+        get() = this == Fill || this == OutlineAndFill
 }
 
 private val linesThickness = 0.75.dp
@@ -121,6 +126,9 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
             }
     ) {
         Grid(field)
+        if (drawDiagonalConnections) {
+            DiagonalConnections(currentMove, field, uiSettings)
+        }
         Moves(currentMove, field, uiSettings)
         Pointer(pointerFieldPosition, moveMode, field, uiSettings)
     }
@@ -241,6 +249,54 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             .size(lastMoveDotSize)
             .background(lastMoveColor, CircleShape)
         )
+    }
+}
+
+@Composable
+private fun DiagonalConnections(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
+    val localDensity = LocalDensity.current
+    Canvas(Modifier.graphicsLayer()) {
+        for (x in Field.OFFSET..field.width) {
+            for (y in Field.OFFSET..field.height) {
+                val position = Position(x, y)
+                val state = with (field) {
+                    position.getState()
+                }
+
+                if (!state.checkPlaced() || state.checkTerritory()) continue
+
+                val player = state.getPlacedPlayer()
+                val playerPlaced = player.createPlacedState()
+
+                fun drawConnectionIfNeeded(end: Position, adjacentPrevPosition: Position, adjacentNextPosition: Position) {
+                    with (field) {
+                        if (connectionDrawMode is ConnectionDrawMode.Polygon && connectionDrawMode.polygonDrawMode.drawFill) {
+                            if (adjacentPrevPosition.getState().checkActive(playerPlaced) ||
+                                adjacentNextPosition.getState().checkActive(playerPlaced)
+                            ) {
+                                return
+                            }
+                        }
+
+                        if (field.checkPositionWithinBounds(end) && end.getState().checkActive(playerPlaced))
+                            drawLine(
+                                uiSettings.toColor(player),
+                                position.toOffset(localDensity),
+                                end.toOffset(localDensity),
+                                strokeWidth = connectionThickness.toPx(),
+                                alpha = 0.3f
+                            )
+                    }
+                }
+
+                with (field) {
+                    val adjacentCommonPosition = Position(x, y + 1)
+                    drawConnectionIfNeeded(Position(x - 1, y + 1), adjacentCommonPosition, Position(x - 1, y))
+                    drawConnectionIfNeeded(Position(x + 1, y + 1), Position(x + 1, y), adjacentCommonPosition)
+                }
+            }
+        }
+        currentMove
     }
 }
 
@@ -425,10 +481,10 @@ private fun Polygon(
             .size(size)
             .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
             .drawBehind {
-                if (polygonDrawMode.drawFill()) {
+                if (polygonDrawMode.drawFill) {
                     drawPath(resultPath, polygonColor.copy(alpha = baseAlpha))
                 }
-                if (polygonDrawMode.drawOutline()) {
+                if (polygonDrawMode.drawOutline) {
                     drawPath(resultPath, polygonColor, style = Stroke(width = connectionThickness.toPx()))
                 }
             }
@@ -450,6 +506,12 @@ private fun Pointer(position: Position?, moveMode: MoveMode, field: Field, uiSet
 
 private fun Position.toDpOffset(): DpOffset {
     return DpOffset((x - Field.OFFSET).toGraphical(), (y - Field.OFFSET).toGraphical())
+}
+
+private fun Position.toOffset(density: Density): androidx.compose.ui.geometry.Offset {
+    with (density) {
+        return androidx.compose.ui.geometry.Offset((x - Field.OFFSET).toGraphical().toPx(), (y - Field.OFFSET).toGraphical().toPx())
+    }
 }
 
 private fun PointerEvent.toFieldPositionIfFree(field: Field, currentPlayer: Player, currentDensity: Density): Position? {
