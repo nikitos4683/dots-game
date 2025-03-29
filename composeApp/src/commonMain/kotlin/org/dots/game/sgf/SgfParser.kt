@@ -20,8 +20,6 @@ import org.dots.game.DiagnosticSeverity
  */
 class SgfParser private constructor(val text: CharSequence, val diagnosticReporter: (Diagnostic) -> Unit) {
     companion object {
-        val whitespaceChars = setOf(' ', '\n', '\r', '\t')
-
         fun parse(sgfText: String, diagnosticReporter: (Diagnostic) -> Unit): SgfRoot {
             return SgfParser(sgfText, diagnosticReporter).parse()
         }
@@ -180,7 +178,7 @@ class SgfParser private constructor(val text: CharSequence, val diagnosticReport
     }
 
     private fun skipWhitespaces() {
-        while (checkBounds() && text[currentIndex] in whitespaceChars) {
+        while (checkBounds() && text[currentIndex].isWhitespace()) {
             currentIndex++
         }
     }

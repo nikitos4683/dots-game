@@ -88,7 +88,7 @@ class FieldParserTests {
     @Test
     fun incorrectMarker() {
         assertEquals(
-            "Incorrect cell at (0,0). The marker should be either * (first player) or + (second player).",
+            "Error at [0..1): The marker should be either `*` (first player), `+` (second player) or `.`.",
         assertFails { FieldParser.parseFieldWithNoInitialMoves("x") }.message
         )
     }
@@ -96,8 +96,8 @@ class FieldParserTests {
     @Test
     fun incorrectMoveNumber() {
         assertEquals(
-            "Incorrect cell move's number at (0,0).",
-        assertFails { FieldParser.parseFieldWithNoInitialMoves("*-5") }.message
+            "Error at [1..13): Incorrect cell move's number.",
+        assertFails { FieldParser.parseFieldWithNoInitialMoves("*999999999999") }.message
         )
     }
 
@@ -108,7 +108,7 @@ class FieldParserTests {
             +1 *2
         """
         assertEquals(
-            "The move with number 1 is already in use.",
+            "Error at [32..33): The move with number 1 is already in use.",
             assertFails { FieldParser.parseFieldWithNoInitialMoves(field) }.message
         )
     }
@@ -120,7 +120,7 @@ class FieldParserTests {
             +4 *5
         """
         assertEquals(
-            "The moves are missing: 2..3",
+            "Error: The following moves are missing: 2..3",
             assertFails { FieldParser.parseFieldWithNoInitialMoves(field) }.message
         )
     }
