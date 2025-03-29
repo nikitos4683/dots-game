@@ -11,19 +11,34 @@ import org.dots.game.core.SECOND_PLAYER_MARKER
 import org.dots.game.sgf.TextSpan
 
 object FieldParser {
-    fun parseFieldWithNoInitialMoves(data: String): Field = parse(data, { width, height ->
-        Rules(
-            width,
-            height,
-            initialMoves = emptyList()
-        )
-    })
+    fun parseAndConvertWithNoInitialMoves(data: String, diagnosticReporter: (Diagnostic) -> Unit = { error(it.toString()) }): Field {
+        return parseAndConvert(data, { width, height ->
+            Rules(
+                width,
+                height,
+                initialMoves = emptyList()
+            )
+        }, diagnosticReporter)
+    }
 
-    fun parse(
+    fun parseAndConvert(
         data: String,
         initializeRules: (Int, Int) -> Rules = { width, height -> Rules(width, height) },
         diagnosticReporter: (Diagnostic) -> Unit = { error(it.toString()) },
     ): Field {
+        val (width, height, allMoves) = parse(data, diagnosticReporter)
+
+        return Field(initializeRules(width, height)).apply {
+            for ((number, move) in allMoves) {
+                val position = move.position
+                if (makeMoveUnsafe(position, move.player) == null) {
+                    diagnosticReporter(Diagnostic("Can't make move #$number to $position", move.textSpan))
+                }
+            }
+        }
+    }
+
+    fun parse(data: String, diagnosticReporter: (Diagnostic) -> Unit = { error(it.toString()) }): Triple<Int, Int, LinkedHashMap<Int, LightMove>> {
         val numberedMoves = mutableMapOf<Int, LightMove>()
         val unnumberedMoves = mutableListOf<LightMove>()
 
@@ -137,14 +152,7 @@ object FieldParser {
 
         val allMoves = mergeMoves(numberedMoves, unnumberedMoves, diagnosticReporter)
 
-        return Field(initializeRules(maxWidth, lineIndex)).apply {
-            for ((number, move) in allMoves) {
-                val position = move.position
-                if (makeMoveUnsafe(position, move.player) == null) {
-                    diagnosticReporter(Diagnostic("Can't make move #$number to $position", move.textSpan))
-                }
-            }
-        }
+        return Triple(maxWidth, lineIndex, allMoves)
     }
 
     private fun mergeMoves(
@@ -186,7 +194,7 @@ object FieldParser {
         }
     }
 
-    private data class LightMove(
+    data class LightMove(
         val position: Position,
         val player: Player,
         val textSpan: TextSpan,

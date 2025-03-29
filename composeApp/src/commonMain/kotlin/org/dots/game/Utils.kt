@@ -1,56 +1,70 @@
 package org.dots.game
 
+import org.dots.game.core.EMPTY_POSITION
+import org.dots.game.core.FIRST_PLAYER_MARKER
 import org.dots.game.core.Game
+import org.dots.game.core.GameInfo
+import org.dots.game.core.GameTree
+import org.dots.game.core.SECOND_PLAYER_MARKER
+import org.dots.game.dump.FieldParser
 import org.dots.game.sgf.Sgf
+import org.dots.game.sgf.SgfParser
 
-suspend fun openOrLoadSgf(sgfPathOrContent: String, diagnosticReporter: ((Diagnostic) -> Unit) = { }): Pair<String?, Game?> {
+suspend fun openOrLoad(pathOrContent: String, diagnosticReporter: ((Diagnostic) -> Unit) = { }): Pair<InputType, Game?> {
     try {
-        val inputType = getInputType(sgfPathOrContent)
-        val fileName: String?
+        val inputType = getInputType(pathOrContent)
         var sgf: String?
 
         when (inputType) {
-            InputType.Content -> {
-                fileName = null
-                sgf = sgfPathOrContent
+            InputType.FieldContent -> {
+                val field = FieldParser.parseAndConvertWithNoInitialMoves(pathOrContent, diagnosticReporter)
+                val gameTree = GameTree(field).apply {
+                    for (move in field.moveSequence) {
+                        add(move)
+                    }
+                }
+                return inputType to Game(GameInfo.Empty, gameTree)
             }
 
-            is InputType.File -> {
+            InputType.SgfContent -> {
+                sgf = pathOrContent
+            }
+
+            is InputType.SgfFile -> {
                 if (inputType.isIncorrect) {
                     diagnosticReporter(Diagnostic("Incorrect file `${inputType.name}`. The only .sgf files are supported", textSpan = null))
-                    return null to null
+                    return inputType to null
                 }
 
-                fileName = inputType.name
                 sgf = readFileText(inputType.refinedPath)
             }
 
-            is InputType.Url -> {
+            is InputType.SgfUrl -> {
                 if (inputType.isIncorrect) {
                     diagnosticReporter(Diagnostic("Incorrect url. The only `$zagramLinkPrefix` is supported", textSpan = null))
-                    return null to null
+                    return inputType to null
                 }
 
-                fileName = inputType.name
                 sgf = downloadFileText(inputType.refinedPath)
             }
 
             is InputType.Other -> {
                 diagnosticReporter(Diagnostic("Unrecognized input type. Insert a path to .sgf file or a link to zagram.org game", textSpan = null))
-                fileName = null
                 sgf = null
             }
         }
 
-        return fileName to sgf?.let { Sgf.parseAndConvert(it, onlySingleGameSupported = true, diagnosticReporter).firstOrNull() }
+        return inputType to sgf?.let { Sgf.parseAndConvert(it, onlySingleGameSupported = true, diagnosticReporter).firstOrNull() }
     } catch (e: Exception) {
         diagnosticReporter(Diagnostic(e.message ?: e.toString(), textSpan = null, DiagnosticSeverity.Critical))
     }
-    return null to null
+    return InputType.Other to null
 }
 
-internal sealed class InputType {
-    object Content : InputType()
+sealed class InputType {
+    sealed class Content : InputType()
+    object SgfContent : Content()
+    object FieldContent : Content()
 
     sealed class InputTypeWithName(val refinedPath: String, val name: String, val isIncorrect: Boolean) : InputType() {
         override fun equals(other: Any?): Boolean {
@@ -68,8 +82,8 @@ internal sealed class InputType {
         }
     }
 
-    class File(refinedPath: String, name: String, isIncorrect: Boolean = false) : InputTypeWithName(refinedPath, name, isIncorrect)
-    class Url(refinedPath: String, name: String, isIncorrect: Boolean = false) : InputTypeWithName(refinedPath, name, isIncorrect)
+    class SgfFile(refinedPath: String, name: String, isIncorrect: Boolean = false) : InputTypeWithName(refinedPath, name, isIncorrect)
+    class SgfUrl(refinedPath: String, name: String, isIncorrect: Boolean = false) : InputTypeWithName(refinedPath, name, isIncorrect)
 
     object Other : InputType()
 
@@ -93,28 +107,23 @@ private val zagramGameViewLinkRegex = Regex(Regex.escape(zagramLinkPrefix) + """
 private val filePathRegex = Regex(""".*[\\/](?!.*[\\/])(.*)""")
 
 internal fun getInputType(input: String): InputType {
-    val indexOfSgfMarker = input.indexOf("(;")
-    if (input.isEmpty() || indexOfSgfMarker != -1 && input.subSequence(0, indexOfSgfMarker).all { it.isWhitespace() }) {
-        return InputType.Content
-    }
-
     if (input.startsWith("https://")) {
         val zagramDownloadLinkMatch = zagramDownloadLinkRegex.matchEntire(input)
         if (zagramDownloadLinkMatch != null) {
-            return InputType.Url(input, zagramDownloadLinkMatch.groups[zagramIdGroupName]!!.value)
+            return InputType.SgfUrl(input, zagramDownloadLinkMatch.groups[zagramIdGroupName]!!.value)
         }
 
         val zagramGameViewLinkMatch = zagramGameViewLinkRegex.matchEntire(input)
         if (zagramGameViewLinkMatch != null) {
             val id = zagramGameViewLinkMatch.groups[zagramIdGroupName]!!.value
-            return InputType.Url(zagramDownloadLinkPrefix + id, id)
+            return InputType.SgfUrl(zagramDownloadLinkPrefix + id, id)
         }
 
-        return InputType.Url(input, "", isIncorrect = true)
+        return InputType.SgfUrl(input, "", isIncorrect = true)
     }
 
     if (zagramIdRegex.matchEntire(input) != null) {
-        return InputType.Url(zagramDownloadLinkPrefix + input, input)
+        return InputType.SgfUrl(zagramDownloadLinkPrefix + input, input)
     }
 
     fun extractFileName(filePath: String): String {
@@ -123,14 +132,51 @@ internal fun getInputType(input: String): InputType {
 
     val refinedPath = input.removeSurrounding("\"")
     if (refinedPath.endsWith(".sgf")) {
-        return InputType.File(refinedPath, extractFileName(refinedPath))
+        return InputType.SgfFile(refinedPath, extractFileName(refinedPath))
     }
 
     if (fileExists(refinedPath) || filePathRegex.matches(refinedPath)) {
-        return InputType.File(refinedPath, extractFileName(refinedPath), isIncorrect = true)
+        return InputType.SgfFile(refinedPath, extractFileName(refinedPath), isIncorrect = true)
+    }
+
+    if (tryParseField(input)) return InputType.FieldContent
+    if (tryParseSgf(input)) return InputType.SgfContent
+
+    var notWhitespaceCharIndex = 0
+    while (notWhitespaceCharIndex < input.length && input[notWhitespaceCharIndex].isWhitespace()) {
+        notWhitespaceCharIndex++
+    }
+
+    if (input.elementAtOrNull(notWhitespaceCharIndex).let { it == FIRST_PLAYER_MARKER || it == SECOND_PLAYER_MARKER || it == EMPTY_POSITION }
+    ) {
+        return InputType.FieldContent
+    }
+
+    if (notWhitespaceCharIndex + 2 <= input.length && input.subSequence(notWhitespaceCharIndex, notWhitespaceCharIndex + 2) == "(;") {
+        return InputType.SgfContent
     }
 
     return InputType.Other
+}
+
+private fun tryParseSgf(input: String): Boolean {
+    var sgfContainsAError = false
+
+    SgfParser.parse(input) {
+        sgfContainsAError = sgfContainsAError || it.severity >= DiagnosticSeverity.Error
+    }
+
+    return !sgfContainsAError
+}
+
+private fun tryParseField(input: String): Boolean {
+    var fieldContainsAError = false
+
+    FieldParser.parse(input) {
+        fieldContainsAError = fieldContainsAError || it.severity >= DiagnosticSeverity.Error
+    }
+
+    return !fieldContainsAError
 }
 
 fun splitByUppercase(input: String): String {

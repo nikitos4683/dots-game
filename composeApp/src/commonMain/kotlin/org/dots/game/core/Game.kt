@@ -31,7 +31,34 @@ class GameInfo(
     val overtime: String?,
     val result: GameResult?,
     val round: String?,
-)
+) {
+    companion object {
+        val Empty = GameInfo(
+            appInfo = null,
+            gameName = null,
+            player1Name = null,
+            player1Rating = null,
+            player1Team = null,
+            player2Name = null,
+            player2Rating = null,
+            player2Team = null,
+            komi = null,
+            date = null,
+            description = null,
+            comment = null,
+            place = null,
+            event = null,
+            opening = null,
+            annotator = null,
+            copyright = null,
+            source = null,
+            time = null,
+            overtime = null,
+            result = null,
+            round = null
+        )
+    }
+}
 
 data class AppInfo(val name: String, val version: String?) {
     val appType = AppType.entries.find { it.value == name } ?: AppType.Unknown

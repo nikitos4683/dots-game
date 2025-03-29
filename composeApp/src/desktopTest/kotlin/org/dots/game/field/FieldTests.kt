@@ -19,7 +19,7 @@ abstract class FieldTests {
     fun initRules(width: Int, height: Int): Rules =  Rules(width, height, captureByBorder, baseMode, suicideAllowed, initialMoves)
 
     fun testFieldWithRollback(fieldData: String, check: (Field) -> Unit) {
-        with (FieldParser.parse(fieldData, initializeRules = { width, height -> initRules(width, height) })) {
+        with (FieldParser.parseAndConvert(fieldData, initializeRules = { width, height -> initRules(width, height) })) {
             check(this)
             unmakeAllMoves()
 

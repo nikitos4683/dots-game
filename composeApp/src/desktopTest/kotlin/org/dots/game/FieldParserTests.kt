@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
 class FieldParserTests {
     @Test
     fun empty() {
-        val parsedField = FieldParser.parseFieldWithNoInitialMoves("""
+        val parsedField = FieldParser.parseAndConvertWithNoInitialMoves("""
             . .
             . .
             . .
@@ -26,7 +26,7 @@ class FieldParserTests {
 
     @Test
     fun simple() {
-        val parsedField = FieldParser.parseFieldWithNoInitialMoves("""
+        val parsedField = FieldParser.parseAndConvertWithNoInitialMoves("""
             . . . .
             . * + .
             . + * .
@@ -44,7 +44,7 @@ class FieldParserTests {
 
     @Test
     fun simpleWithNumbers() {
-        val parsedField = FieldParser.parseFieldWithNoInitialMoves("""
+        val parsedField = FieldParser.parseAndConvertWithNoInitialMoves("""
             .  .  . .
             . *0 +3 .
             . +1 *2 .
@@ -60,7 +60,7 @@ class FieldParserTests {
 
     @Test
     fun mixedNumberedAndUnnumberedMoves() {
-        val parsedField = FieldParser.parseFieldWithNoInitialMoves("""
+        val parsedField = FieldParser.parseAndConvertWithNoInitialMoves("""
             . *0 .
             * +2 *
             . * .
@@ -76,7 +76,7 @@ class FieldParserTests {
 
     @Test
     fun lastNumbered() {
-        val parsedField = FieldParser.parseFieldWithNoInitialMoves("""
+        val parsedField = FieldParser.parseAndConvertWithNoInitialMoves("""
             * +
             + *3
         """)
@@ -89,7 +89,7 @@ class FieldParserTests {
     fun incorrectMarker() {
         assertEquals(
             "Error at [0..1): The marker should be either `*` (first player), `+` (second player) or `.`.",
-        assertFails { FieldParser.parseFieldWithNoInitialMoves("x") }.message
+        assertFails { FieldParser.parseAndConvertWithNoInitialMoves("x") }.message
         )
     }
 
@@ -97,7 +97,7 @@ class FieldParserTests {
     fun incorrectMoveNumber() {
         assertEquals(
             "Error at [1..13): Incorrect cell move's number.",
-        assertFails { FieldParser.parseFieldWithNoInitialMoves("*999999999999") }.message
+        assertFails { FieldParser.parseAndConvertWithNoInitialMoves("*999999999999") }.message
         )
     }
 
@@ -109,7 +109,7 @@ class FieldParserTests {
         """
         assertEquals(
             "Error at [32..33): The move with number 1 is already in use.",
-            assertFails { FieldParser.parseFieldWithNoInitialMoves(field) }.message
+            assertFails { FieldParser.parseAndConvertWithNoInitialMoves(field) }.message
         )
     }
 
@@ -121,7 +121,7 @@ class FieldParserTests {
         """
         assertEquals(
             "Error: The following moves are missing: 2..3",
-            assertFails { FieldParser.parseFieldWithNoInitialMoves(field) }.message
+            assertFails { FieldParser.parseAndConvertWithNoInitialMoves(field) }.message
         )
     }
 

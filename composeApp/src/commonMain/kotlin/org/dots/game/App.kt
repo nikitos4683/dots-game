@@ -94,7 +94,7 @@ fun App() {
         }
 
         if (openGameDialog.value) {
-            OpenSgfDialog(
+            OpenDialog(
                 onDismiss = {
                     openGameDialog.value = false
                     focusRequester.requestFocus()
@@ -137,7 +137,7 @@ fun App() {
                         Text("Reset")
                     }
                     Button(onClick = { openGameDialog.value = true }, playerButtonModifier) {
-                        Text("Load SGF")
+                        Text("Load")
                     }
                 }
 

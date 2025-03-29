@@ -8,7 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class FieldRenderTests : FieldTests() {
-    val sampleField = FieldParser.parseFieldWithNoInitialMoves("""
+    val sampleField = FieldParser.parseAndConvertWithNoInitialMoves("""
             .   *3  *4  *5 .  * * *
             *14 +1  .   .  *6 . . . *
             *13 .   *0  .  *7 . *2 . *

@@ -24,53 +24,59 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import org.dots.game.core.Game
-import org.dots.game.openOrLoadSgf
+import org.dots.game.openOrLoad
 import org.dots.game.Diagnostic
+import org.dots.game.InputType
 import org.dots.game.buildLineOffsets
 import org.dots.game.toLineColumnDiagnostic
 
 @Composable
-fun OpenSgfDialog(
+fun OpenDialog(
     onDismiss: () -> Unit,
     onConfirmation: (game: Game) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var sgfPathOrContentTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
+    var pathOrContentTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     var previousInput: String? = null
     var diagnostics by remember { mutableStateOf<List<Diagnostic>>(listOf()) }
-    var fileName by remember { mutableStateOf<String?>(null) }
+    var inputType by remember { mutableStateOf<InputType>(InputType.Other) }
     var game by remember { mutableStateOf<Game?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.width(400.dp).wrapContentHeight()) {
+        Card(modifier = Modifier.width(500.dp).wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Sgf Path or Content: ", Modifier.fillMaxWidth(0.3f))
+                    Text("Path or Content: ", Modifier.fillMaxWidth(0.3f))
                     TextField(
-                        sgfPathOrContentTextFieldValue, {
-                            sgfPathOrContentTextFieldValue = it
+                        pathOrContentTextFieldValue,
+                        {
+                            pathOrContentTextFieldValue = it
                             val text = it.text
                             if (text != previousInput) {
                                 previousInput = text
 
                                 coroutineScope.launch {
                                     diagnostics = buildList {
-                                        val result = openOrLoadSgf(text) { diagnostic ->
+                                        val result = openOrLoad(text) { diagnostic ->
                                             add(diagnostic)
                                         }
-                                        fileName = result.first
+                                        inputType = result.first
                                         game = result.second
                                     }
                                 }
                             }
                         },
-                        singleLine = fileName != null,
-                        maxLines = if (fileName == null) 5 else 1
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = inputType !is InputType.Content,
+                        maxLines = if (inputType is InputType.Content) 5 else 1,
+                        textStyle = TextStyle(fontFamily = FontFamily.Monospace),
                     )
                 }
 
@@ -79,18 +85,18 @@ fun OpenSgfDialog(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp).padding(vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { sgfPathOrContentTextFieldValue.text.buildLineOffsets() }
+                        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { pathOrContentTextFieldValue.text.buildLineOffsets() }
                         items(diagnostics.size) { index ->
                             val diagnostic = diagnostics[index]
                             var cardModifier = Modifier.fillMaxWidth()
-                            if (fileName == null && diagnostic.textSpan != null) {
+                            if (inputType is InputType.Content && diagnostic.textSpan != null) {
                                 cardModifier = cardModifier.then(Modifier.clickable(onClick = {
                                     val textSpan = diagnostic.textSpan
                                     val start = textSpan.start
                                     val end = textSpan.end
-                                    sgfPathOrContentTextFieldValue = sgfPathOrContentTextFieldValue.copy(selection = TextRange(start,
+                                    pathOrContentTextFieldValue = pathOrContentTextFieldValue.copy(selection = TextRange(start,
                                         if (end == start) {
-                                            if (end < sgfPathOrContentTextFieldValue.text.length - 1)
+                                            if (end < pathOrContentTextFieldValue.text.length - 1)
                                                 end + 1
                                             else if (end > 0)
                                                 end - 1
