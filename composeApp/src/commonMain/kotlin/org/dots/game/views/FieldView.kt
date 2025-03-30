@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -107,14 +108,17 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
                         val currentPlayer = moveMode.getMovePlayer() ?: field.getCurrentPlayer()
                         when (event.type) {
                             PointerEventType.Move -> {
-                                pointerFieldPosition = event.toFieldPositionIfFree(field, currentPlayer, currentDensity)
+                                pointerFieldPosition = event.toFieldPositionIfValid(field, currentPlayer, currentDensity)
                             }
                             PointerEventType.Press -> {
-                                val fieldPosition = event.toFieldPositionIfFree(field, currentPlayer, currentDensity)
-                                if (fieldPosition != null &&
-                                    field.makeMoveUnsafe(fieldPosition, currentPlayer) != null
-                                ) {
-                                    onMovePlaced(field.lastMove!!)
+                                if (event.buttons.isPrimaryPressed) {
+                                    val fieldPosition =
+                                        event.toFieldPositionIfValid(field, currentPlayer, currentDensity)
+                                    if (fieldPosition != null &&
+                                        field.makeMoveUnsafe(fieldPosition, currentPlayer) != null
+                                    ) {
+                                        onMovePlaced(field.lastMove!!)
+                                    }
                                 }
                             }
                             PointerEventType.Exit -> {
@@ -514,7 +518,7 @@ private fun Position.toOffset(density: Density): androidx.compose.ui.geometry.Of
     }
 }
 
-private fun PointerEvent.toFieldPositionIfFree(field: Field, currentPlayer: Player, currentDensity: Density): Position? {
+private fun PointerEvent.toFieldPositionIfValid(field: Field, currentPlayer: Player, currentDensity: Density): Position? {
     val offset = changes.first().position
 
     with (currentDensity) {
