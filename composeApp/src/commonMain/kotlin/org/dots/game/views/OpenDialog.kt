@@ -44,6 +44,7 @@ fun OpenDialog(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var pathOrContentTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
+    var contentTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     var previousInput: String? = null
     var diagnostics by remember { mutableStateOf<List<Diagnostic>>(listOf()) }
     var inputType by remember { mutableStateOf<InputType>(InputType.Other) }
@@ -68,7 +69,10 @@ fun OpenDialog(
                                             add(diagnostic)
                                         }
                                         inputType = result.first
-                                        game = result.second
+                                        if (inputType !is InputType.Content) {
+                                            contentTextFieldValue = TextFieldValue(result.second ?: "")
+                                        }
+                                        game = result.third
                                     }
                                 }
                             }
@@ -80,23 +84,39 @@ fun OpenDialog(
                     )
                 }
 
+                if (inputType is InputType.InputTypeWithName && diagnostics.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextField(
+                            contentTextFieldValue,
+                            { contentTextFieldValue = it },
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                            maxLines = 5,
+                            textStyle = TextStyle(fontFamily = FontFamily.Monospace),
+                        )
+                    }
+                }
+
+                fun getContextTextFieldValue() = if (inputType is InputType.Content) pathOrContentTextFieldValue else contentTextFieldValue
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp).padding(vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { pathOrContentTextFieldValue.text.buildLineOffsets() }
+                        val lineOffsets by lazy(LazyThreadSafetyMode.NONE) { getContextTextFieldValue().text.buildLineOffsets() }
                         items(diagnostics.size) { index ->
                             val diagnostic = diagnostics[index]
                             var cardModifier = Modifier.fillMaxWidth()
-                            if (inputType is InputType.Content && diagnostic.textSpan != null) {
+                            if (diagnostic.textSpan != null) {
                                 cardModifier = cardModifier.then(Modifier.clickable(onClick = {
                                     val textSpan = diagnostic.textSpan
                                     val start = textSpan.start
                                     val end = textSpan.end
-                                    pathOrContentTextFieldValue = pathOrContentTextFieldValue.copy(selection = TextRange(start,
+                                    val textFieldValue = getContextTextFieldValue()
+                                    val newTextFieldValue = textFieldValue.copy(selection = TextRange(start,
                                         if (end == start) {
-                                            if (end < pathOrContentTextFieldValue.text.length - 1)
+                                            if (end < textFieldValue.text.length - 1)
                                                 end + 1
                                             else if (end > 0)
                                                 end - 1
@@ -106,6 +126,11 @@ fun OpenDialog(
                                             end
                                         }
                                     ))
+                                    if (inputType is InputType.Content) {
+                                        pathOrContentTextFieldValue = newTextFieldValue
+                                    } else {
+                                        contentTextFieldValue = newTextFieldValue
+                                    }
                                 }))
                             }
                             Card(

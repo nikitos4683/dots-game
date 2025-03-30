@@ -10,7 +10,7 @@ import org.dots.game.dump.FieldParser
 import org.dots.game.sgf.Sgf
 import org.dots.game.sgf.SgfParser
 
-suspend fun openOrLoad(pathOrContent: String, diagnosticReporter: ((Diagnostic) -> Unit) = { }): Pair<InputType, Game?> {
+suspend fun openOrLoad(pathOrContent: String, diagnosticReporter: ((Diagnostic) -> Unit) = { }): Triple<InputType, String?, Game?> {
     try {
         val inputType = getInputType(pathOrContent)
         var sgf: String?
@@ -23,7 +23,7 @@ suspend fun openOrLoad(pathOrContent: String, diagnosticReporter: ((Diagnostic) 
                         add(move)
                     }
                 }
-                return inputType to Game(GameInfo.Empty, gameTree)
+                return Triple(inputType, pathOrContent, Game(GameInfo.Empty, gameTree))
             }
 
             InputType.SgfContent -> {
@@ -31,21 +31,21 @@ suspend fun openOrLoad(pathOrContent: String, diagnosticReporter: ((Diagnostic) 
             }
 
             is InputType.SgfFile -> {
-                if (inputType.isIncorrect) {
+                sgf = if (inputType.isIncorrect) {
                     diagnosticReporter(Diagnostic("Incorrect file `${inputType.name}`. The only .sgf files are supported", textSpan = null))
-                    return inputType to null
+                    null
+                } else {
+                    readFileText(inputType.refinedPath)
                 }
-
-                sgf = readFileText(inputType.refinedPath)
             }
 
             is InputType.SgfUrl -> {
-                if (inputType.isIncorrect) {
+                sgf = if (inputType.isIncorrect) {
                     diagnosticReporter(Diagnostic("Incorrect url. The only `$zagramLinkPrefix` is supported", textSpan = null))
-                    return inputType to null
+                    null
+                } else {
+                    downloadFileText(inputType.refinedPath)
                 }
-
-                sgf = downloadFileText(inputType.refinedPath)
             }
 
             is InputType.Other -> {
@@ -54,11 +54,11 @@ suspend fun openOrLoad(pathOrContent: String, diagnosticReporter: ((Diagnostic) 
             }
         }
 
-        return inputType to sgf?.let { Sgf.parseAndConvert(it, onlySingleGameSupported = true, diagnosticReporter).firstOrNull() }
+        return Triple(inputType, sgf, sgf?.let { Sgf.parseAndConvert(it, onlySingleGameSupported = true, diagnosticReporter).firstOrNull() })
     } catch (e: Exception) {
         diagnosticReporter(Diagnostic(e.message ?: e.toString(), textSpan = null, DiagnosticSeverity.Critical))
     }
-    return InputType.Other to null
+    return Triple(InputType.Other, null, null)
 }
 
 sealed class InputType {
