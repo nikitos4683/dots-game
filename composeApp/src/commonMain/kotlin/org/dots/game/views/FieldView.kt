@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
@@ -28,6 +28,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -148,60 +149,59 @@ class FieldViewData(val field: Field) {
 @Composable
 private fun Grid(field: Field) {
     val textMeasurer = rememberTextMeasurer()
-    val verticalLinesLength =  cellSize * (field.height - 1)
-    val horizontalLinesLength = cellSize * (field.width - 1)
+    with (LocalDensity.current) {
+        val fieldPaddingPx = fieldPadding.toPx()
+        val verticalLinesEndPx = fieldPaddingPx + (cellSize * (field.height - 1)).toPx()
+        val horizontalLinesEndPx = fieldPaddingPx + (cellSize * (field.width - 1)).toPx()
+        val linesThicknessPx = linesThickness.toPx()
+        val textPaddingPx = (fieldPadding - textPadding).toPx()
 
-    Box(Modifier
-        .fillMaxSize()
-        .background(fieldColor)
-    )
+        Canvas(Modifier.fillMaxSize().graphicsLayer().background(fieldColor)) {
+            for (x in 0 until field.width) {
+                val xPx = x.toGraphical().toPx()
 
-    for (x in 0 until field.width) {
-        val xGraphical = x.toGraphical()
+                val coordinateText = (x + 1).toString()
+                val textLayoutResult = textMeasurer.measure(coordinateText)
 
-        val coordinate = (x + 1).toString()
-        val textLayoutResult = textMeasurer.measure(coordinate)
+                drawText(
+                    textMeasurer,
+                    coordinateText,
+                    Offset(
+                        xPx - textLayoutResult.size.width / 2,
+                        textPaddingPx - textLayoutResult.size.height
+                    )
+                )
 
-        with ( LocalDensity.current) {
-            Text(
-                coordinate,
-                Modifier.offset(
-                    xGraphical - textLayoutResult.size.width.toDp() / 2,
-                    fieldPadding - textPadding - textLayoutResult.size.height.toDp()
-                ),
-                linesColor
-            )
+                drawLine(linesColor,
+                    Offset(xPx, fieldPaddingPx),
+                    Offset(xPx, verticalLinesEndPx),
+                    linesThicknessPx,
+                )
+            }
+
+            for (y in 0 until field.height) {
+                val yPx = y.toGraphical().toPx()
+
+                val coordinateText = (y + 1).toString()
+                val textLayoutResult = textMeasurer.measure(coordinateText)
+
+                drawText(
+                    textMeasurer,
+                    coordinateText,
+                    Offset(
+                        textPaddingPx - textLayoutResult.size.width,
+                        yPx - textLayoutResult.size.height / 2
+                    )
+                )
+
+                drawLine(
+                    linesColor,
+                    Offset(fieldPaddingPx, yPx),
+                    Offset(horizontalLinesEndPx, yPx),
+                    linesThicknessPx,
+                )
+            }
         }
-
-        Box(Modifier
-            .offset(xGraphical - linesThickness / 2, fieldPadding)
-            .size(linesThickness, verticalLinesLength)
-            .background(linesColor)
-        )
-    }
-
-    for (y in 0 until field.height) {
-        val yGraphical = y.toGraphical()
-
-        val coordinate = (y + 1).toString()
-        val textLayoutResult = textMeasurer.measure(coordinate)
-
-        with ( LocalDensity.current) {
-            Text(
-                coordinate,
-                Modifier.offset(
-                    fieldPadding - textPadding - textLayoutResult.size.width.toDp(),
-                    yGraphical - textLayoutResult.size.height.toDp() / 2
-                ),
-                linesColor,
-            )
-        }
-
-        Box(Modifier
-            .offset(fieldPadding, yGraphical - linesThickness / 2)
-            .size(horizontalLinesLength, linesThickness)
-            .background(linesColor)
-        )
     }
 }
 
@@ -512,10 +512,8 @@ private fun Position.toDpOffset(): DpOffset {
     return DpOffset((x - Field.OFFSET).toGraphical(), (y - Field.OFFSET).toGraphical())
 }
 
-private fun Position.toOffset(density: Density): androidx.compose.ui.geometry.Offset {
-    with (density) {
-        return androidx.compose.ui.geometry.Offset((x - Field.OFFSET).toGraphical().toPx(), (y - Field.OFFSET).toGraphical().toPx())
-    }
+private fun Position.toOffset(density: Density): Offset {
+    return Offset((x - Field.OFFSET).toPx(density), (y - Field.OFFSET).toPx(density))
 }
 
 private fun PointerEvent.toFieldPositionIfValid(field: Field, currentPlayer: Player, currentDensity: Density): Position? {
@@ -531,5 +529,6 @@ private fun PointerEvent.toFieldPositionIfValid(field: Field, currentPlayer: Pla
     }
 }
 
+private fun Int.toPx(density: Density): Float = with(density) { toGraphical().toPx() }
 private fun Int.toGraphical(): Dp = cellSize * this + fieldPadding
 private fun Float.toGraphical(): Dp = cellSize * this + fieldPadding
