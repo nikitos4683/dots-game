@@ -4,22 +4,18 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
@@ -31,8 +27,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.dots.game.UiSettings
@@ -45,7 +39,6 @@ import org.dots.game.core.createPlacedState
 import org.dots.game.core.getPositionsOfConnection
 import org.dots.game.core.getSortedClosurePositions
 import org.dots.game.core.getStrongConnectionLinePositions
-import kotlin.math.abs
 import kotlin.math.round
 
 private val borderPaddingRatio = 2.0f
@@ -63,9 +56,7 @@ private val lastMoveColor = Color.White
 private val fieldPadding = cellSize * borderPaddingRatio
 private val textPadding = cellSize * textPaddingRatio
 private val dotRadius = cellSize * dotRadiusRatio
-private val dotSize = DpSize(dotRadius * 2, dotRadius * 2)
 private val lastMoveRadius = cellSize * lastMoveRadiusRatio
-private val lastMoveDotSize = DpSize(lastMoveRadius * 2, lastMoveRadius * 2)
 
 private val drawHelperBases = false
 private val connectionThickness = 2.dp
@@ -115,10 +106,9 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
                                 if (event.buttons.isPrimaryPressed) {
                                     val fieldPosition =
                                         event.toFieldPositionIfValid(field, currentPlayer, currentDensity)
-                                    if (fieldPosition != null &&
-                                        field.makeMoveUnsafe(fieldPosition, currentPlayer) != null
-                                    ) {
+                                    if (fieldPosition != null && field.makeMoveUnsafe(fieldPosition, currentPlayer) != null) {
                                         onMovePlaced(field.lastMove!!)
+                                        pointerFieldPosition = event.toFieldPositionIfValid(field, currentPlayer, currentDensity)
                                     }
                                 }
                             }
@@ -157,10 +147,10 @@ private fun Grid(field: Field) {
         val textPaddingPx = (fieldPadding - textPadding).toPx()
 
         Canvas(Modifier.fillMaxSize().graphicsLayer().background(fieldColor)) {
-            for (x in 0 until field.width) {
-                val xPx = x.toGraphical().toPx()
+            for (x in Field.OFFSET until field.width + Field.OFFSET) {
+                val xPx = x.coordinateToPx(this)
 
-                val coordinateText = (x + 1).toString()
+                val coordinateText = x.toString()
                 val textLayoutResult = textMeasurer.measure(coordinateText)
 
                 drawText(
@@ -179,10 +169,10 @@ private fun Grid(field: Field) {
                 )
             }
 
-            for (y in 0 until field.height) {
-                val yPx = y.toGraphical().toPx()
+            for (y in Field.OFFSET until field.height + Field.OFFSET) {
+                val yPx = y.coordinateToPx(this)
 
-                val coordinateText = (y + 1).toString()
+                val coordinateText = y.toString()
                 val textLayoutResult = textMeasurer.measure(coordinateText)
 
                 drawText(
@@ -207,105 +197,105 @@ private fun Grid(field: Field) {
 
 @Composable
 private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
-    val movesSequence = field.moveSequence.toList()
+    val fieldWithIncrementalUpdate = Field(field.rules) // TODO: rewrite without using temp field
 
-    field.unmakeAllMoves() // TODO: rewrite
+    Canvas(Modifier.fillMaxSize().graphicsLayer()) {
+        val dotRadiusPx = dotRadius.toPx()
 
-    for (moveResult in movesSequence) {
-        field.makeMove(moveResult.position, moveResult.player)
+        for (moveResult in field.moveSequence) {
+            fieldWithIncrementalUpdate.makeMove(moveResult.position, moveResult.player)
 
-        val moveResultPosition = moveResult.position
-        val color = uiSettings.toColor(moveResult.player)
+            val moveResultPosition = moveResult.position
+            val color = uiSettings.toColor(moveResult.player)
 
-        if (connectionDrawMode == ConnectionDrawMode.Lines) {
-            StrongConnectionLines(field, moveResultPosition, color)
-        } else if (connectionDrawMode is ConnectionDrawMode.Polygon) {
-            val connections = field.getPositionsOfConnection(moveResultPosition)
-            Polygon(
-                connections,
-                emptyList(),
-                moveResult.player,
-                field,
-                connectionDrawMode.polygonDrawMode,
-                uiSettings
+            if (connectionDrawMode == ConnectionDrawMode.Lines) {
+                drawStrongConnectionLines(fieldWithIncrementalUpdate, moveResultPosition, color)
+            } else if (connectionDrawMode is ConnectionDrawMode.Polygon) {
+                val connections = fieldWithIncrementalUpdate.getPositionsOfConnection(moveResultPosition)
+                drawPolygon(
+                    connections,
+                    emptyList(),
+                    moveResult.player,
+                    connectionDrawMode.polygonDrawMode,
+                    uiSettings
+                )
+            }
+
+            drawCircle(
+                color,
+                dotRadiusPx,
+                moveResultPosition.toPxOffset(this)
+            )
+
+            for (base in moveResult.bases) {
+                if (!base.isReal && !drawHelperBases) continue
+
+                val (outerClosure, innerClosures) = base.getSortedClosurePositions(fieldWithIncrementalUpdate)
+                drawPolygon(outerClosure, innerClosures, base.player, baseDrawMode, uiSettings)
+            }
+        }
+
+        currentMove?.let {
+            drawCircle(
+                lastMoveColor,
+                lastMoveRadius.toPx(),
+                it.position.toPxOffset(this)
             )
         }
-
-        val dotOffset = moveResultPosition.toDpOffset()
-        Box(Modifier
-            .offset(dotOffset.x - dotRadius, dotOffset.y - dotRadius)
-            .size(dotSize)
-            .background(color, CircleShape)
-        )
-
-        for (base in moveResult.bases) {
-            if (!base.isReal && !drawHelperBases) continue
-
-            val (outerClosure, innerClosures) = base.getSortedClosurePositions(field)
-            Polygon(outerClosure, innerClosures, base.player, field, baseDrawMode, uiSettings)
-        }
-    }
-
-    currentMove?.let {
-        val dpOffset = it.position.toDpOffset()
-        Box(Modifier
-            .offset(dpOffset.x - lastMoveRadius, dpOffset.y - lastMoveRadius)
-            .size(lastMoveDotSize)
-            .background(lastMoveColor, CircleShape)
-        )
     }
 }
 
 @Composable
 private fun DiagonalConnections(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
-    val localDensity = LocalDensity.current
-    Canvas(Modifier.graphicsLayer()) {
-        for (x in Field.OFFSET..field.width) {
-            for (y in Field.OFFSET..field.height) {
-                val position = Position(x, y)
-                val state = with (field) {
-                    position.getState()
-                }
+    Canvas(Modifier.fillMaxSize().graphicsLayer()) {
+        for (move in field.moveSequence) {
+            val position = move.position
 
-                if (!state.checkPlaced() || state.checkTerritory()) continue
+            val state = with(field) {
+                position.getState()
+            }
 
-                val player = state.getPlacedPlayer()
-                val playerPlaced = player.createPlacedState()
+            if (!state.checkPlaced() || state.checkTerritory()) continue
 
-                fun drawConnectionIfNeeded(end: Position, adjacentPrevPosition: Position, adjacentNextPosition: Position) {
-                    with (field) {
-                        if (connectionDrawMode is ConnectionDrawMode.Polygon && connectionDrawMode.polygonDrawMode.drawFill) {
-                            if (adjacentPrevPosition.getState().checkActive(playerPlaced) ||
-                                adjacentNextPosition.getState().checkActive(playerPlaced)
-                            ) {
-                                return
-                            }
+            val player = state.getPlacedPlayer()
+            val playerPlaced = player.createPlacedState()
+
+            fun drawConnectionIfNeeded(
+                end: Position,
+                adjacentPrevPosition: Position,
+                adjacentNextPosition: Position
+            ) {
+                with(field) {
+                    if (connectionDrawMode is ConnectionDrawMode.Polygon && connectionDrawMode.polygonDrawMode.drawFill) {
+                        if (adjacentPrevPosition.getState().checkActive(playerPlaced) ||
+                            adjacentNextPosition.getState().checkActive(playerPlaced)
+                        ) {
+                            return
                         }
-
-                        if (field.checkPositionWithinBounds(end) && end.getState().checkActive(playerPlaced))
-                            drawLine(
-                                uiSettings.toColor(player),
-                                position.toOffset(localDensity),
-                                end.toOffset(localDensity),
-                                strokeWidth = connectionThickness.toPx(),
-                                alpha = 0.3f
-                            )
                     }
-                }
 
-                with (field) {
-                    val adjacentCommonPosition = Position(x, y + 1)
-                    drawConnectionIfNeeded(Position(x - 1, y + 1), adjacentCommonPosition, Position(x - 1, y))
-                    drawConnectionIfNeeded(Position(x + 1, y + 1), Position(x + 1, y), adjacentCommonPosition)
+                    if (field.checkPositionWithinBounds(end) && end.getState().checkActive(playerPlaced))
+                        drawLine(
+                            uiSettings.toColor(player),
+                            position.toPxOffset(this@Canvas),
+                            end.toPxOffset(this@Canvas),
+                            strokeWidth = connectionThickness.toPx(),
+                            alpha = 0.3f
+                        )
                 }
             }
+
+            val (x, y) = position
+            val adjacentCommonPosition = Position(x, y + 1)
+            drawConnectionIfNeeded(Position(x - 1, y + 1), adjacentCommonPosition, Position(x - 1, y))
+            drawConnectionIfNeeded(Position(x + 1, y + 1), Position(x + 1, y), adjacentCommonPosition)
         }
+
         currentMove
     }
 }
 
-@Composable
-private fun StrongConnectionLines(
+private fun DrawScope.drawStrongConnectionLines(
     field: Field,
     moveResultPosition: Position,
     color: Color
@@ -313,128 +303,45 @@ private fun StrongConnectionLines(
     val connections = field.getStrongConnectionLinePositions(moveResultPosition)
     if (connections.isEmpty()) return
 
-    val dotOffset = moveResultPosition.toDpOffset()
+    val dotOffsetPx = moveResultPosition.toPxOffset(this)
     for (connection in connections) {
-        val isHorizontal = connection.x - moveResultPosition.x != 0
+        val connectionXEndPx = (connection.x + when (connection.x) {
+            0 -> 1 - outOfBoundDrawRatio
+            field.realWidth - 1 -> -(1 - outOfBoundDrawRatio)
+            else -> 0f
+        }).coordinateToPx(this)
 
-        val connectionX: Dp
-        val connectionY: Dp
-        val connectionWidth: Dp
-        val connectionHeight: Dp
+        val connectionYEndPx = (connection.y + when (connection.y) {
+            0 -> 1 - outOfBoundDrawRatio
+            field.realHeight - 1 -> -(1 - outOfBoundDrawRatio)
+            else -> 0f
+        }).coordinateToPx(this)
 
-        if (isHorizontal) {
-            val widthRatio = when (connection.x) {
-                0 -> -outOfBoundDrawRatio
-                field.realWidth - 1 -> outOfBoundDrawRatio
-                else -> (connection.x - moveResultPosition.x).toFloat()
-            }
-
-            connectionX =
-                (moveResultPosition.x + (if (widthRatio >= 0) 0.0f else widthRatio) - Field.OFFSET).toGraphical()
-            connectionY = dotOffset.y - connectionThickness / 2
-            connectionWidth = cellSize * abs(widthRatio)
-            connectionHeight = connectionThickness
-        } else {
-            val heightRatio = when (connection.y) {
-                0 -> -outOfBoundDrawRatio
-                field.realHeight - 1 -> outOfBoundDrawRatio
-                else -> (connection.y - moveResultPosition.y).toFloat()
-            }
-
-            connectionX = dotOffset.x - connectionThickness / 2
-            connectionY =
-                (moveResultPosition.y + (if (heightRatio >= 0) 0.0f else heightRatio) - Field.OFFSET).toGraphical()
-            connectionWidth = connectionThickness
-            connectionHeight = cellSize * abs(heightRatio)
-        }
-
-        Box(Modifier.offset(connectionX, connectionY).size(connectionWidth, connectionHeight).background(color))
+        drawLine(
+            color,
+            dotOffsetPx,
+            Offset(connectionXEndPx, connectionYEndPx),
+            connectionThickness.toPx()
+        )
     }
 }
 
-@Composable
-private fun Polygon(
+private fun DrawScope.drawPolygon(
     outerClosure: List<Position>,
     innerClosures: List<List<Position>>,
     player: Player,
-    field: Field,
     polygonDrawMode: PolygonDrawMode,
     uiSettings: UiSettings,
 ) {
     if (outerClosure.size <= 1) return
 
-    var minX: Int = Int.MAX_VALUE
-    var minY: Int = Int.MAX_VALUE
-    var maxX: Int = Int.MIN_VALUE
-    var maxY: Int = Int.MIN_VALUE
-
-    var coercedMinX: Float = Float.MAX_VALUE
-    var coercedMinY: Float = Float.MAX_VALUE
-    var coercedMaxX: Float = Float.MIN_VALUE
-    var coercedMaxY: Float = Float.MIN_VALUE
-
-    var containsBound = false
-
-    for (position in outerClosure) {
-        val (x, y) = position
-        if (x < minX) minX = x
-        if (x > maxX) maxX = x
-        if (y < minY) minY = y
-        if (y > maxY) maxY = y
-
-        val coercedX = when (x) {
-            0 -> {
-                containsBound = true
-                1 - outOfBoundDrawRatio
-            }
-
-            field.width + 1 -> {
-                containsBound = true
-                field.width + 1 - (1 - outOfBoundDrawRatio)
-            }
-
-            else -> x.toFloat()
-        }
-        val coercedY = when (y) {
-            0 -> {
-                containsBound = true
-                1 - outOfBoundDrawRatio
-            }
-
-            field.height + 1 -> {
-                containsBound = true
-                field.height + 1 - (1 - outOfBoundDrawRatio)
-            }
-
-            else -> y.toFloat()
-        }
-
-        if (coercedX < coercedMinX) coercedMinX = coercedX
-        if (coercedX > coercedMaxX) coercedMaxX = coercedX
-        if (coercedY < coercedMinY) coercedMinY = coercedY
-        if (coercedY > coercedMaxY) coercedMaxY = coercedY
-    }
-
-    val xCount = maxX - minX
-    val yCount = maxY - minY
-
-    val size = DpSize(
-        xCount.let { if (it == 0) connectionThickness else cellSize * it },
-        yCount.let { if (it == 0) connectionThickness else cellSize * it }
-    )
-
-    val width: Float
-    val height: Float
-    with(LocalDensity.current) {
-        width = size.width.toPx()
-        height = size.height.toPx()
-    }
-
     fun createPath(positions: List<Position>): Path {
         return Path().apply {
+            // TODO: implement clipping
             for ((index, position) in positions.withIndex()) {
-                val xCoordinate = if (xCount == 0) 0f else (position.x - minX).toFloat() / xCount * width
-                val yCoordinate = if (yCount == 0) 0f else (position.y - minY).toFloat() / yCount * height
+                val (x, y) = position
+                val xCoordinate = x.toFloat().coordinateToPx(this@drawPolygon)
+                val yCoordinate = y.toFloat().coordinateToPx(this@drawPolygon)
 
                 if (index == 0) {
                     moveTo(xCoordinate, yCoordinate)
@@ -460,68 +367,35 @@ private fun Polygon(
         }
     }
 
-    val clipShape = if (containsBound) {
-        GenericShape { size, _ ->
-            val xMinClip = (coercedMinX - minX) / xCount * size.width
-            val yMinClip = (coercedMinY - minY) / yCount * size.height
-            val xMaxClip = (1 - (maxX - coercedMaxX) / xCount) * size.width
-            val yMaxClip = (1 - (maxY - coercedMaxY) / yCount) * size.height
-            moveTo(xMinClip, yMinClip)
-            lineTo(xMaxClip, yMinClip)
-            lineTo(xMaxClip, yMaxClip)
-            lineTo(xMinClip, yMaxClip)
-        }
-    } else {
-        null
-    }
-
-    val offsetGraphical = Position(minX, minY).toDpOffset()
     val polygonColor = uiSettings.toColor(player)
 
-    Box(
-        Modifier
-            .graphicsLayer()
-            .offset(offsetGraphical.x, offsetGraphical.y)
-            .size(size)
-            .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
-            .drawBehind {
-                if (polygonDrawMode.drawFill) {
-                    drawPath(resultPath, polygonColor.copy(alpha = baseAlpha))
-                }
-                if (polygonDrawMode.drawOutline) {
-                    drawPath(resultPath, polygonColor, style = Stroke(width = connectionThickness.toPx()))
-                }
-            }
-    )
+    if (polygonDrawMode.drawFill) {
+        drawPath(resultPath, polygonColor.copy(alpha = baseAlpha))
+    }
+    if (polygonDrawMode.drawOutline) {
+        drawPath(resultPath, polygonColor, style = Stroke(width = connectionThickness.toPx()))
+    }
 }
 
 @Composable
 private fun Pointer(position: Position?, moveMode: MoveMode, field: Field, uiSettings: UiSettings) {
     if (position == null) return
 
-    val dpOffset = position.toDpOffset()
-    val currentPlayer = moveMode.getMovePlayer() ?: field.getCurrentPlayer()
-    Box(Modifier
-        .offset(dpOffset.x - dotRadius, dpOffset.y - dotRadius)
-        .size(dotSize)
-        .background(uiSettings.toColor(currentPlayer).copy(alpha = 0.5f), CircleShape)
-    )
-}
-
-private fun Position.toDpOffset(): DpOffset {
-    return DpOffset((x - Field.OFFSET).toGraphical(), (y - Field.OFFSET).toGraphical())
-}
-
-private fun Position.toOffset(density: Density): Offset {
-    return Offset((x - Field.OFFSET).toPx(density), (y - Field.OFFSET).toPx(density))
+    Canvas(Modifier) {
+        drawCircle(
+            uiSettings.toColor(moveMode.getMovePlayer() ?: field.getCurrentPlayer()).copy(alpha = 0.5f),
+            dotRadius.toPx(),
+            position.toPxOffset(this)
+        )
+    }
 }
 
 private fun PointerEvent.toFieldPositionIfValid(field: Field, currentPlayer: Player, currentDensity: Density): Position? {
     val offset = changes.first().position
 
     with (currentDensity) {
-        val x = round((offset.x.toDp() - fieldPadding) / cellSize).toInt().takeIf { it >= 0 } ?: return null
-        val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt().takeIf { it >= 0 } ?: return null
+        val x = round((offset.x.toDp() - fieldPadding) / cellSize).toInt()
+        val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt()
 
         return Position(x + Field.OFFSET, y + Field.OFFSET).takeIf {
             field.checkPositionWithinBounds(it) && field.checkValidMove(it, currentPlayer)
@@ -529,6 +403,9 @@ private fun PointerEvent.toFieldPositionIfValid(field: Field, currentPlayer: Pla
     }
 }
 
-private fun Int.toPx(density: Density): Float = with(density) { toGraphical().toPx() }
-private fun Int.toGraphical(): Dp = cellSize * this + fieldPadding
-private fun Float.toGraphical(): Dp = cellSize * this + fieldPadding
+private fun Position.toPxOffset(density: Density): Offset {
+    return Offset(x.coordinateToPx(density), y.coordinateToPx(density))
+}
+
+private fun Int.coordinateToPx(density: Density): Float = with (density) { (cellSize * (this@coordinateToPx - Field.OFFSET) + fieldPadding).toPx() }
+private fun Float.coordinateToPx(density: Density): Float = with (density) { (cellSize * (this@coordinateToPx - Field.OFFSET) + fieldPadding).toPx() }
