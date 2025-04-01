@@ -19,7 +19,6 @@ import org.dots.game.core.*
 import org.dots.game.views.*
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-private val startRules = Rules(initialMoves = InitialPositionType.Cross.generateDefaultInitialPositions(39, 32)!!)
 private val uiSettings = UiSettings.Standard
 
 @Composable
@@ -27,7 +26,8 @@ private val uiSettings = UiSettings.Standard
 fun App() {
     MaterialTheme {
         var start by rememberSaveable { mutableStateOf(true) }
-        var field: Field by rememberSaveable {  mutableStateOf(Field(startRules)) }
+        var newGameDialogRules by remember { mutableStateOf(readRules()) }
+        var field: Field by rememberSaveable {  mutableStateOf(Field(newGameDialogRules)) }
         var fieldViewData: FieldViewData by rememberSaveable { mutableStateOf<FieldViewData>(FieldViewData(field)) }
         var gameTree: GameTree by rememberSaveable { mutableStateOf(GameTree(field)) }
         var gameTreeViewData: GameTreeViewData by rememberSaveable { mutableStateOf(GameTreeViewData(gameTree)) }
@@ -38,7 +38,6 @@ fun App() {
         var player2Score by remember { mutableStateOf(0) }
         var moveNumber by remember { mutableStateOf(0) }
         val showNewGameDialog = remember { mutableStateOf(false) }
-        var newGameDialogRules by remember { mutableStateOf(Rules.Standard) }
         val openGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
 
@@ -85,11 +84,12 @@ fun App() {
                 onConfirmation = { rules ->
                     showNewGameDialog.value = false
                     newGameDialogRules = rules
+                    writeRules(newGameDialogRules)
                     resetFieldAndGameTree(newGameDialogRules)
                 }
             )
         } else if (start) {
-            resetFieldAndGameTree(startRules)
+            resetFieldAndGameTree(newGameDialogRules)
             start = false
         }
 

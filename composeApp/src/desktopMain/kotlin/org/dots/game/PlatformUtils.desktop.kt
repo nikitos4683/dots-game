@@ -6,8 +6,13 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.russhwolf.settings.PreferencesSettings
+import com.russhwolf.settings.Settings
 import java.io.File
 import java.net.URI
+import java.util.prefs.Preferences
+
+actual val appSettings: Settings = PreferencesSettings(Preferences.userRoot())
 
 @Composable
 actual fun HorizontalScrollbar(
