@@ -14,9 +14,6 @@ import org.dots.game.core.InitialPositionType
 import org.dots.game.core.Rules
 import org.dots.game.core.generateDefaultInitialPositions
 import org.dots.game.splitByUppercase
-import kotlin.math.round
-
-private const val textFraction = 0.4f
 
 @Composable
 fun NewGameDialog(
@@ -24,10 +21,8 @@ fun NewGameDialog(
     onDismiss: () -> Unit,
     onConfirmation: (newGameRules: Rules) -> Unit,
 ) {
-    val minWidth = 3
-    val maxWidth = 48
-    val minHeight = 3
-    val maxHeight = 48
+    val minDimension = 2
+    val maxDimension = 48
 
     var width by remember { mutableStateOf(rules.width) }
     var height by remember { mutableStateOf(rules.height) }
@@ -37,44 +32,15 @@ fun NewGameDialog(
     var baseMode by remember { mutableStateOf(EnumMode(expanded = false,selected = rules.baseMode)) }
     var suicideAllowed by remember { mutableStateOf(rules.suicideAllowed) }
 
-    @Composable
-    fun Dimension(isWidth: Boolean) {
-        val minDimension: Int
-        val maxDimension: Int
-        if (isWidth) {
-            minDimension = minWidth
-            maxDimension = maxWidth
-        } else {
-            minDimension = minHeight
-            maxDimension = maxHeight
-        }
-
-        val range = maxDimension - minDimension
-        fun getDimension() = if (isWidth) width else height
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = if (isWidth) "Width" else "Height", Modifier.fillMaxWidth(textFraction))
-            Slider(
-                value = (getDimension() - minDimension).toFloat() / range,
-                onValueChange = {
-                    val newDimensionValue = round(it * range + minDimension).toInt()
-                    if (isWidth)
-                        width = newDimensionValue
-                    else
-                        height = newDimensionValue
-                },
-                steps = range - 1,
-                modifier = Modifier.width(150.dp)
-            )
-            Text(getDimension().toString())
-        }
-    }
-
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.width(470.dp).wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Dimension(isWidth = true)
-                Dimension(isWidth = false)
+                IntegerSlider("Width", width, minDimension, maxDimension) {
+                    width = it
+                }
+                IntegerSlider("Height", height, minDimension, maxDimension) {
+                    height = it
+                }
 
                 Mode(initialPositionType, ignoredEntries = setOf(InitialPositionType.Custom)) {
                     initialPositionType = it

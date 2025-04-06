@@ -6,7 +6,20 @@ import org.dots.game.core.Position
 import org.dots.game.core.TERRITORY_EMPTY_MARKER
 import org.dots.game.core.playerMarker
 
-fun Field.render(printNumbers: Boolean = true, padding: Int = Int.MAX_VALUE, printCoordinates: Boolean = true, debugInfo: Boolean = false): String {
+data class DumpParameters(
+    val printNumbers: Boolean = true,
+    val padding: Int = Int.MAX_VALUE,
+    val printCoordinates: Boolean = true,
+    val debugInfo: Boolean = false
+) {
+    companion object {
+        val DEFAULT = DumpParameters()
+    }
+}
+
+fun Field.render(dumpParameters: DumpParameters = DumpParameters.DEFAULT): String {
+    val (printNumbers: Boolean, padding: Int, printCoordinates: Boolean, debugInfo: Boolean) = dumpParameters
+
     var minX = width
     var maxX = OFFSET
     var minY = height

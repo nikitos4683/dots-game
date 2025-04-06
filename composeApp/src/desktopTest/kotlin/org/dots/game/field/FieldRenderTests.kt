@@ -1,5 +1,6 @@
 package org.dots.game.field
 
+import DumpParameters
 import org.dots.game.core.Field
 import org.dots.game.core.Position
 import org.dots.game.dump.FieldParser
@@ -24,7 +25,9 @@ class FieldRenderTests : FieldTests() {
             ┌ ─ ┐
             │ * │
             └ ─ ┘
-        """.trimIndent(), field.render(printNumbers = false, padding = 1, printCoordinates = false, debugInfo = false))
+        """.trimIndent(),
+            field.render(DumpParameters(printNumbers = false, padding = 1, printCoordinates = false, debugInfo = false))
+        )
     }
 
     @Test
@@ -41,7 +44,7 @@ class FieldRenderTests : FieldTests() {
                 │ . . . . . │
                 └ ─ ─ ─ ─ ─ ┘
             """.trimIndent(),
-            field.render(printNumbers = false, padding = Int.MAX_VALUE, printCoordinates = false, debugInfo = false)
+            field.render(DumpParameters(printNumbers = false, padding = Int.MAX_VALUE, printCoordinates = false, debugInfo = false))
         )
     }
 
@@ -58,7 +61,7 @@ class FieldRenderTests : FieldTests() {
             5  │  .  *  *  *  .  *  *  *  .  │
             6  └  ─  ─  ─  ─  ─  ─  ─  ─  ─  ┘
         """.trimIndent(),
-            sampleField.render(printNumbers = false, padding = 1, printCoordinates = true, debugInfo = false)
+            sampleField.render(DumpParameters(printNumbers = false, padding = 1, printCoordinates = true, debugInfo = false))
         )
     }
 
@@ -72,7 +75,7 @@ class FieldRenderTests : FieldTests() {
             *13 .   .   .   *9  .   .   .   *21
             .   *12 *11 *10 .   *22 *23 *24 .
         """.trimIndent(),
-            sampleField.render(printNumbers = true, padding = 0, printCoordinates = false, debugInfo = false)
+            sampleField.render(DumpParameters(printNumbers = true, padding = 0, printCoordinates = false, debugInfo = false))
         )
     }
 
@@ -86,7 +89,7 @@ class FieldRenderTests : FieldTests() {
                 *  *^ *^ *^ *  `* `* `* *
                 .  *  *  *  .  *  *  *  .
             """.trimIndent(),
-            sampleField.render(printNumbers = false, padding = 0, printCoordinates = false, debugInfo = true)
+            sampleField.render(DumpParameters(printNumbers = false, padding = 0, printCoordinates = false, debugInfo = true))
         )
     }
 }

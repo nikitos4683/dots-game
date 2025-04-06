@@ -26,7 +26,7 @@ private val uiSettings = UiSettings.Standard
 fun App() {
     MaterialTheme {
         var start by rememberSaveable { mutableStateOf(true) }
-        var newGameDialogRules by remember { mutableStateOf(readRules()) }
+        var newGameDialogRules by remember { mutableStateOf(loadRules()) }
         var field: Field by rememberSaveable {  mutableStateOf(Field(newGameDialogRules)) }
         var fieldViewData: FieldViewData by rememberSaveable { mutableStateOf<FieldViewData>(FieldViewData(field)) }
         var gameTree: GameTree by rememberSaveable { mutableStateOf(GameTree(field)) }
@@ -39,6 +39,8 @@ fun App() {
         var moveNumber by remember { mutableStateOf(0) }
         val showNewGameDialog = remember { mutableStateOf(false) }
         val openGameDialog = remember { mutableStateOf(false) }
+        var dumpParameters by remember { mutableStateOf(loadDumpParameters())}
+        val saveGameDialog = remember { mutableStateOf(false) }
         var moveMode by remember { mutableStateOf(MoveMode.Next) }
 
         val focusRequester = remember { FocusRequester() }
@@ -81,10 +83,10 @@ fun App() {
                     showNewGameDialog.value = false
                     focusRequester.requestFocus()
                 },
-                onConfirmation = { rules ->
+                onConfirmation = {
                     showNewGameDialog.value = false
-                    newGameDialogRules = rules
-                    writeRules(newGameDialogRules)
+                    newGameDialogRules = it
+                    saveRules(newGameDialogRules)
                     resetFieldAndGameTree(newGameDialogRules)
                 }
             )
@@ -104,6 +106,18 @@ fun App() {
                     initializeFieldAndGameTree(game.gameTree.field, game.gameTree)
                 }
             )
+        }
+
+        if (saveGameDialog.value) {
+            SaveDialog(
+                field,
+                dumpParameters,
+                onDismiss = {
+                    saveGameDialog.value = false
+                    focusRequester.requestFocus()
+                    dumpParameters = it
+                    saveDumpParameters(it)
+                })
         }
 
         Row {
@@ -138,6 +152,9 @@ fun App() {
                     }
                     Button(onClick = { openGameDialog.value = true }, playerButtonModifier) {
                         Text("Load")
+                    }
+                    Button(onClick = { saveGameDialog.value = true }, playerButtonModifier) {
+                        Text("Save")
                     }
                 }
 
