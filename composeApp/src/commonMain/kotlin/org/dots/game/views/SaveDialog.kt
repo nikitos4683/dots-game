@@ -30,8 +30,30 @@ fun SaveDialog(
     dumpParameters: DumpParameters,
     onDismiss: (DumpParameters) -> Unit,
 ) {
+    var minX = field.realWidth - 1
+    var maxX = 0
+    var minY = field.realHeight - 1
+    var maxY = 0
+
+    if (field.moveSequence.isNotEmpty()) {
+        for (move in field.moveSequence) {
+            val (x, y) = move.position
+            if (x < minX) minX = x
+            if (x > maxX) maxX = x
+            if (y < minY) minY = y
+            if (y > maxY) maxY = y
+        }
+    } else {
+        minX = field.realWidth / 2
+        minY = field.realHeight / 2
+        maxX = minX
+        maxY = minY
+    }
+
+    val maxPadding = maxOf(minX, minY, field.realWidth - 1 - maxX, field.realHeight - 1 - maxY)
+
     var printNumbers by remember { mutableStateOf(dumpParameters.printNumbers) }
-    var padding by remember { mutableStateOf(dumpParameters.padding) }
+    var padding by remember { mutableStateOf(dumpParameters.padding.coerceAtMost(maxPadding)) }
     var printCoordinates by remember { mutableStateOf(dumpParameters.printCoordinates) }
     var debugInfo by remember { mutableStateOf(dumpParameters.debugInfo) }
 
@@ -42,21 +64,6 @@ fun SaveDialog(
     }
 
     updateFieldRepresentation()
-
-    var minX = field.realWidth - 1
-    var maxX = 0
-    var minY = field.realHeight - 1
-    var maxY = 0
-
-    for (move in field.moveSequence) {
-        val (x, y) = move.position
-        if (x < minX) minX = x
-        if (x > maxX) maxX = x
-        if (y < minY) minY = y
-        if (y > maxY) maxY = y
-    }
-
-    val maxPadding = maxOf(minX, minY, field.realWidth - 1 - maxX, field.realHeight - 1 - maxY)
 
     Dialog(onDismissRequest = {
         onDismiss(DumpParameters(printNumbers, padding, printCoordinates, debugInfo))

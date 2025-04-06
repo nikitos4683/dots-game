@@ -15,17 +15,17 @@ import org.dots.game.core.Rules
 import org.dots.game.core.generateDefaultInitialPositions
 import org.dots.game.splitByUppercase
 
+private const val minDimension = 2
+private const val maxDimension = 48
+
 @Composable
 fun NewGameDialog(
     rules: Rules,
     onDismiss: () -> Unit,
     onConfirmation: (newGameRules: Rules) -> Unit,
 ) {
-    val minDimension = 2
-    val maxDimension = 48
-
-    var width by remember { mutableStateOf(rules.width) }
-    var height by remember { mutableStateOf(rules.height) }
+    var width by remember { mutableStateOf(rules.width.coerceIn(minDimension, maxDimension)) }
+    var height by remember { mutableStateOf(rules.height.coerceIn(minDimension, maxDimension)) }
     var captureByBorder by remember { mutableStateOf(rules.captureByBorder) }
 
     var initialPositionType by remember { mutableStateOf(EnumMode(expanded = false, selected = rules.initialPositionType)) }

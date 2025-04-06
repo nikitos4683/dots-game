@@ -20,10 +20,10 @@ data class DumpParameters(
 fun Field.render(dumpParameters: DumpParameters = DumpParameters.DEFAULT): String {
     val (printNumbers: Boolean, padding: Int, printCoordinates: Boolean, debugInfo: Boolean) = dumpParameters
 
-    var minX = width
-    var maxX = OFFSET
-    var minY = height
-    var maxY = OFFSET
+    var minX = realWidth - 1
+    var maxX = 0
+    var minY = realHeight - 1
+    var maxY = 0
 
     var maxMarkerLength = 0
     val positionToMoveResult = moveSequence.associateBy { it.position }
@@ -93,6 +93,13 @@ fun Field.render(dumpParameters: DumpParameters = DumpParameters.DEFAULT): Strin
                 }
             }
         }
+    }
+
+    if (moveSequence.isEmpty()) {
+        minX = realWidth / 2
+        minY = realHeight / 2
+        maxX = minX
+        maxY = minY
     }
 
     val firstX = maxOf(minX.toLong() - padding, 0).toInt()
