@@ -59,6 +59,22 @@ class FieldParserTests {
     }
 
     @Test
+    fun moveNumbersStartWithOne() {
+        val parsedField = FieldParser.parseAndConvertWithNoInitialMoves("""
+            .  .  . .
+            . *1 +4 .
+            . +2 *3 .
+            .  .  . .
+        """)
+
+        val moveSequence = parsedField.moveSequence
+        moveSequence[0].checkPositionAndPlayer(2 x 2, Player.First)
+        moveSequence[1].checkPositionAndPlayer(2 x 3, Player.Second)
+        moveSequence[2].checkPositionAndPlayer(3 x 3, Player.First)
+        moveSequence[3].checkPositionAndPlayer(3 x 2, Player.Second)
+    }
+
+    @Test
     fun mixedNumberedAndUnnumberedMoves() {
         val parsedField = FieldParser.parseAndConvertWithNoInitialMoves("""
             . *0 .

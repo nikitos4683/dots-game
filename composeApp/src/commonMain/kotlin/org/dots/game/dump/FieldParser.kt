@@ -51,9 +51,7 @@ object FieldParser {
             val char = data[charIndex]
             when (char) {
                 ' ', '\t' -> {
-                    while (data.elementAtOrNull(charIndex)?.let { it == ' ' || it == '\t' } == true) {
-                        charIndex++
-                    }
+                    charIndex++
                 }
                 '\r', '\n' -> {
                     charIndex++
@@ -175,12 +173,18 @@ object FieldParser {
                         this[insertedMoveNumber++] = unnumberedMoves[moveNumberInUnnumberedMoves++]
                     }
                     if (moveNumber - insertedMoveNumber > 0) {
-                        diagnosticReporter(
-                            Diagnostic(
-                                "The following moves are missing: ${IntRange(size, moveNumber - 1)}",
-                                textSpan = null
+                        var reportError = true
+                        val singleValueOrRange = if (size == moveNumber - 1) {
+                            reportError = isNotEmpty() // Allow moves sequence to start both since `0` and `1`
+                            size
+                        } else {
+                            IntRange(size, moveNumber - 1)
+                        }
+                        if (reportError) {
+                            diagnosticReporter(
+                                Diagnostic("The following moves are missing: $singleValueOrRange", textSpan = null)
                             )
-                        )
+                        }
                     }
                 }
                 this[moveNumber] = move
