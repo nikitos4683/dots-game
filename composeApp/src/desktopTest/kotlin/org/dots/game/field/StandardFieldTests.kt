@@ -469,4 +469,44 @@ class StandardFieldTests : FieldTests() {
             assertNull(it.makeMove(3 x 2, Player.First))
         }
     }
+
+    @Test
+    fun capturingAfterPlacingToEmptyTerritoryShouldBeMinimal() {
+        testFieldWithRollback("""
+            .  .  .  .  .
+            .  .  *2 .  .
+            .  *1 .  *3 .
+            .  *6 *7 *4 .
+            .  .  *5 .  .
+            .  .  .  .  .
+        """) {
+            val moveResult = it.makeMove(3 x 3, Player.Second)!!
+            val base = moveResult.bases.single()
+            assertEquals(1, base.previousStates.size)
+        }
+    }
+
+    @Test
+    fun complexEmptyBase() {
+        testFieldWithRollback("""
+            .   .   *2  *3  .
+            .   *12 .   .   *4
+            *11 .   *1  .   *5
+            *10 .   .   .   *6
+            .   *9  *8  *7  .
+        """) {
+            it.makeMove(3 x 2, Player.Second)!!
+        }
+    }
+
+    @Test
+    fun singularConnectionForEmptyBase() {
+        testFieldWithRollback("""
+            .  *3 *6 .
+            *2 *1 .  *7
+            .  *4 *5 .
+        """) {
+            it.makeMove(3 x 2, Player.Second)!!
+        }
+    }
 }

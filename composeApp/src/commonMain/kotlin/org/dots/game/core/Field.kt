@@ -17,7 +17,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     // Initialize field as a primitive int array with expanded borders to get rid of extra range checks and boxing
     private val dots: IntArray = IntArray(realWidth * realHeight) { DotState.Empty.value }
-    private val emptyBasePositions: MutableMap<Position, Base> = mutableMapOf()
 
     private val moveResults = mutableListOf<MoveResult>()
 
@@ -54,9 +53,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     }
 
     val moveSequence: List<MoveResult> = moveResults
-
-    val emptyBasePositionsSequence: Map<Position, Base>
-        get() = emptyBasePositions
 
     val currentMoveNumber: Int
         get() = moveResults.size - initialMovesCount
@@ -117,23 +113,17 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
         val moveResult = moveResults.removeLast()
 
-        fun Position.rollback(previousState: PreviousState) {
-            setState(previousState.dotState)
-            if (previousState.emptyBase == null) {
-                emptyBasePositions.remove(this)
-            } else {
-                emptyBasePositions[this] = previousState.emptyBase
-            }
-        }
-
         for (base in moveResult.bases) {
             for ((position, previousState) in base.previousStates) {
-                position.rollback(previousState)
+                position.setState(previousState)
             }
             updateScoreCount(base.player, base.playerDiff, base.oppositePlayerDiff, rollback = true)
         }
 
-        moveResult.position.rollback(moveResult.previousState)
+        moveResult.position.setState(moveResult.previousState)
+        for ((position, previousState) in moveResult.extraPreviousStates) {
+            position.setState(previousState)
+        }
 
         return moveResult
     }
@@ -141,32 +131,27 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     internal fun makeMoveUnsafe(position: Position, player: Player? = null): MoveResult? {
         val currentPlayer = player ?: getCurrentPlayer()
 
-        val emptyBaseAtPosition = emptyBasePositions.remove(position)
         val originalState = position.getState()
 
         val state = currentPlayer.createPlacedState()
         position.setState(state)
 
-        val bases = tryCapture(position, state, emptyBaseAtPosition)
+        val bases = tryCapture(position, state, emptyBaseCapturing = false)
 
         val oppositePlayer = currentPlayer.opposite()
-        val resultBases = bases.ifEmpty {
-            if (rules.baseMode != BaseMode.AllOpponentDots) {
-                if (emptyBaseAtPosition?.player == oppositePlayer) {
+        val resultBases: List<Base>
+        val extraPreviousStates: Map<Position, DotState>
+
+        // Handle possible suicidal moves.
+        if (bases.isEmpty()) {
+            resultBases = if (rules.baseMode != BaseMode.AllOpponentDots) {
+                if (originalState.checkWithinEmptyTerritory(currentPlayer.opposite())) {
                     if (rules.suicideAllowed) {
                         // Check capturing by the opposite player
-                        val firstTerritoryPosition = emptyBaseAtPosition.previousStates.firstNotNullOf { it.key }
-
-                        val oppositeBase = buildBase(
-                            firstTerritoryPosition,
-                            emptyBaseAtPosition.closurePositions,
-                            oppositePlayer.createPlacedState(),
-                            emptyBaseAtPosition,
-                            capturingByOppositePlayer = true,
-                        )
+                        val oppositePlayerPlaced = currentPlayer.opposite().createPlacedState()
+                        val oppositeBase = captureWhenEmptyTerritoryBecomesRealBase(position, oppositePlayerPlaced)
                         listOf(oppositeBase)
                     } else {
-                        emptyBasePositions[position] = emptyBaseAtPosition
                         position.setState(originalState)
                         return null
                     }
@@ -180,7 +165,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                     capturingByOppositePlayer = true
                 )?.let { (base, suicidalMove) ->
                     if (suicidalMove) {
-                        // Rollback state in case of a suicidal move and corresponding mode
+                        // Rollback state in case of a suicidal move
                         position.setState(originalState)
                         return null
                     } else {
@@ -188,22 +173,58 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                     }
                 } ?: bases
             }
+            extraPreviousStates = emptyMap() // Not used in `AllOpponentDots` mode
+        } else {
+            resultBases = bases
+            extraPreviousStates = if (rules.baseMode != BaseMode.AllOpponentDots &&
+                originalState.checkWithinEmptyTerritory(currentPlayer.opposite())
+            ) {
+                // Invalidate empty territory of the opposite player in case of capturing that is more prioritized
+                // It makes the positions legal for further game.
+                invalidateEmptyTerritory(position)
+            } else {
+                emptyMap()
+            }
         }
 
         return MoveResult(
             position,
             currentPlayer,
             currentMoveNumber + 1,
-            PreviousState(originalState, emptyBaseAtPosition),
-            resultBases
+            originalState,
+            extraPreviousStates,
+            resultBases,
         ).also { moveResults.add(it) }
     }
 
-    private fun tryCapture(position: Position, playerPlaced: DotState, emptyBaseAtPosition: Base?): List<Base> {
+    private fun captureWhenEmptyTerritoryBecomesRealBase(initialPosition: Position, oppositePlayerPlaced: DotState): Base {
+        var (x, y) = initialPosition
+
+        // Searching for an opponent dot that makes a closure that contains the `initialPosition`.
+        // The closure always exists, otherwise there is an error in previous calculations.
+        while (x > 0) {
+            x--
+            val position = Position(x, y)
+
+            // Try to peek an active opposite player dot
+            if (!position.getState().checkActive(oppositePlayerPlaced)) continue
+
+            val oppositePlayerBased = tryCapture(position, oppositePlayerPlaced, emptyBaseCapturing = true)
+            // The found base always should be real and include the `initialPosition`
+            return oppositePlayerBased.firstOrNull { it.isReal } ?: continue
+        }
+
+        error("Enemy's empty territory should be enclosed by an outer closure")
+    }
+
+    private fun tryCapture(position: Position, playerPlaced: DotState, emptyBaseCapturing: Boolean): List<Base> {
         return if (rules.baseMode != BaseMode.AllOpponentDots) {
             val unconnectedPositions = getUnconnectedPositions(position, playerPlaced)
 
-            if (unconnectedPositions.size < 2) return emptyList()
+            // Optimization: in a regular case it should be at least 2 connection dots, otherwise there is no surrounding.
+            // However, in the case of empty territory, the connection might be singular since the base is already built.
+            val minNumberOfConnections = if (emptyBaseCapturing) 1 else 2
+            if (unconnectedPositions.size < minNumberOfConnections) return emptyList()
 
             val closures = buildList {
                 for (unconnectedPosition in unconnectedPositions) {
@@ -224,8 +245,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                     it.territoryFirstPosition,
                     it.closure,
                     playerPlaced,
-                    emptyBaseAtPosition,
-                    capturingByOppositePlayer = false
                 )
             }
         } else {
@@ -285,6 +304,17 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         return result
     }
 
+    /**
+     * Returns the number of connections that should be checked on surrounding: `1` for a singular dot, `4` for the following case:
+     *
+     * ```
+     * + . +
+     * . o .
+     * + . +
+     * ```
+     *
+     * Where `o` is the checking @param [position].
+     */
     private fun getUnconnectedPositions(position: Position, playerPlaced: DotState): List<Position> {
         val startPositions = mutableListOf<Position>()
 
@@ -343,17 +373,13 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         territoryFirstPosition: Position,
         closurePositions: List<Position>,
         playerPlaced: DotState,
-        emptyBaseAtPosition: Base?,
-        capturingByOppositePlayer: Boolean,
     ): Base {
         val territoryPositions = getPositionsWithinClosure(
             closurePositions,
             territoryFirstPosition,
             playerPlaced,
-            emptyBaseAtPosition,
-            capturingByOppositePlayer
         )
-        return updateStatesAndScores(closurePositions, territoryPositions, playerPlaced, emptyBaseAtPosition, capturingByOppositePlayer)
+        return updateStatesAndScores(closurePositions, territoryPositions, playerPlaced)
     }
 
     private data class ClosureData(
@@ -417,8 +443,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         closurePositions: List<Position>,
         territoryFirstPosition: Position,
         playerPlaced: DotState,
-        outerEmptyBase: Base?,
-        capturingByOppositePlayer: Boolean,
     ): Set<Position> {
         val walkStack = mutableListOf<Position>()
         val closurePositionsSet = closurePositions.toSet()
@@ -429,16 +453,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         fun Position.checkAndAdd() {
             val state = getState()
             if (state.checkTerritory(playerTerritory)) return // Ignore already captured territory
-            // Walk into inner empty territory in case of normal capturing (by the current player)
-            // or if only it's a territory of `outerEmptyBase` of the current player.
-            // Otherwise, it's a territory of a more inner base, and we shouldn't walk into it,
-            // because it's handled by an existing smaller inner base.
-            if (!capturingByOppositePlayer) {
-                val emptyBaseAtPosition = emptyBasePositions[this]
-                if (emptyBaseAtPosition?.player == player && emptyBaseAtPosition != outerEmptyBase) {
-                    return
-                }
-            }
 
             if (this in closurePositionsSet) return
             if (!territoryPositions.add(this)) return
@@ -539,8 +553,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 closurePositions.toList(),
                 territoryPositions,
                 isReal = true,
-                emptyBaseAtPosition = null, // Not used for this mode
-                capturingByOppositePlayer = capturingByOppositePlayer,
             )
             suicidalMove = false
         }
@@ -554,8 +566,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         closurePositions: List<Position>,
         territoryPositions: Set<Position>,
         playerPlaced: DotState,
-        emptyBaseAtPosition: Base?,
-        capturingByOppositePlayer: Boolean,
     ): Base {
         var currentPlayerDiff = 0
         var oppositePlayerDiff = 0
@@ -593,8 +603,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             closurePositions,
             territoryPositions,
             isReal,
-            emptyBaseAtPosition,
-            capturingByOppositePlayer,
         )
     }
 
@@ -605,10 +613,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         closurePositions: List<Position>,
         territoryPositions: Set<Position>,
         isReal: Boolean,
-        emptyBaseAtPosition: Base?,
-        capturingByOppositePlayer: Boolean,
     ): Base {
-        val previousStates = mutableMapOf<Position, PreviousState>()
+        val previousStates = mutableMapOf<Position, DotState>()
 
         val base = Base(
             player,
@@ -622,38 +628,22 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         updateScoreCount(player, currentPlayerDiff, oppositePlayerDiff, rollback = false)
 
         val playerTerritory = player.createTerritoryState()
+        val playerEmptyTerritory = player.createEmptyTerritoryState()
 
         for (territoryPosition in territoryPositions) {
             val territoryPositionState = territoryPosition.getState()
 
-            fun savePreviousStateAndSetNew(newState: DotState, setEmptyBase: Boolean) {
-                previousStates[territoryPosition] =
-                    PreviousState(territoryPositionState, emptyBasePositions[territoryPosition])
-                if (setEmptyBase) {
-                    emptyBasePositions[territoryPosition] = base
-                } else {
-                    emptyBasePositions.remove(territoryPosition)
-                }
+            fun savePreviousStateAndSetNew(newState: DotState) {
+                previousStates[territoryPosition] = territoryPositionState
                 territoryPosition.setState(newState)
             }
 
             if (!isReal) {
                 if (!territoryPositionState.checkPlacedOrTerritory()) {
-                    savePreviousStateAndSetNew(DotState.Empty, setEmptyBase = true)
+                    savePreviousStateAndSetNew(playerEmptyTerritory)
                 }
             } else {
-                savePreviousStateAndSetNew(territoryPositionState.setTerritory(playerTerritory), setEmptyBase = false)
-            }
-        }
-
-        // Invalidate empty base positions in case of the new capturing
-        if (emptyBaseAtPosition != null && isReal && !capturingByOppositePlayer) {
-            for ((position, _) in emptyBaseAtPosition.previousStates) {
-                if (emptyBasePositions[position] != null) {
-                    previousStates[position] = PreviousState(position.getState(), emptyBasePositions[position])
-                    emptyBasePositions.remove(position)
-                    position.setState(DotState.Empty)
-                }
+                savePreviousStateAndSetNew(territoryPositionState.setTerritory(playerTerritory))
             }
         }
 
@@ -669,6 +659,40 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             player1Score += oppositePlayerDiff * multiplier
             player2Score += currentPlayerDiff * multiplier
         }
+    }
+
+    /**
+     * Invalidates states of an empty base that becomes broken.
+     */
+    private fun invalidateEmptyTerritory(position: Position): Map<Position, DotState> {
+        val walkStack = mutableListOf<Position>().also { it.add(position) }
+        val emptyTerritoryPositions = mutableMapOf<Position, DotState>()
+
+        fun Position.checkAndAdd() {
+            val state = getState()
+            if (!state.checkWithinEmptyTerritory()) return
+            val existingTerritoryPosition = emptyTerritoryPositions[this]
+            if (existingTerritoryPosition == null) {
+                emptyTerritoryPositions[this] = state
+                setState(DotState.Empty)
+            } else {
+                return
+            }
+
+            walkStack.add(this)
+        }
+
+        while (walkStack.isNotEmpty()) {
+            val currentPosition = walkStack.removeLast()
+
+            val (x, y) = currentPosition
+            Position(x, y - 1).checkAndAdd()
+            Position(x + 1, y).checkAndAdd()
+            Position(x, y + 1).checkAndAdd()
+            Position(x - 1, y).checkAndAdd()
+        }
+
+        return emptyTerritoryPositions
     }
 
     fun Position.getState(): DotState {
@@ -690,7 +714,8 @@ data class MoveResult(
     val position: Position,
     val player: Player,
     val number: Int,
-    val previousState: PreviousState,
+    val previousState: DotState,
+    val extraPreviousStates: Map<Position, DotState>,
     val bases: List<Base>,
 ) {
     val positionPlayer: PositionPlayer
@@ -702,13 +727,8 @@ class Base(
     val playerDiff: Int,
     val oppositePlayerDiff: Int,
     val closurePositions: List<Position>,
-    val previousStates: Map<Position, PreviousState>,
+    val previousStates: Map<Position, DotState>,
     val isReal: Boolean,
-)
-
-data class PreviousState(
-    val dotState: DotState,
-    val emptyBase: Base?,
 )
 
 data class PositionPlayer(

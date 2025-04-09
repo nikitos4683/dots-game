@@ -44,11 +44,10 @@ fun Field.render(dumpParameters: DumpParameters = DumpParameters.DEFAULT): Strin
                 } else if (isTerritory) {
                     append(TERRITORY_EMPTY_MARKER)
                 }
-                val emptyBaseAtPosition = emptyBasePositionsSequence[position]
-                if (debugInfo && emptyBaseAtPosition != null) {
+                if (debugInfo && state.checkWithinEmptyTerritory()) {
                     require(!isTerritory && !isPlaced)
                     append(EMPTY_TERRITORY_MARKER)
-                    append(playerMarker.getValue(emptyBaseAtPosition.player))
+                    append(playerMarker.getValue(state.getEmptyTerritoryPlayer()))
                 }
                 if (isEmpty()) {
                     append(

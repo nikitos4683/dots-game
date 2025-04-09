@@ -26,7 +26,6 @@ abstract class FieldTests {
             assertTrue(moveSequence.isEmpty())
             assertEquals(0, player1Score)
             assertEquals(0, player2Score)
-            assertTrue(emptyBasePositionsSequence.isEmpty())
             for (x in 0 until realWidth) {
                 for (y in 0 until realHeight) {
                     val position = Position(x, y)
