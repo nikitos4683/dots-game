@@ -32,7 +32,7 @@ fun Field.getPositionsOfConnection(position: Position, diagonalConnections: Bool
     val (x, y) = position
 
     val activePositions = buildList {
-        position.clockwiseWalk(Position(x, y - 1)) {
+        position.clockwiseBigJumpWalk(Position(x - 1, y - 1)) {
             if (it.getState().checkActive(playerPlaced)) {
                 add(it)
             }
@@ -108,11 +108,11 @@ private fun MutableSet<Position>.extractClosure(initialPosition: Position, inner
     var square = 0
     var currentPosition: Position = initialPosition
     // The next position should always be inner for outer closure and outer for inner closure
-    var nextPosition = Position(currentPosition.x, currentPosition.y + (if (!inner) +1 else -1))
+    var nextPosition = Position(currentPosition.x + (if (!inner) +1 else -1), currentPosition.y + (if (!inner) +1 else -1))
 
     loop@ do {
-        val walkCompleted = currentPosition.clockwiseWalk(nextPosition) {
-            return@clockwiseWalk if (contains(it)) {
+        val walkCompleted = currentPosition.clockwiseBigJumpWalk(nextPosition) {
+            return@clockwiseBigJumpWalk if (contains(it)) {
                 square += currentPosition.getSquare(it)
 
                 if (it == initialPosition) {

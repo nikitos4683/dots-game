@@ -242,7 +242,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
             resultClosures.map {
                 buildBase(
-                    it.territoryFirstPosition,
                     it.closure,
                     playerPlaced,
                 )
@@ -370,21 +369,15 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     }
 
     private fun buildBase(
-        territoryFirstPosition: Position,
         closurePositions: List<Position>,
         playerPlaced: DotState,
     ): Base {
-        val territoryPositions = getPositionsWithinClosure(
-            closurePositions,
-            territoryFirstPosition,
-            playerPlaced,
-        )
+        val territoryPositions = getPositionsWithinClosure(closurePositions, playerPlaced)
         return updateStatesAndScores(closurePositions, territoryPositions, playerPlaced)
     }
 
     private data class ClosureData(
         val square: Int,
-        val territoryFirstPosition: Position,
         val closure: List<Position>,
         val containsBorder: Boolean,
     )
@@ -400,18 +393,12 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         var currentPosition: Position = startPosition
         var nextPosition: Position = initialPosition
 
-        var territoryFirstPosition: Position? = null
         var containsBorder = false
 
         loop@ do {
-            val clockwiseWalkCompleted = currentPosition.clockwiseWalk(nextPosition) {
+            val clockwiseWalkCompleted = currentPosition.clockwiseBigJumpWalk(nextPosition) {
                 val state = it.getState()
                 val isActive = state.checkActive(playerPlaced)
-
-                if (territoryFirstPosition == null) {
-                    require(!isActive)
-                    territoryFirstPosition = it
-                }
 
                 if (isActive) {
                     square += currentPosition.getSquare(it)
@@ -427,23 +414,19 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                     closurePositions.add(it)
                     nextPosition = currentPosition
                     currentPosition = it
-                    return@clockwiseWalk false
+                    return@clockwiseBigJumpWalk false
                 }
-                return@clockwiseWalk true
+                return@clockwiseBigJumpWalk true
             }
             if (clockwiseWalkCompleted) {
                 return null
             }
         } while (true)
 
-        return if (square > 0) ClosureData(square, territoryFirstPosition, closurePositions, containsBorder) else null
+        return if (square > 0) ClosureData(square, closurePositions, containsBorder) else null
     }
 
-    private fun getPositionsWithinClosure(
-        closurePositions: List<Position>,
-        territoryFirstPosition: Position,
-        playerPlaced: DotState,
-    ): Set<Position> {
+    private fun getPositionsWithinClosure(closurePositions: List<Position>, playerPlaced: DotState): Set<Position> {
         val walkStack = mutableListOf<Position>()
         val closurePositionsSet = closurePositions.toSet()
         val territoryPositions = mutableSetOf<Position>()
@@ -460,6 +443,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             walkStack.add(this)
         }
 
+        val territoryFirstPosition = closurePositions[1].getNextClockwisePosition(closurePositions[0])
         territoryFirstPosition.checkAndAdd()
 
         while (walkStack.isNotEmpty()) {
