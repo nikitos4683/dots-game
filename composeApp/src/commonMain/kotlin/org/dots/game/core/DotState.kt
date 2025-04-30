@@ -14,8 +14,8 @@ value class DotState(val value: Int) {
         private val PlacedMask = DotStateFlags.Placed.value or DotStateFlags.PlacedPlayer.value
         private val ActiveMask = DotStateFlags.Placed.value or DotStateFlags.Territory.value or DotStateFlags.PlacedPlayer.value
         private val TerritoryMask = DotStateFlags.Territory.value or DotStateFlags.TerritoryPlayer.value
-        private val InvertTerritoryMask = TerritoryMask.inv()
         private val EmptyTerritoryMask = DotStateFlags.EmptyTerritory.value or DotStateFlags.EmptyTerritoryPlayer.value
+        private val InvalidateTerritoryMask = (DotStateFlags.Territory.value or DotStateFlags.TerritoryPlayer.value or EmptyTerritoryMask).inv()
     }
 
     fun checkPlacedOrTerritory(): Boolean {
@@ -68,7 +68,7 @@ value class DotState(val value: Int) {
     }
 
     fun setTerritory(playerAndTerritory: DotState): DotState {
-        return DotState(value and InvertTerritoryMask or playerAndTerritory.value)
+        return DotState(value and InvalidateTerritoryMask or playerAndTerritory.value)
     }
 
     override fun toString(): String {
