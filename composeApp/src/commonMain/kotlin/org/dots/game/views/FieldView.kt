@@ -36,6 +36,7 @@ import org.dots.game.core.MoveResult
 import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.createPlacedState
+import org.dots.game.core.getOneMoveCapturingAndBasePositions
 import org.dots.game.core.getPositionsOfConnection
 import org.dots.game.core.getSortedClosurePositions
 import org.dots.game.core.getStrongConnectionLinePositions
@@ -64,6 +65,16 @@ private val outOfBoundDrawRatio = dotRadiusRatio
 private val baseDrawMode: PolygonDrawMode = PolygonDrawMode.OutlineAndFill
 private val connectionDrawMode: ConnectionDrawMode = ConnectionDrawMode.Polygon(baseDrawMode)
 private val drawDiagonalConnections: Boolean = true
+private val helperMovesMode: HelperMovesMode = HelperMovesMode.CapturingAndBase
+
+enum class HelperMovesMode {
+    None,
+    Capturing,
+    CapturingAndBase,
+}
+
+private val capturingMoveMarkerSize = cellSize * 0.35f
+private val capturingBaseMoveMarkerSize = cellSize * 0.2f
 
 sealed class ConnectionDrawMode {
     object None : ConnectionDrawMode()
@@ -124,6 +135,7 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
         if (drawDiagonalConnections) {
             DiagonalConnections(currentMove, field, uiSettings)
         }
+        HelperMovesPositions(currentMove, field, uiSettings)
         Moves(currentMove, field, uiSettings)
         Pointer(pointerFieldPosition, moveMode, field, uiSettings)
     }
@@ -289,6 +301,66 @@ private fun DiagonalConnections(currentMove: MoveResult?, field: Field, uiSettin
             val adjacentCommonPosition = Position(x, y + 1)
             drawConnectionIfNeeded(Position(x - 1, y + 1), adjacentCommonPosition, Position(x - 1, y))
             drawConnectionIfNeeded(Position(x + 1, y + 1), Position(x + 1, y), adjacentCommonPosition)
+        }
+
+        currentMove
+    }
+}
+
+@Composable
+private fun HelperMovesPositions(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
+    if (helperMovesMode == HelperMovesMode.None) return
+
+    Canvas(Modifier.fillMaxSize().graphicsLayer()) {
+        val (oneMoveCapturingPositions, oneMoveBasePositions) = field.getOneMoveCapturingAndBasePositions()
+
+        fun Map<Player, Set<Position>>.forEachPosition(action: (position: Position, player: Player, matchesOppositePlayer: Boolean) -> Unit) {
+            fun forPosition(localPosition: Position, localPlayer: Player) {
+                action(localPosition, localPlayer, getValue(localPlayer.opposite()).contains(localPosition))
+            }
+
+            for (position in getValue(Player.First)) {
+                forPosition(position, Player.First)
+            }
+            for (position in getValue(Player.Second)) {
+                forPosition(position, Player.Second)
+            }
+        }
+
+        val capturingMarkerSize = capturingMoveMarkerSize.toPx()
+        oneMoveCapturingPositions.forEachPosition { position, player, matchesOppositePlayer ->
+            val (xPx, yPx) = position.toPxOffset(this)
+            drawLine(
+                uiSettings.toColor(player).copy(0.7f),
+                Offset(xPx - capturingMarkerSize, yPx),
+                Offset(xPx + capturingMarkerSize, yPx),
+                strokeWidth = 3.dp.toPx(),
+            )
+            drawLine(
+                uiSettings.toColor(if (matchesOppositePlayer) player.opposite() else player).copy(0.7f),
+                Offset(xPx, yPx - capturingMarkerSize),
+                Offset(xPx, yPx + capturingMarkerSize),
+                strokeWidth = 3.dp.toPx(),
+            )
+        }
+
+        if (helperMovesMode == HelperMovesMode.CapturingAndBase) {
+            val baseMarkerSize = capturingBaseMoveMarkerSize.toPx()
+            oneMoveBasePositions.forEachPosition { position, player, matchesOppositePlayer ->
+                val (xPx, yPx) = position.toPxOffset(this)
+                drawLine(
+                    uiSettings.toColor(player).copy(0.7f),
+                    Offset(xPx - baseMarkerSize, yPx - baseMarkerSize),
+                    Offset(xPx + baseMarkerSize, yPx + baseMarkerSize),
+                    strokeWidth = 2.dp.toPx(),
+                )
+                drawLine(
+                    uiSettings.toColor(if (matchesOppositePlayer) player.opposite() else player).copy(0.7f),
+                    Offset(xPx + baseMarkerSize, yPx - baseMarkerSize),
+                    Offset(xPx - baseMarkerSize, yPx + baseMarkerSize),
+                    strokeWidth = 2.dp.toPx(),
+                )
+            }
         }
 
         currentMove
