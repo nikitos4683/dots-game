@@ -1,5 +1,9 @@
 package org.dots.game.core
 
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
+
 fun Field.getStrongConnectionLinePositions(position: Position): List<Position> {
     val state = position.getState()
     if (!state.checkPlaced() || state.checkTerritory()) return emptyList()
@@ -140,3 +144,67 @@ private fun MutableSet<Position>.extractClosure(initialPosition: Position, inner
 
     return closurePositions
 }
+
+fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePositions {
+    val oneMoveCapturingPositions = mapOf<Player, MutableSet<Position>>(
+        Player.First to mutableSetOf(),
+        Player.Second to mutableSetOf(),
+    )
+
+    val oneMoveBasePositions = mapOf<Player, MutableSet<Position>>(
+        Player.First to mutableSetOf(),
+        Player.Second to mutableSetOf(),
+    )
+
+    for (x in 1..width) {
+        for (y in 1..height) {
+            val position = Position(x, y)
+
+            fun collectCapturingAndPotentiallyBasePositions(player: Player) {
+                with (this) {
+                    val state = position.getState()
+                    if (state.checkWithinEmptyTerritory()) {
+                        val emptyTerritoryPlayer = state.getEmptyTerritoryPlayer()
+                        oneMoveBasePositions.getValue(emptyTerritoryPlayer).add(position)
+                        // Optimization: the dot placed into own empty territory never captures anything
+                        if (emptyTerritoryPlayer == player) return
+                    }
+
+                    val moveResult = makeMove(position, player)
+                    if (moveResult != null) {
+                        unmakeMove()
+
+                        if (moveResult.bases.any { it.isReal && it.player == player }) {
+                            oneMoveCapturingPositions.getValue(player).add(position)
+                        }
+
+                        for (base in moveResult.bases) {
+                            for ((position, oldState) in base.previousStates) {
+                                if (!oldState.checkPlacedOrTerritory()) {
+                                    oneMoveBasePositions.getValue(base.player).add(position)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            collectCapturingAndPotentiallyBasePositions(Player.First)
+            collectCapturingAndPotentiallyBasePositions(Player.Second)
+        }
+    }
+
+    fun refineOneMoveDeadPositions(player: Player) {
+        oneMoveBasePositions.getValue(player).removeAll {
+            oneMoveCapturingPositions.getValue(Player.First).contains(it) ||
+                    oneMoveCapturingPositions.getValue(Player.Second).contains(it)
+        }
+    }
+
+    refineOneMoveDeadPositions(Player.First)
+    refineOneMoveDeadPositions(Player.Second)
+
+    return OneMoveCapturingAndBasePositions(oneMoveCapturingPositions, oneMoveBasePositions)
+}
+
+data class OneMoveCapturingAndBasePositions(val capturingPositions: Map<Player, Set<Position>>, val basePositions: Map<Player, Set<Position>>)
