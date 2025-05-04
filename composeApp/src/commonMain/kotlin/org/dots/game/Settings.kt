@@ -23,9 +23,11 @@ fun loadRules(): Rules {
             initialMoves = getStringOrNull(Rules::initialMoves.rulesSettingName)?.let { initialMovesData ->
                 try {
                     buildList {
-                        initialMovesData.split(secondLevelSeparator).forEach { moveInfo ->
-                            val parts = moveInfo.split(firstLevelSeparator)
-                            add(MoveInfo(Position(parts[0].toInt(), parts[1].toInt()), Player.valueOf(parts[2])))
+                        if (initialMovesData.isNotEmpty()) {
+                            initialMovesData.split(secondLevelSeparator).forEach { moveInfo ->
+                                val parts = moveInfo.split(firstLevelSeparator)
+                                add(MoveInfo(Position(parts[0].toInt(), parts[1].toInt()), Player.valueOf(parts[2])))
+                            }
                         }
                     }
                 }
