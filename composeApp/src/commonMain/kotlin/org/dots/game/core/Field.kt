@@ -7,6 +7,9 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         const val OFFSET: Int = 1
         const val MAX_WIDTH = (1 shl Position.COORDINATE_BITS_COUNT) - 2
         const val MAX_HEIGHT = (1 shl Position.COORDINATE_BITS_COUNT) - 2
+
+        fun checkWidth(value: Int): Boolean = value >= 0 && value < MAX_WIDTH
+        fun checkHeight(value: Int): Boolean = value >= 0 && value < MAX_HEIGHT
     }
 
     val width: Int = rules.width
@@ -21,7 +24,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     private val moveResults = mutableListOf<MoveResult>()
 
     init {
-        require(width > 0 && height > 0 && width < MAX_WIDTH && height < MAX_HEIGHT)
+        require(checkWidth(width) && checkHeight(height))
 
         if (rules.captureByBorder) {
             for (x in 0 until realWidth) {

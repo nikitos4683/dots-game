@@ -146,6 +146,34 @@ class SgfConverterTests {
     }
 
     @Test
+    fun zeroSizeDimension() {
+        parseConvertAndCheck(
+            "(;GM[40]FF[4]SZ[0])", listOf(
+                LineColumnDiagnostic(
+                    "Property SZ (Size) has zero value.",
+                    LineColumn(1, 17),
+                    DiagnosticSeverity.Warning
+                )
+            )
+        )
+        parseConvertAndCheck(
+            "(;GM[40]FF[4]SZ[0:0])",
+            listOf(
+                LineColumnDiagnostic(
+                    "Property SZ (Size) has zero width.",
+                    LineColumn(1, 17),
+                    DiagnosticSeverity.Warning
+                ),
+                LineColumnDiagnostic(
+                    "Property SZ (Size) has zero height.",
+                    LineColumn(1, 19),
+                    DiagnosticSeverity.Warning
+                )
+            )
+        )
+    }
+
+    @Test
     fun differentGameModeAndSizeValues() {
         parseConvertAndCheck(
             "(;GM[100]FF[4]SZ[20])", listOf(

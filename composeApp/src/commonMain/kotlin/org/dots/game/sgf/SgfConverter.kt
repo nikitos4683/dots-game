@@ -539,6 +539,15 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         val dimensions = value.split(':')
         val width: Int?
         val height: Int?
+
+        fun reportZeroSize(sizeSuffix: String, valueStart: Int, valueLength: Int) {
+            propertyInfo.reportPropertyDiagnostic(
+                "has zero $sizeSuffix.",
+                TextSpan(valueStart, valueLength),
+                DiagnosticSeverity.Warning,
+            )
+        }
+
         when (dimensions.size) {
             1 -> {
                 val maxDimension = minOf(Field.MAX_WIDTH, Field.MAX_HEIGHT)
@@ -552,6 +561,9 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                         DiagnosticSeverity.Critical,
                     )
                 } else {
+                    if (size == 0) {
+                        reportZeroSize("value", textSpan.start, dimensions[0].length)
+                    }
                     width = size
                     height = size
                 }
@@ -559,21 +571,26 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
             2 -> {
                 val widthString = dimensions[0]
                 val heightString = dimensions[1]
-                width = widthString.toIntOrNull()?.takeIf { it >= 0 && it <= Field.MAX_WIDTH }
+
+                width = widthString.toIntOrNull()?.takeIf { Field.checkWidth(it) }
                 if (width == null) {
                     propertyInfo.reportPropertyDiagnostic(
                         "has invalid width: `${widthString}`. Expected: 0..${Field.MAX_WIDTH}.",
                         TextSpan(textSpan.start, widthString.length),
                         DiagnosticSeverity.Critical,
                     )
+                } else if (width == 0) {
+                    reportZeroSize("width", textSpan.start, widthString.length)
                 }
-                height = heightString.toIntOrNull()?.takeIf { it >= 0 && it <= Field.MAX_HEIGHT }
+                height = heightString.toIntOrNull()?.takeIf { Field.checkHeight(it) }
                 if (height == null) {
                     propertyInfo.reportPropertyDiagnostic(
                         "has invalid height: `${heightString}`. Expected: 0..${Field.MAX_HEIGHT}.",
                         TextSpan(textSpan.start + widthString.length + 1, heightString.length),
                         DiagnosticSeverity.Critical,
                     )
+                } else if (height == 0) {
+                    reportZeroSize("height", textSpan.start + widthString.length + 1, heightString.length)
                 }
             }
             else -> {
