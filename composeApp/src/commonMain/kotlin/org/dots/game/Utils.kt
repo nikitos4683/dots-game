@@ -135,12 +135,12 @@ internal fun getInputType(input: String): InputType {
         return InputType.SgfFile(refinedPath, extractFileName(refinedPath))
     }
 
-    if (fileExists(refinedPath) || filePathRegex.matches(refinedPath)) {
-        return InputType.SgfFile(refinedPath, extractFileName(refinedPath), isIncorrect = true)
-    }
-
     if (tryParseField(input)) return InputType.FieldContent
     if (tryParseSgf(input)) return InputType.SgfContent
+
+    if (fileExists(refinedPath) || filePathRegex.matchEntire(refinedPath) != null) {
+        return InputType.SgfFile(refinedPath, extractFileName(refinedPath), isIncorrect = true)
+    }
 
     var notWhitespaceCharIndex = 0
     while (notWhitespaceCharIndex < input.length && input[notWhitespaceCharIndex].isWhitespace()) {
