@@ -14,6 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isBackPressed
+import androidx.compose.ui.input.pointer.isForwardPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import org.dots.game.core.*
 import org.dots.game.views.*
@@ -120,7 +125,24 @@ fun App() {
                 })
         }
 
-        Row {
+        Row(Modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Main)
+                    if (event.type == PointerEventType.Press) {
+                        if (event.buttons.isBackPressed) {
+                            if (gameTree.back()) {
+                                updateCurrentNode()
+                            }
+                        } else if (event.buttons.isForwardPressed) {
+                            if (gameTree.next()) {
+                                updateCurrentNode()
+                            }
+                        }
+                    }
+                }
+            }
+        }) {
             Column(Modifier.padding(5.dp)) {
                 Row(Modifier.width(fieldViewData.fieldSize.width), horizontalArrangement = Arrangement.Center) {
                     Text(player1Score.toString(), color = uiSettings.playerFirstColor)
