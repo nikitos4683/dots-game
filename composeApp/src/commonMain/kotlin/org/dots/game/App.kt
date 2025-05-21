@@ -102,6 +102,7 @@ fun App() {
 
         if (openGameDialog.value) {
             OpenDialog(
+                newGameDialogRules,
                 onDismiss = {
                     openGameDialog.value = false
                     focusRequester.requestFocus()

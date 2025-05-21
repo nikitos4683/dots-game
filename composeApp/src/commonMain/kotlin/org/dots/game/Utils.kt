@@ -5,19 +5,34 @@ import org.dots.game.core.FIRST_PLAYER_MARKER
 import org.dots.game.core.Game
 import org.dots.game.core.GameInfo
 import org.dots.game.core.GameTree
+import org.dots.game.core.Rules
 import org.dots.game.core.SECOND_PLAYER_MARKER
 import org.dots.game.dump.FieldParser
 import org.dots.game.sgf.Sgf
 import org.dots.game.sgf.SgfParser
 
-suspend fun openOrLoad(pathOrContent: String, diagnosticReporter: ((Diagnostic) -> Unit) = { }): Triple<InputType, String?, Game?> {
+/**
+ * [rules] can be used when parsing raw fields that don't have extra info about rules.
+ */
+suspend fun openOrLoad(pathOrContent: String, rules: Rules?, diagnosticReporter: ((Diagnostic) -> Unit) = { }): Triple<InputType, String?, Game?> {
     try {
         val inputType = getInputType(pathOrContent)
         var sgf: String?
 
         when (inputType) {
             InputType.FieldContent -> {
-                val field = FieldParser.parseAndConvertWithNoInitialMoves(pathOrContent, diagnosticReporter)
+                val field = FieldParser.parseAndConvert(
+                    pathOrContent,
+                    initializeRules = { width, height ->
+                        Rules(
+                            width, height,
+                            captureByBorder = rules?.captureByBorder ?: Rules.Standard.captureByBorder,
+                            baseMode = rules?.baseMode ?: Rules.Standard.baseMode,
+                            suicideAllowed = rules?.suicideAllowed ?: Rules.Standard.suicideAllowed,
+                            initialMoves = emptyList(),
+                        )
+                    }, diagnosticReporter
+                )
                 val gameTree = GameTree(field).apply {
                     for (move in field.moveSequence) {
                         add(move)

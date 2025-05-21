@@ -35,10 +35,12 @@ import org.dots.game.openOrLoad
 import org.dots.game.Diagnostic
 import org.dots.game.InputType
 import org.dots.game.buildLineOffsets
+import org.dots.game.core.Rules
 import org.dots.game.toLineColumnDiagnostic
 
 @Composable
 fun OpenDialog(
+    rules: Rules?,
     onDismiss: () -> Unit,
     onConfirmation: (game: Game) -> Unit,
 ) {
@@ -65,7 +67,7 @@ fun OpenDialog(
 
                                 coroutineScope.launch {
                                     diagnostics = buildList {
-                                        val result = openOrLoad(text) { diagnostic ->
+                                        val result = openOrLoad(text, rules) { diagnostic ->
                                             add(diagnostic)
                                         }
                                         inputType = result.first
