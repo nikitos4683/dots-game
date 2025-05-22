@@ -23,6 +23,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     private val moveResults = mutableListOf<MoveResult>()
 
+    fun isGameOver(): Boolean = gameResult != null
+
     var gameResult: GameResult? = null
         private set
 
@@ -139,7 +141,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     }
 
     internal fun makeMoveUnsafe(position: Position, player: Player? = null): MoveResult? {
-        if (gameResult != null) return null
+        if (isGameOver()) return null
 
         val currentPlayer = player ?: getCurrentPlayer()
         val originalState: DotState

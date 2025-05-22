@@ -133,10 +133,12 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
             }
     ) {
         Grid(field)
-        if (drawDiagonalConnections) {
-            DiagonalConnections(currentMove, field, uiSettings)
+        if (!field.isGameOver()) {
+            if (drawDiagonalConnections) {
+                DiagonalConnections(currentMove, field, uiSettings)
+            }
+            HelperMovesPositions(currentMove, field, uiSettings)
         }
-        HelperMovesPositions(currentMove, field, uiSettings)
         Moves(currentMove, field, uiSettings)
         Pointer(pointerFieldPosition, moveMode, field, uiSettings)
     }
@@ -519,7 +521,7 @@ private fun PointerEvent.toFieldPositionIfValid(field: Field, currentPlayer: Pla
         val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt()
 
         return Position(x + Field.OFFSET, y + Field.OFFSET).takeIf {
-            field.gameResult == null && field.checkPositionWithinBounds(it) && field.checkValidMove(it, currentPlayer)
+            !field.isGameOver() && field.checkPositionWithinBounds(it) && field.checkValidMove(it, currentPlayer)
         }
     }
 }
