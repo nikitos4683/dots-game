@@ -83,7 +83,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
      * `0` is reserved for the initial position (cross, empty or other).
      */
     fun makeMove(position: Position, player: Player? = null): MoveResult? {
-        return if (position.isGrounding() || checkPositionWithinBounds(position) && checkValidMove(position, player))
+        return if (position.isGameOverMove() || checkPositionWithinBounds(position) && checkValidMove(position, player))
             makeMoveUnsafe(position, player)
         else
             null
@@ -126,7 +126,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             updateScoreCount(base.player, base.playerDiff, base.oppositePlayerDiff, rollback = true)
         }
 
-        if (!moveResult.position.isGrounding()) {
+        if (!moveResult.position.isGameOverMove()) {
             moveResult.position.setState(moveResult.previousState)
         }
         for ((position, previousState) in moveResult.extraPreviousStates) {
@@ -146,28 +146,33 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val resultBases: List<Base>
         val extraPreviousStates: Map<Position, DotState>
 
-        if (position.isGrounding()) {
+        if (position.isGameOverMove()) {
+            val isGrounding = position.isGrounding()
             require(rules.baseMode != BaseMode.AllOpponentDots) { "${BaseMode.AllOpponentDots::class.simpleName} is not yet supported (it requires handling of immortal groups that have two or more eyes)" }
             require(!rules.captureByBorder) { "${rules.captureByBorder::class.simpleName} is not yet supported" }
             originalState = DotState.Empty
-            val (localResultBases, localExtraPreviousStates) = captureNotGroundedGroups(currentPlayer)
+            val (localResultBases, localExtraPreviousStates) = captureGroups(currentPlayer, isGrounding = isGrounding)
             resultBases = localResultBases
             extraPreviousStates = localExtraPreviousStates
 
-            val scoreForFirstPlayer = getScoreDiff(Player.First)
-            gameResult = if (scoreForFirstPlayer == 0) {
-                GameResult.Draw(EndGameKind.Grounding)
-            } else {
-                val winner: Player
-                val score: Int
-                if (scoreForFirstPlayer > 0) {
-                    winner = Player.First
-                    score = scoreForFirstPlayer
+            gameResult = if (isGrounding) {
+                val scoreForFirstPlayer = getScoreDiff(Player.First)
+                if (scoreForFirstPlayer == 0) {
+                    GameResult.Draw(EndGameKind.Grounding)
                 } else {
-                    winner = Player.Second
-                    score = -scoreForFirstPlayer
+                    val winner: Player
+                    val score: Int
+                    if (scoreForFirstPlayer > 0) {
+                        winner = Player.First
+                        score = scoreForFirstPlayer
+                    } else {
+                        winner = Player.Second
+                        score = -scoreForFirstPlayer
+                    }
+                    GameResult.ScoreWin(score.toDouble(), EndGameKind.Grounding, winner)
                 }
-                GameResult.ScoreWin(score.toDouble(), EndGameKind.Grounding, winner)
+            } else {
+                GameResult.ResignWin(currentPlayer.opposite())
             }
         } else {
             originalState = position.getState()
@@ -184,7 +189,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                         if (rules.suicideAllowed) {
                             // Check capturing by the opposite player
                             val oppositePlayerPlaced = currentPlayer.opposite().createPlacedState()
-                            val oppositeBase = captureWhenEmptyTerritoryBecomesRealBase(position, oppositePlayerPlaced)
+                            val oppositeBase =
+                                captureWhenEmptyTerritoryBecomesRealBase(position, oppositePlayerPlaced)
                             listOf(oppositeBase)
                         } else {
                             position.setState(originalState)
@@ -233,7 +239,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         ).also { moveResults.add(it) }
     }
 
-    private fun captureNotGroundedGroups(player: Player): Pair<List<Base>, Map<Position, DotState>> {
+    private fun captureGroups(player: Player, isGrounding: Boolean): Pair<List<Base>, Map<Position, DotState>> {
         val processedPositions = mutableSetOf<Position>()
         val playerPlaced = player.createPlacedState()
         val playerTerritory = player.createTerritoryState()
@@ -262,7 +268,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
                 processedPositions.addAll(territoryPositions)
 
-                if (!grounded) {
+                if (!isGrounding || !grounded) {
                     for (position in territoryPositions) {
                         position.forEachAdjacent {
                             if (it.getState().checkWithinEmptyTerritory(player)) {
@@ -274,10 +280,11 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                         }
                     }
                     bases.add(
-                        updateStatesAndScores(
+                        calculateBase(
                             closurePositions = emptyList(),
                             territoryPositions,
-                            oppositePlayerPlaced
+                            oppositePlayerPlaced,
+                            updateScore = isGrounding,
                         )
                     )
                 }
@@ -460,7 +467,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val territoryPositions = getTerritoryPositions(playerPlaced, territoryFirstPosition) {
             it !in closurePositionsSet
         }
-        return updateStatesAndScores(closurePositions, territoryPositions, playerPlaced)
+        return calculateBase(closurePositions, territoryPositions, playerPlaced)
     }
 
     private data class ClosureData(
@@ -626,10 +633,11 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     private data class BaseWithRollbackInfo(val base: Base?, val suicidalMove: Boolean)
 
-    private fun updateStatesAndScores(
+    private fun calculateBase(
         closurePositions: List<Position>,
         territoryPositions: Set<Position>,
         playerPlaced: DotState,
+        updateScore: Boolean = true,
     ): Base {
         var currentPlayerDiff = 0
         var oppositePlayerDiff = 0
@@ -662,8 +670,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
         return createBaseAndUpdateStates(
             player,
-            currentPlayerDiff,
-            oppositePlayerDiff,
+            if (updateScore) currentPlayerDiff else 0,
+            if (updateScore) oppositePlayerDiff else 0,
             closurePositions,
             territoryPositions,
             isReal,

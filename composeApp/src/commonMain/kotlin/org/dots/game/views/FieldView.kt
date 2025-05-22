@@ -212,7 +212,7 @@ private fun Grid(field: Field) {
 private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
     val fieldWithIncrementalUpdate = Field(field.rules) // TODO: rewrite without using temp field
 
-    val groundingMove = field.moveSequence.lastOrNull()?.takeIf { it.position.isGrounding() }
+    val gameOverMove = field.moveSequence.lastOrNull()?.takeIf { it.position.isGameOverMove() }
 
     Canvas(Modifier.fillMaxSize().graphicsLayer()) {
         val dotRadiusPx = dotRadius.toPx()
@@ -220,7 +220,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
         for (moveResult in field.moveSequence) {
             fieldWithIncrementalUpdate.makeMove(moveResult.position, moveResult.player)
 
-            val moveResultPosition = moveResult.position.takeIf { !it.isGrounding() } ?: continue
+            val moveResultPosition = moveResult.position.takeUnless { it.isGameOverMove() } ?: continue
             val color = uiSettings.toColor(moveResult.player)
 
             if (connectionDrawMode == ConnectionDrawMode.Lines) {
@@ -265,17 +265,17 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
         }
     }
 
-    if (groundingMove != null) {
+    if (gameOverMove != null) {
         Canvas(Modifier.fillMaxSize().graphicsLayer().alpha(baseAlpha)) {
 
             val dotRadiusPx = dotRadius.toPx()
 
-            for (base in groundingMove.bases) {
+            for (base in gameOverMove.bases) {
                 if (!base.isReal) continue
 
                 val (outerClosure, innerClosures) = base.getSortedClosurePositions(
                     fieldWithIncrementalUpdate,
-                    isGrounding = true,
+                    considerTerritoryPositions = true,
                 )
 
                 if (outerClosure.size == 1) {

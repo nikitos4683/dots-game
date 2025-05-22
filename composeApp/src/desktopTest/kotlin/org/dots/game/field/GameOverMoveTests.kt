@@ -10,9 +10,9 @@ import org.dots.game.core.getSortedClosurePositions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class GroundingTests : FieldTests() {
+class GameOverMoveTests : FieldTests() {
     @Test
-    fun simple() {
+    fun groundingSimple() {
         testFieldWithRollback("""
              . . . . .
              . * * + .
@@ -21,7 +21,7 @@ class GroundingTests : FieldTests() {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
             val base = moveResult.bases.single()
 
-            val sortedPositions = base.getSortedClosurePositions(it, isGrounding = true)
+            val sortedPositions = base.getSortedClosurePositions(it, considerTerritoryPositions = true)
             assertEquals(2, sortedPositions.outerClosure.size)
             assertTrue(sortedPositions.innerClosures.isEmpty())
 
@@ -40,7 +40,7 @@ class GroundingTests : FieldTests() {
     }
 
     @Test
-    fun grounding() {
+    fun groundingDraw() {
         testFieldWithRollback("""
              * +
         """) {
@@ -60,7 +60,7 @@ class GroundingTests : FieldTests() {
     }
 
     @Test
-    fun base() {
+    fun groundingCaptureBase() {
         testFieldWithRollback("""
             . . . . . .
             . . * * . .
@@ -70,7 +70,7 @@ class GroundingTests : FieldTests() {
         """) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
             val base = moveResult.bases.single()
-            val sortedPositions = base.getSortedClosurePositions(it, isGrounding = true)
+            val sortedPositions = base.getSortedClosurePositions(it, considerTerritoryPositions = true)
             assertEquals(6, sortedPositions.outerClosure.size)
             assertTrue(sortedPositions.innerClosures.isEmpty())
 
@@ -80,7 +80,7 @@ class GroundingTests : FieldTests() {
     }
 
     @Test
-    fun multipleGroups() {
+    fun groundingMultipleGroups() {
         testFieldWithRollback(
             """
             . . . .
@@ -93,7 +93,7 @@ class GroundingTests : FieldTests() {
             assertEquals(2, moveResult.bases.size)
 
             val firstBase = moveResult.bases[0]
-            val sortedPositions = firstBase.getSortedClosurePositions(it, isGrounding = true)
+            val sortedPositions = firstBase.getSortedClosurePositions(it, considerTerritoryPositions = true)
             assertEquals(1, sortedPositions.outerClosure.size)
             assertTrue(sortedPositions.innerClosures.isEmpty())
 
@@ -103,7 +103,7 @@ class GroundingTests : FieldTests() {
     }
 
     @Test
-    fun invalidateEmptyTerritory() {
+    fun groundingInvalidateEmptyTerritory() {
         testFieldWithRollback(
             """
             . . . . . .
@@ -124,7 +124,7 @@ class GroundingTests : FieldTests() {
     }
 
     @Test
-    fun dontInvalidateEmptyTerritoryForStrongConnection() {
+    fun groundingDontInvalidateEmptyTerritoryForStrongConnection() {
         testFieldWithRollback(
             """
             * * *
@@ -138,6 +138,36 @@ class GroundingTests : FieldTests() {
             with (it) {
                 assertTrue(Position(2, 2).getState().checkWithinEmptyTerritory(Player.First))
             }
+        }
+    }
+
+    @Test
+    fun resign() {
+        testFieldWithRollback("""
+            . . * . . .
+            . . * * . .
+            . * + . * .
+            . . * * . .
+            . . . . . .
+        """) {
+            val moveResult = it.makeMove(Position.RESIGN, Player.First)!!
+            val base = moveResult.bases.single()
+            // Grounded bases captured anyway in case of resigning
+            val sortedPositions = base.getSortedClosurePositions(it, considerTerritoryPositions = true)
+            assertEquals(7, sortedPositions.outerClosure.size)
+            assertTrue(sortedPositions.innerClosures.isEmpty())
+            assertEquals(GameResult.ResignWin(Player.Second), it.gameResult)
+            // Resigning doesn't affect the resulting score
+            assertEquals(1, it.player1Score)
+            assertEquals(0, it.player2Score)
+            it.unmakeMove()
+
+            it.makeMove(Position.RESIGN, Player.Second)!!
+            assertEquals(GameResult.ResignWin(Player.First), it.gameResult)
+            // Resigning doesn't affect the resulting score
+            assertEquals(1, it.player1Score)
+            assertEquals(0, it.player2Score)
+            it.unmakeMove()
         }
     }
 }

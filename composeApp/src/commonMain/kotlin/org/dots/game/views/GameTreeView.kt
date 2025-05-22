@@ -233,7 +233,7 @@ private fun ConnectionsAndNodes(
                         moveNumber = 0
                     } else {
                         color = node.moveResult?.let {
-                            if (it.position == Position.GROUND) {
+                            if (it.position.isGameOverMove()) {
                                 endNodeColor
                             } else {
                                 uiSettings.toColor(it.player)

@@ -79,14 +79,12 @@ fun Field.getPositionsOfConnection(position: Position, diagonalConnections: Bool
  * Returns outer/inner closures that have sorted positions (square distance between adjacent positions <= 2).
  * It's useful for surrounding drawing.
  */
-fun Base.getSortedClosurePositions(field: Field, isGrounding: Boolean = false): ExtendedClosureInfo {
+fun Base.getSortedClosurePositions(field: Field, considerTerritoryPositions: Boolean = false): ExtendedClosureInfo {
     val baseMode = field.rules.baseMode
-    if (baseMode != BaseMode.AllOpponentDots && !isGrounding) {
-        // Closures are always correctly sorted for surrounding-based formats, and inner closures are never used for them
+    if (baseMode != BaseMode.AllOpponentDots && !considerTerritoryPositions) {
         return ExtendedClosureInfo(closurePositions, emptyList())
     } else {
-        // Grounded base doesn't have outer closure -> calculate it based on inner positions
-        val closureSet = (if (isGrounding) previousStates.keys else closurePositions).toMutableSet()
+        val closureSet = (if (considerTerritoryPositions) previousStates.keys else closurePositions).toMutableSet()
         var outerClosure: List<Position> = emptyList()
         val innerClosures = mutableListOf<List<Position>>()
 
@@ -97,12 +95,12 @@ fun Base.getSortedClosurePositions(field: Field, isGrounding: Boolean = false): 
             val newClosure = closureSet.extractClosure(
                 positionClosestToHorizontalBorder,
                 // The next position should be inner for outer closure and outer for inner closure for AllOpponentDots
-                // However, in case of grounding there is only a single outer closure that should be outer-walked
-                innerWalk = !isGrounding && firstClosure,
+                // However, in case of territory positions there is only a single outer closure that should be outer-walked
+                innerWalk = !considerTerritoryPositions && firstClosure,
             )
             if (firstClosure) {
                 outerClosure = newClosure
-                if (isGrounding) {
+                if (considerTerritoryPositions) {
                     break
                 }
             } else {

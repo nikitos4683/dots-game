@@ -223,19 +223,25 @@ fun App() {
                             modifier = playerColorIconModifier.background(uiSettings.playerSecondColor)
                         )
                     }
-                    Button(
-                        onClick = {
-                            val moveResult = field.makeMove(Position.GROUND, moveMode.getMovePlayer())
-                            if (moveResult != null) {
-                                gameTree.add(moveResult)
-                                updateFieldAndGameTree()
-                                focusRequester.requestFocus()
-                            }
-                        },
-                        playerButtonModifier,
-                    ) {
-                        Text("⏚")
+                    @Composable
+                    fun EndMoveButton(isGrounding: Boolean) {
+                        Button(
+                            onClick = {
+                                val moveResult = field.makeMove(if (isGrounding) Position.GROUND else Position.RESIGN, moveMode.getMovePlayer())
+                                if (moveResult != null) {
+                                    gameTree.add(moveResult)
+                                    updateFieldAndGameTree()
+                                    focusRequester.requestFocus()
+                                }
+                            },
+                            playerButtonModifier,
+                        ) {
+                            Text(if (isGrounding) "⏚" else "\uD83C\uDFF3\uFE0F") // Resign flag emoji in case of resigning
+                        }
                     }
+
+                    EndMoveButton(isGrounding = true)
+                    EndMoveButton(isGrounding = false)
                 }
 
                 GameTreeView(currentGameTreeNode, gameTree, gameTreeViewData, uiSettings, focusRequester) {
