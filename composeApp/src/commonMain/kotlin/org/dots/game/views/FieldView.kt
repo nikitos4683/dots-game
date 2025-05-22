@@ -61,7 +61,6 @@ private val textPadding = cellSize * textPaddingRatio
 private val dotRadius = cellSize * dotRadiusRatio
 private val lastMoveRadius = cellSize * lastMoveRadiusRatio
 
-private val drawHelperBases = false
 private val connectionThickness = 2.dp
 private val outOfBoundDrawRatio = dotRadiusRatio
 private val baseDrawMode: PolygonDrawMode = PolygonDrawMode.OutlineAndFill
@@ -244,7 +243,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             )
 
             for (base in moveResult.bases) {
-                if (!base.isReal && !drawHelperBases) continue
+                if (!base.isReal) continue
 
                 val (outerClosure, innerClosures) = base.getSortedClosurePositions(fieldWithIncrementalUpdate)
                 drawPolygon(
@@ -272,7 +271,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
             val dotRadiusPx = dotRadius.toPx()
 
             for (base in groundingMove.bases) {
-                if (!base.isReal && !drawHelperBases) continue
+                if (!base.isReal) continue
 
                 val (outerClosure, innerClosures) = base.getSortedClosurePositions(
                     fieldWithIncrementalUpdate,
