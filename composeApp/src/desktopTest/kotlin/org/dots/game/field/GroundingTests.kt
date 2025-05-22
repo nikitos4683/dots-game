@@ -2,6 +2,8 @@ package org.dots.game.field
 
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
+import org.dots.game.core.EndGameKind
+import org.dots.game.core.GameResult
 import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.getSortedClosurePositions
@@ -26,11 +28,13 @@ class GroundingTests : FieldTests() {
             assertTrue(base.closurePositions.isEmpty())
             assertEquals(0, it.player1Score)
             assertEquals(2, it.player2Score)
+            assertEquals(GameResult.ScoreWin(2.0, EndGameKind.Grounding, Player.Second), it.gameResult)
             it.unmakeMove()
 
             it.makeMove(Position.GROUND, Player.Second)!!
             assertEquals(1, it.player1Score)
             assertEquals(0, it.player2Score)
+            assertEquals(GameResult.ScoreWin(1.0, EndGameKind.Grounding, Player.First), it.gameResult)
             it.unmakeMove()
         }
     }
@@ -44,11 +48,13 @@ class GroundingTests : FieldTests() {
             assertTrue(moveResult.bases.isEmpty())
             assertEquals(0, it.player1Score)
             assertEquals(0, it.player2Score)
+            assertEquals(GameResult.Draw(EndGameKind.Grounding), it.gameResult)
             it.unmakeMove()
 
             it.makeMove(Position.GROUND, Player.Second)
             assertEquals(0, it.player1Score)
             assertEquals(0, it.player2Score)
+            assertEquals(GameResult.Draw(EndGameKind.Grounding), it.gameResult)
             it.unmakeMove()
         }
     }

@@ -519,7 +519,7 @@ private fun PointerEvent.toFieldPositionIfValid(field: Field, currentPlayer: Pla
         val y = round((offset.y.toDp() - fieldPadding) / cellSize).toInt()
 
         return Position(x + Field.OFFSET, y + Field.OFFSET).takeIf {
-            field.checkPositionWithinBounds(it) && field.checkValidMove(it, currentPlayer)
+            field.gameResult == null && field.checkPositionWithinBounds(it) && field.checkValidMove(it, currentPlayer)
         }
     }
 }

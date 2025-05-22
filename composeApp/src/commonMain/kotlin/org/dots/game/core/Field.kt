@@ -23,6 +23,9 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     private val moveResults = mutableListOf<MoveResult>()
 
+    var gameResult: GameResult? = null
+        private set
+
     init {
         require(checkWidth(width) && checkHeight(height))
 
@@ -71,8 +74,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     fun getCurrentPlayer(): Player = moveResults.lastOrNull()?.player?.opposite() ?: Player.First
 
-    fun getScoreDiff(): Int {
-        return if (getCurrentPlayer() == Player.First) { player1Score - player2Score } else { player2Score - player1Score }
+    fun getScoreDiff(player: Player? = null): Int {
+        return if ((player ?: getCurrentPlayer()) == Player.First) { player1Score - player2Score } else { player2Score - player1Score }
     }
 
     /**
@@ -80,7 +83,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
      * `0` is reserved for the initial position (cross, empty or other).
      */
     fun makeMove(position: Position, player: Player? = null): MoveResult? {
-        return if (position == Position.GROUND || checkPositionWithinBounds(position) && checkValidMove(position, player))
+        return if (position.isGrounding() || checkPositionWithinBounds(position) && checkValidMove(position, player))
             makeMoveUnsafe(position, player)
         else
             null
@@ -130,10 +133,14 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             position.setState(previousState)
         }
 
+        gameResult = null
+
         return moveResult
     }
 
     internal fun makeMoveUnsafe(position: Position, player: Player? = null): MoveResult? {
+        if (gameResult != null) return null
+
         val currentPlayer = player ?: getCurrentPlayer()
         val originalState: DotState
         val resultBases: List<Base>
@@ -146,6 +153,22 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             val (localResultBases, localExtraPreviousStates) = captureNotGroundedGroups(currentPlayer)
             resultBases = localResultBases
             extraPreviousStates = localExtraPreviousStates
+
+            val scoreForFirstPlayer = getScoreDiff(Player.First)
+            gameResult = if (scoreForFirstPlayer == 0) {
+                GameResult.Draw(EndGameKind.Grounding)
+            } else {
+                val winner: Player
+                val score: Int
+                if (scoreForFirstPlayer > 0) {
+                    winner = Player.First
+                    score = scoreForFirstPlayer
+                } else {
+                    winner = Player.Second
+                    score = -scoreForFirstPlayer
+                }
+                GameResult.ScoreWin(score.toDouble(), EndGameKind.Grounding, winner)
+            }
         } else {
             originalState = position.getState()
 

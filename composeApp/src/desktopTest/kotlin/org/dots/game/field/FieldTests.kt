@@ -8,6 +8,7 @@ import org.dots.game.core.Position
 import org.dots.game.core.Rules
 import org.dots.game.dump.FieldParser
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 abstract class FieldTests {
@@ -26,6 +27,7 @@ abstract class FieldTests {
             assertTrue(moveSequence.isEmpty())
             assertEquals(0, player1Score)
             assertEquals(0, player2Score)
+            assertNull(gameResult)
             for (x in 0 until realWidth) {
                 for (y in 0 until realHeight) {
                     val position = Position(x, y)

@@ -37,6 +37,7 @@ private val stepSize = 40.dp
 private val nodeRadius = 15.dp
 private val rootNodeColor = Color.LightGray
 private val incorrectNodeColor = Color(0.9372549f, 0.42352942f, 1.0f)
+private val endNodeColor = Color.LightGray
 private val lineColor = Color(0f, 0f, 0f, 0.8f)
 private val textColor: Color = Color.White
 private val lineThickness = 1.dp
@@ -231,7 +232,13 @@ private fun ConnectionsAndNodes(
                         color = rootNodeColor
                         moveNumber = 0
                     } else {
-                        color = node.moveResult?.let { uiSettings.toColor(it.player) } ?: incorrectNodeColor
+                        color = node.moveResult?.let {
+                            if (it.position == Position.GROUND) {
+                                endNodeColor
+                            } else {
+                                uiSettings.toColor(it.player)
+                            }
+                        } ?: incorrectNodeColor
                         moveNumber = node.number
 
                         val lineXOffset: Dp

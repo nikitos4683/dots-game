@@ -699,7 +699,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
 
     private fun PropertyValueToken.convertGameResult(propertyInfo: SgfPropertyInfo): GameResult? {
         if (value == "0") {
-            return GameResult.Draw
+            return GameResult.Draw(endGameKind = null)
         }
 
         val player = value.elementAtOrNull(0).let {
@@ -747,7 +747,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     val resultString = value.substring(2)
                     val number = resultString.toDoubleOrNull()
                     if (number != null) {
-                        GameResult.ScoreWin(number, player)
+                        GameResult.ScoreWin(number, endGameKind = null, player)
                     } else {
                         propertyInfo.reportPropertyDiagnostic(
                             "has invalid result value `$resultString`. Correct value $GAME_RESULT_DESCRIPTION_SUFFIX",

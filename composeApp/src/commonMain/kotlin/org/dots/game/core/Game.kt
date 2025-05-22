@@ -64,8 +64,25 @@ data class AppInfo(val name: String, val version: String?) {
     val appType = AppType.entries.find { it.value == name } ?: AppType.Unknown
 }
 
+enum class EndGameKind {
+    Grounding,
+    NoLegalMoves,
+}
+
 sealed class GameResult {
-    object Draw : GameResult()
+    class Draw(val endGameKind: EndGameKind?) : GameResult() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+            return endGameKind == (other as Draw).endGameKind
+        }
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + endGameKind.hashCode()
+            return result
+        }
+    }
 
     sealed class WinGameResult(val player: Player) : GameResult() {
         override fun equals(other: Any?): Boolean {
@@ -79,15 +96,17 @@ sealed class GameResult {
         }
     }
 
-    class ScoreWin(val score: Double, player: Player) : WinGameResult(player) {
+    class ScoreWin(val score: Double, val endGameKind: EndGameKind?, player: Player) : WinGameResult(player) {
         override fun equals(other: Any?): Boolean {
             if (!super.equals(other)) return false
-            return score == (other as ScoreWin).score
+            other as ScoreWin
+            return score == other.score && endGameKind == other.endGameKind
         }
 
         override fun hashCode(): Int {
             var result = super.hashCode()
             result = 31 * result + score.hashCode()
+            result = 31 * result + endGameKind.hashCode()
             return result
         }
     }
