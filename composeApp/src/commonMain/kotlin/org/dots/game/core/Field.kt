@@ -143,8 +143,9 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             require(rules.baseMode != BaseMode.AllOpponentDots) { "${BaseMode.AllOpponentDots::class.simpleName} is not yet supported (it requires handling of immortal groups that have two or more eyes)" }
             require(!rules.captureByBorder) { "${rules.captureByBorder::class.simpleName} is not yet supported" }
             originalState = DotState.Empty
-            resultBases = captureNotGroundedGroups(currentPlayer)
-            extraPreviousStates = emptyMap()
+            val (localResultBases, localExtraPreviousStates) = captureNotGroundedGroups(currentPlayer)
+            resultBases = localResultBases
+            extraPreviousStates = localExtraPreviousStates
         } else {
             originalState = position.getState()
 
@@ -209,38 +210,58 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         ).also { moveResults.add(it) }
     }
 
-    private fun captureNotGroundedGroups(player: Player): List<Base> {
+    private fun captureNotGroundedGroups(player: Player): Pair<List<Base>, Map<Position, DotState>> {
         val processedPositions = mutableSetOf<Position>()
         val playerPlaced = player.createPlacedState()
         val playerTerritory = player.createTerritoryState()
         val oppositePlayer = player.opposite()
         val oppositePlayerPlaced = oppositePlayer.createPlacedState()
+        val extraPreviousStates = mutableMapOf<Position, DotState>()
 
-        return buildList {
-            for (move in moveResults) {
-                val position = move.position
+        val bases = mutableListOf<Base>()
 
-                if (!processedPositions.add(position)) continue
+        for (move in moveResults) {
+            val position = move.position
 
-                if (position.getState().checkActive(playerPlaced)) {
-                    var grounded = false
-                    val territoryPositions = getTerritoryPositions(oppositePlayerPlaced, position) {
-                        if (it.isBorder()) {
-                            grounded = true
-                            false
-                        } else {
-                            it.getState().let { state -> state.checkPlaced(playerPlaced) || state.checkTerritory(playerTerritory) }
+            if (!processedPositions.add(position)) continue
+
+            if (position.getState().checkActive(playerPlaced)) {
+                var grounded = false
+                val territoryPositions = getTerritoryPositions(oppositePlayerPlaced, position) {
+                    if (it.isBorder()) {
+                        grounded = true
+                        false
+                    } else {
+                        it.getState()
+                            .let { state -> state.checkPlaced(playerPlaced) || state.checkTerritory(playerTerritory) }
+                    }
+                }
+
+                processedPositions.addAll(territoryPositions)
+
+                if (!grounded) {
+                    for (position in territoryPositions) {
+                        position.forEachAdjacent {
+                            if (it.getState().checkWithinEmptyTerritory(player)) {
+                                extraPreviousStates.putAll(invalidateEmptyTerritory(position))
+                                false
+                            } else {
+                                true
+                            }
                         }
                     }
-
-                    processedPositions.addAll(territoryPositions)
-
-                    if (!grounded) {
-                        add(updateStatesAndScores(closurePositions = emptyList(), territoryPositions, oppositePlayerPlaced))
-                    }
+                    bases.add(
+                        updateStatesAndScores(
+                            closurePositions = emptyList(),
+                            territoryPositions,
+                            oppositePlayerPlaced
+                        )
+                    )
                 }
             }
         }
+
+        return bases to extraPreviousStates
     }
 
     private fun captureWhenEmptyTerritoryBecomesRealBase(initialPosition: Position, oppositePlayerPlaced: DotState): Base {
@@ -260,7 +281,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             return oppositePlayerBased.firstOrNull { it.isReal } ?: continue
         }
 
-        error("Enemy's empty territory should be enclosed by an outer closure")
+        error("Enemy's empty territory should be enclosed by an outer closure at $initialPosition")
     }
 
     private fun tryCapture(position: Position, playerPlaced: DotState, emptyBaseCapturing: Boolean): List<Base> {
@@ -400,17 +421,13 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val player = playerPlaced.getPlacedPlayer()
         val oppositePlaced = player.opposite().createPlacedState()
 
-        val (x, y) = position
-
         return buildList {
-            fun Position.addIfActive() {
-                if (getState().checkPlaced(oppositePlaced)) add(this)
+            position.forEachAdjacent {
+                if (it.getState().checkPlaced(oppositePlaced)) {
+                    add(it)
+                }
+                true
             }
-
-            Position(x, y - 1).addIfActive()
-            Position(x + 1, y).addIfActive()
-            Position(x, y + 1).addIfActive()
-            Position(x - 1, y).addIfActive()
         }
     }
 
@@ -492,13 +509,10 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         firstPosition.checkAndAdd()
 
         while (walkStack.isNotEmpty()) {
-            val currentPosition = walkStack.removeLast()
-
-            val (x, y) = currentPosition
-            Position(x, y - 1).checkAndAdd()
-            Position(x + 1, y).checkAndAdd()
-            Position(x, y + 1).checkAndAdd()
-            Position(x - 1, y).checkAndAdd()
+            walkStack.removeLast().forEachAdjacent {
+                it.checkAndAdd()
+                true
+            }
         }
 
         return territoryPositions
@@ -559,13 +573,11 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         if (!territoryFirstPosition.checkAndAdd()) return null
 
         while (walkStack.isNotEmpty()) {
-            val currentPosition = walkStack.removeLast()
-
-            val (x, y) = currentPosition
-            if (!Position(x, y - 1).checkAndAdd()) return null
-            if (!Position(x + 1, y).checkAndAdd()) return null
-            if (!Position(x, y + 1).checkAndAdd()) return null
-            if (!Position(x - 1, y).checkAndAdd()) return null
+            if (!walkStack.removeLast().forEachAdjacent {
+                it.checkAndAdd()
+            }) {
+                return null
+            }
         }
 
         val base: Base?
@@ -712,13 +724,10 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         }
 
         while (walkStack.isNotEmpty()) {
-            val currentPosition = walkStack.removeLast()
-
-            val (x, y) = currentPosition
-            Position(x, y - 1).checkAndAdd()
-            Position(x + 1, y).checkAndAdd()
-            Position(x, y + 1).checkAndAdd()
-            Position(x - 1, y).checkAndAdd()
+            walkStack.removeLast().forEachAdjacent {
+                it.checkAndAdd()
+                true
+            }
         }
 
         return emptyTerritoryPositions

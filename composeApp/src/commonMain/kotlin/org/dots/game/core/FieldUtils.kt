@@ -79,12 +79,14 @@ fun Field.getPositionsOfConnection(position: Position, diagonalConnections: Bool
  * Returns outer/inner closures that have sorted positions (square distance between adjacent positions <= 2).
  * It's useful for surrounding drawing.
  */
-fun Base.getSortedClosurePositions(field: Field): ExtendedClosureInfo {
-    if (field.rules.baseMode != BaseMode.AllOpponentDots) {
+fun Base.getSortedClosurePositions(field: Field, isGrounding: Boolean = false): ExtendedClosureInfo {
+    val baseMode = field.rules.baseMode
+    if (baseMode != BaseMode.AllOpponentDots && !isGrounding) {
         // Closures are always correctly sorted for surrounding-based formats, and inner closures are never used for them
         return ExtendedClosureInfo(closurePositions, emptyList())
     } else {
-        val closureSet = closurePositions.toMutableSet()
+        // Grounded base doesn't have outer closure -> calculate it based on inner positions
+        val closureSet = (if (isGrounding) previousStates.keys else closurePositions).toMutableSet()
         var outerClosure: List<Position> = emptyList()
         val innerClosures = mutableListOf<List<Position>>()
 
@@ -92,9 +94,17 @@ fun Base.getSortedClosurePositions(field: Field): ExtendedClosureInfo {
         while (closureSet.isNotEmpty()) {
             val positionClosestToHorizontalBorder = closureSet.minBy { it.y }
             // The outer closure should be minimal, the inner closure should be maximal
-            val newClosure = closureSet.extractClosure(positionClosestToHorizontalBorder, inner = !firstClosure)
+            val newClosure = closureSet.extractClosure(
+                positionClosestToHorizontalBorder,
+                // The next position should be inner for outer closure and outer for inner closure for AllOpponentDots
+                // However, in case of grounding there is only a single outer closure that should be outer-walked
+                innerWalk = !isGrounding && firstClosure,
+            )
             if (firstClosure) {
                 outerClosure = newClosure
+                if (isGrounding) {
+                    break
+                }
             } else {
                 innerClosures.add(newClosure)
             }
@@ -107,12 +117,12 @@ fun Base.getSortedClosurePositions(field: Field): ExtendedClosureInfo {
 
 data class ExtendedClosureInfo(val outerClosure: List<Position>, val innerClosures: List<List<Position>>)
 
-private fun MutableSet<Position>.extractClosure(initialPosition: Position, inner: Boolean): List<Position> {
+private fun MutableSet<Position>.extractClosure(initialPosition: Position, innerWalk: Boolean): List<Position> {
     val closurePositions = mutableListOf(initialPosition)
     var square = 0
     var currentPosition: Position = initialPosition
     // The next position should always be inner for outer closure and outer for inner closure
-    var nextPosition = Position(currentPosition.x + (if (!inner) +1 else -1), currentPosition.y + (if (!inner) +1 else -1))
+    var nextPosition = Position(currentPosition.x + (if (innerWalk) +1 else -1), currentPosition.y + (if (innerWalk) +1 else -1))
 
     loop@ do {
         val walkCompleted = currentPosition.clockwiseBigJumpWalk(nextPosition) {
@@ -138,7 +148,7 @@ private fun MutableSet<Position>.extractClosure(initialPosition: Position, inner
         }
     } while (true)
 
-    require(if (!inner) square >= 0 else square <= 0)
+    require(if (innerWalk) square >= 0 else square <= 0)
 
     removeAll(closurePositions)
 

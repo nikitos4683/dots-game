@@ -11,10 +11,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -211,13 +213,15 @@ private fun Grid(field: Field) {
 private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
     val fieldWithIncrementalUpdate = Field(field.rules) // TODO: rewrite without using temp field
 
+    val groundingMove = field.moveSequence.lastOrNull()?.takeIf { it.position.isGrounding() }
+
     Canvas(Modifier.fillMaxSize().graphicsLayer()) {
         val dotRadiusPx = dotRadius.toPx()
 
         for (moveResult in field.moveSequence) {
             fieldWithIncrementalUpdate.makeMove(moveResult.position, moveResult.player)
 
-            val moveResultPosition = moveResult.position
+            val moveResultPosition = moveResult.position.takeIf { !it.isGrounding() } ?: continue
             val color = uiSettings.toColor(moveResult.player)
 
             if (connectionDrawMode == ConnectionDrawMode.Lines) {
@@ -229,7 +233,7 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
                     emptyList(),
                     moveResult.player,
                     connectionDrawMode.polygonDrawMode,
-                    uiSettings
+                    uiSettings,
                 )
             }
 
@@ -243,7 +247,13 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
                 if (!base.isReal && !drawHelperBases) continue
 
                 val (outerClosure, innerClosures) = base.getSortedClosurePositions(fieldWithIncrementalUpdate)
-                drawPolygon(outerClosure, innerClosures, base.player, baseDrawMode, uiSettings)
+                drawPolygon(
+                    outerClosure,
+                    innerClosures,
+                    base.player,
+                    baseDrawMode,
+                    uiSettings,
+                )
             }
         }
 
@@ -253,6 +263,39 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
                 lastMoveRadius.toPx(),
                 it.position.toPxOffset(this)
             )
+        }
+    }
+
+    if (groundingMove != null) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer().alpha(baseAlpha)) {
+
+            val dotRadiusPx = dotRadius.toPx()
+
+            for (base in groundingMove.bases) {
+                if (!base.isReal && !drawHelperBases) continue
+
+                val (outerClosure, innerClosures) = base.getSortedClosurePositions(
+                    fieldWithIncrementalUpdate,
+                    isGrounding = true,
+                )
+
+                if (outerClosure.size == 1) {
+                    drawCircle(
+                        uiSettings.toColor(base.player),
+                        dotRadiusPx,
+                        outerClosure.single().toPxOffset(this)
+                    )
+                } else {
+                    drawPolygon(
+                        outerClosure,
+                        innerClosures,
+                        base.player,
+                        baseDrawMode,
+                        uiSettings,
+                        isGrounding = true
+                    )
+                }
+            }
         }
     }
 }
@@ -404,6 +447,7 @@ private fun DrawScope.drawPolygon(
     player: Player,
     polygonDrawMode: PolygonDrawMode,
     uiSettings: UiSettings,
+    isGrounding: Boolean = false,
 ) {
     if (outerClosure.size <= 1) return
 
@@ -439,13 +483,19 @@ private fun DrawScope.drawPolygon(
         }
     }
 
-    val polygonColor = uiSettings.toColor(player)
+    val outlineColor = uiSettings.toColor(player)
+    val fillColor = if (isGrounding) outlineColor else outlineColor.copy(alpha = baseAlpha)
 
     if (polygonDrawMode.drawFill) {
-        drawPath(resultPath, polygonColor.copy(alpha = baseAlpha))
+        drawPath(resultPath, fillColor)
     }
     if (polygonDrawMode.drawOutline) {
-        drawPath(resultPath, polygonColor, style = Stroke(width = connectionThickness.toPx()))
+        drawPath(
+            resultPath,
+            outlineColor,
+            style = Stroke(width = if (isGrounding) dotRadius.toPx() * 2 else connectionThickness.toPx(),
+            join = if (isGrounding) StrokeJoin.Round else StrokeJoin.Miter)
+        )
     }
 }
 

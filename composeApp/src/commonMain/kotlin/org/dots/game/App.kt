@@ -37,7 +37,7 @@ fun App() {
         var gameTree: GameTree by rememberSaveable { mutableStateOf(GameTree(field)) }
         var gameTreeViewData: GameTreeViewData by rememberSaveable { mutableStateOf(GameTreeViewData(gameTree)) }
 
-        var lastMove: MoveResult? by remember { mutableStateOf<MoveResult?>(null) }
+        var lastMove: MoveResult? by remember { mutableStateOf(null) }
         var currentGameTreeNode by remember { mutableStateOf<GameTreeNode?>(null) }
         var player1Score by remember { mutableStateOf(0) }
         var player2Score by remember { mutableStateOf(0) }
@@ -222,6 +222,19 @@ fun App() {
                         Box(
                             modifier = playerColorIconModifier.background(uiSettings.playerSecondColor)
                         )
+                    }
+                    Button(
+                        onClick = {
+                            val moveResult = field.makeMove(Position.GROUND, moveMode.getMovePlayer())
+                            if (moveResult != null) {
+                                gameTree.add(moveResult)
+                                updateFieldAndGameTree()
+                                focusRequester.requestFocus()
+                            }
+                        },
+                        playerButtonModifier,
+                    ) {
+                        Text("⏚")
                     }
                 }
 

@@ -61,6 +61,15 @@ fun Position.getSquare(other: Position): Int {
     return y * other.x - other.y * x
 }
 
+inline fun Position.forEachAdjacent(action: (Position) -> Boolean): Boolean {
+    val (x, y) = this
+    if (!action(Position(x, y - 1))) return false
+    if (!action(Position(x + 1, y))) return false
+    if (!action(Position(x, y + 1))) return false
+    if (!action(Position(x - 1, y))) return false
+    return true
+}
+
 internal fun Position.getNextClockwisePosition(other: Position): Position {
     return when (val walkIndex = calculateWalkIndex(other.x - x, other.y - y)) {
         LEFT_TOP_INDEX -> Position(x, y - 1)
