@@ -61,9 +61,13 @@ import org.dots.game.sgf.SgfMetaInfo.TIME_WIN_GAME_RESULT
 import org.dots.game.sgf.SgfMetaInfo.UNKNOWN_WIN_GAME_RESULT
 import org.dots.game.sgf.SgfMetaInfo.propertyInfoToKey
 import org.dots.game.sgf.SgfMetaInfo.propertyInfos
-import kotlin.math.abs
 
-class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames: Boolean = false, val diagnosticReporter: (Diagnostic) -> Unit) {
+class SgfConverter private constructor(
+    val sgf: SgfRoot,
+    val warnOnMultipleGames: Boolean = false,
+    val useEndingMove: Boolean = true,
+    val diagnosticReporter: (Diagnostic) -> Unit
+) {
     companion object {
         private const val LOWER_CHAR_OFFSET = 'a' - Field.OFFSET
         private const val UPPER_CHAR_OFFSET = 'A' - ('z' - 'a' + 1) - Field.OFFSET
@@ -76,8 +80,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
          *   * Unsupported mode (not Kropki)
          *   * Incorrect or unspecified size
          */
-        fun convert(sgf: SgfRoot, warnOnMultipleGames: Boolean = false, diagnosticReporter: (Diagnostic) -> Unit): List<Game> {
-            return SgfConverter(sgf, warnOnMultipleGames, diagnosticReporter).convert()
+        fun convert(sgf: SgfRoot, warnOnMultipleGames: Boolean = false, useEndingMove: Boolean = true, diagnosticReporter: (Diagnostic) -> Unit): List<Game> {
+            return SgfConverter(sgf, warnOnMultipleGames, useEndingMove, diagnosticReporter).convert()
         }
     }
 
@@ -129,8 +133,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         }
 
         if (initializedGame != null) {
-            if (mainBranch && sgfGameTree.childrenGameTrees.isEmpty()) {
-                initializedRootConverterProperties?.finishAndValidateGame(initializedGame, sgfGameTree)
+            if (mainBranch && sgfGameTree.childrenGameTrees.isEmpty() && initializedRootConverterProperties != null) {
+                movesCount += initializedRootConverterProperties.finishAndValidateGameResult(initializedGame, sgfGameTree)
             }
 
             for ((index, childGameTree) in sgfGameTree.childrenGameTrees.withIndex()) {
@@ -148,13 +152,17 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         return initializedGame
     }
 
-    private fun Map<String, SgfProperty<*>>.finishAndValidateGame(game: Game, currentGameTree: SgfGameTree) {
+    private fun Map<String, SgfProperty<*>>.finishAndValidateGameResult(game: Game, currentGameTree: SgfGameTree): Int {
         val definedGameResult = game.gameInfo.result
         val gameTree = game.gameTree
         val field = gameTree.field
+        var addedMovesCount = 0
 
         if (definedGameResult is GameResult.Draw) {
-            gameTree.add(field.makeMove(Position.DRAW))
+            if (useEndingMove) {
+                gameTree.add(field.makeMove(Position.DRAW))
+                addedMovesCount = 1
+            }
         } else if (definedGameResult is GameResult.WinGameResult) {
             val gameResultProperty = getValue(RESULT_KEY)
 
@@ -172,8 +180,13 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
 
             val expectedWinner = definedGameResult.player
 
-            gameTree.add(field.makeMove(lastPosition, expectedWinner.opposite())!!)
-            val actualWinner = (field.gameResult as? GameResult.WinGameResult)?.player
+            val actualWinner: Player? = if (useEndingMove) {
+                gameTree.add(field.makeMove(lastPosition, expectedWinner.opposite())!!)
+                addedMovesCount = 1
+                (field.gameResult as? GameResult.WinGameResult)?.player
+            } else {
+                expectedWinner
+            }
 
             if (expectedWinner != actualWinner) {
                 gameResultProperty.info.reportPropertyDiagnostic(
@@ -182,13 +195,13 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                     DiagnosticSeverity.Warning,
                 )
             } else {
-                // Doesn't check for GROUND because typical SGF (notago) doesn't contain about score in case of grounding
+                // Don't check for GROUND because typical SGF (notago) doesn't contain about score in case of grounding
                 if (definedGameResult is GameResult.ScoreWin && lastPosition != Position.GROUND) {
                     val definedGameScore = definedGameResult.score.toInt()
-                    val absScoreFromField = abs(game.gameTree.field.getScoreDiff())
-                    if (definedGameScore != absScoreFromField) {
+                    val scoreFromField = game.gameTree.field.getScoreDiff(expectedWinner)
+                    if (definedGameScore != scoreFromField) {
                         gameResultProperty.info.reportPropertyDiagnostic(
-                            "has value `${definedGameScore}` that doesn't match score from game field `${absScoreFromField}`.",
+                            "has value `${definedGameScore}` that doesn't match score from game field `${scoreFromField}`.",
                             TextSpan(currentGameTree.textSpan.end, 0),
                             DiagnosticSeverity.Warning
                         )
@@ -196,6 +209,8 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 }
             }
         }
+
+        return addedMovesCount
     }
 
     private fun convertGameInfo(node: SgfNode, gameInfoProperties: Map<String, SgfProperty<*>>, hasCriticalError: Boolean): Game? {
