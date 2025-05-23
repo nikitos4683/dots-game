@@ -1,7 +1,5 @@
 package org.dots.game.field
 
-import junit.framework.TestCase.assertFalse
-import junit.framework.TestCase.assertTrue
 import org.dots.game.core.EndGameKind
 import org.dots.game.core.GameResult
 import org.dots.game.core.Player
@@ -9,6 +7,8 @@ import org.dots.game.core.Position
 import org.dots.game.core.getSortedClosurePositions
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class GameOverMoveTests : FieldTests() {
     @Test

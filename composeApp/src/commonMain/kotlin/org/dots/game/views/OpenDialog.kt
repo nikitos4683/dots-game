@@ -110,9 +110,9 @@ fun OpenDialog(
                         items(diagnostics.size) { index ->
                             val diagnostic = diagnostics[index]
                             var cardModifier = Modifier.fillMaxWidth()
-                            if (diagnostic.textSpan != null) {
+                            val textSpan = diagnostic.textSpan
+                            if (textSpan != null) {
                                 cardModifier = cardModifier.then(Modifier.clickable(onClick = {
-                                    val textSpan = diagnostic.textSpan
                                     val start = textSpan.start
                                     val end = textSpan.end
                                     val textFieldValue = getContextTextFieldValue()

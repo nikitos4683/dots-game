@@ -57,11 +57,8 @@ kotlin {
 
         val desktopTest by getting
 
-        androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
-        }
         commonMain.dependencies {
+            implementation(project(":library"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
@@ -75,18 +72,16 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
+        androidMain.dependencies {
+            implementation(compose.preview)
+            implementation(libs.androidx.activity.compose)
+        }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
         }
         desktopTest.dependencies {
             implementation(compose.desktop.currentOs)
-        }
-    }
-
-    sourceSets.all {
-        languageSettings {
-            languageVersion = "2.2"
         }
     }
 }

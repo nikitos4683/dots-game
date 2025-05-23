@@ -140,7 +140,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         return moveResult
     }
 
-    internal fun makeMoveUnsafe(position: Position, player: Player? = null): MoveResult? {
+    fun makeMoveUnsafe(position: Position, player: Player? = null): MoveResult? {
         if (isGameOver()) return null
 
         val currentPlayer = player ?: getCurrentPlayer()

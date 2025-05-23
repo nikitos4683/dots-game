@@ -1,6 +1,5 @@
 package org.dots.game.field
 
-import junit.framework.TestCase.assertTrue
 import org.dots.game.core.BaseMode
 import org.dots.game.core.Player
 import org.dots.game.core.getSortedClosurePositions
@@ -9,6 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class FieldWithAllOpponentDotsAndBorderTests : FieldTests() {
     override val baseMode: BaseMode = BaseMode.AllOpponentDots
