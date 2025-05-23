@@ -5,6 +5,7 @@ import org.dots.game.DiagnosticSeverity
 import org.dots.game.convertAppInfo
 import org.dots.game.convertSimpleText
 import org.dots.game.convertText
+import org.dots.game.core.EndGameKind
 import org.dots.game.core.Field
 import org.dots.game.core.Game
 import org.dots.game.core.GameInfo
@@ -29,6 +30,7 @@ import org.dots.game.sgf.SgfMetaInfo.FILE_FORMAT_KEY
 import org.dots.game.sgf.SgfMetaInfo.GAME_COMMENT_KEY
 import org.dots.game.sgf.SgfMetaInfo.GAME_MODE_KEY
 import org.dots.game.sgf.SgfMetaInfo.GAME_NAME_KEY
+import org.dots.game.sgf.SgfMetaInfo.GROUNDING_WIN_GAME_RESULT
 import org.dots.game.sgf.SgfMetaInfo.KOMI_KEY
 import org.dots.game.sgf.SgfMetaInfo.LABEL_KEY
 import org.dots.game.sgf.SgfMetaInfo.OPENING_KEY
@@ -128,7 +130,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
 
         if (initializedGame != null) {
             if (mainBranch && sgfGameTree.childrenGameTrees.isEmpty()) {
-                initializedRootConverterProperties?.validateResultPropertyMatchesFieldResult(initializedGame, sgfGameTree)
+                initializedRootConverterProperties?.finishAndValidateGame(initializedGame, sgfGameTree)
             }
 
             for ((index, childGameTree) in sgfGameTree.childrenGameTrees.withIndex()) {
@@ -146,18 +148,52 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
         return initializedGame
     }
 
-    private fun Map<String, SgfProperty<*>>.validateResultPropertyMatchesFieldResult(game: Game, currentGameTree: SgfGameTree) {
-        val gameResult = game.gameInfo.result
-        if (gameResult is GameResult.ScoreWin) {
-            val scoreFromGameResult = gameResult.score.toInt()
-            val scoreFromField = abs(game.gameTree.field.getScoreDiff())
-            if (scoreFromGameResult != scoreFromField) {
-                val gameResultProperty = getValue(RESULT_KEY)
+    private fun Map<String, SgfProperty<*>>.finishAndValidateGame(game: Game, currentGameTree: SgfGameTree) {
+        val definedGameResult = game.gameInfo.result
+        val gameTree = game.gameTree
+        val field = gameTree.field
+
+        if (definedGameResult is GameResult.Draw) {
+            gameTree.add(field.makeMove(Position.DRAW))
+        } else if (definedGameResult is GameResult.WinGameResult) {
+            val gameResultProperty = getValue(RESULT_KEY)
+
+            val lastPosition = when (definedGameResult) {
+                is GameResult.ScoreWin -> {
+                    if (definedGameResult.endGameKind == EndGameKind.Grounding)
+                        Position.GROUND
+                    else
+                        Position.STOP
+                }
+                is GameResult.ResignWin -> Position.RESIGN
+                is GameResult.TimeWin -> Position.TIME
+                is GameResult.UnknownWin -> Position.INTERRUPT
+            }
+
+            val expectedWinner = definedGameResult.player
+
+            gameTree.add(field.makeMove(lastPosition, expectedWinner.opposite())!!)
+            val actualWinner = (field.gameResult as? GameResult.WinGameResult)?.player
+
+            if (expectedWinner != actualWinner) {
                 gameResultProperty.info.reportPropertyDiagnostic(
-                    "has value `${scoreFromGameResult}` that doesn't match score from game field `${scoreFromField}`.",
+                    "has `${expectedWinner}` player as winner but the result of the game from field: ${actualWinner?.let { "$it wins" } ?: "Draw"}.",
                     TextSpan(currentGameTree.textSpan.end, 0),
-                    DiagnosticSeverity.Warning
+                    DiagnosticSeverity.Warning,
                 )
+            } else {
+                // Doesn't check for GROUND because typical SGF (notago) doesn't contain about score in case of grounding
+                if (definedGameResult is GameResult.ScoreWin && lastPosition != Position.GROUND) {
+                    val definedGameScore = definedGameResult.score.toInt()
+                    val absScoreFromField = abs(game.gameTree.field.getScoreDiff())
+                    if (definedGameScore != absScoreFromField) {
+                        gameResultProperty.info.reportPropertyDiagnostic(
+                            "has value `${definedGameScore}` that doesn't match score from game field `${absScoreFromField}`.",
+                            TextSpan(currentGameTree.textSpan.end, 0),
+                            DiagnosticSeverity.Warning
+                        )
+                    }
+                }
             }
         }
     }
@@ -698,7 +734,7 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
     }
 
     private fun PropertyValueToken.convertGameResult(propertyInfo: SgfPropertyInfo): GameResult? {
-        if (value == "0") {
+        if (value == "0" || value == "Draw") {
             return GameResult.Draw(endGameKind = null)
         }
 
@@ -745,16 +781,22 @@ class SgfConverter private constructor(val sgf: SgfRoot, val warnOnMultipleGames
                 UNKNOWN_WIN_GAME_RESULT -> GameResult.UnknownWin(player).also { reportUnknownSuffixIfNeeded() }
                 else -> {
                     val resultString = value.substring(2)
-                    val number = resultString.toDoubleOrNull()
-                    if (number != null) {
-                        GameResult.ScoreWin(number, endGameKind = null, player)
+                    if (resultString.singleOrNull() == GROUNDING_WIN_GAME_RESULT) {
+                        // Calculate scores based on field?
+                        GameResult.ScoreWin(0.0, EndGameKind.Grounding, player)
                     } else {
-                        propertyInfo.reportPropertyDiagnostic(
-                            "has invalid result value `$resultString`. Correct value $GAME_RESULT_DESCRIPTION_SUFFIX",
-                            TextSpan(textSpan.start + 2, resultString.length),
-                            DiagnosticSeverity.Error,
-                        )
-                        GameResult.UnknownWin(player)
+                        val number = resultString.toDoubleOrNull()
+                        if (number != null) {
+                            // Calculate endGameKind based on field?
+                            GameResult.ScoreWin(number, endGameKind = null, player)
+                        } else {
+                            propertyInfo.reportPropertyDiagnostic(
+                                "has invalid result value `$resultString`. Correct value $GAME_RESULT_DESCRIPTION_SUFFIX",
+                                TextSpan(textSpan.start + 2, resultString.length),
+                                DiagnosticSeverity.Error,
+                            )
+                            GameResult.UnknownWin(player)
+                        }
                     }
                 }
             }

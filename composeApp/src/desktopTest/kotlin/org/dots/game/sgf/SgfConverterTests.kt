@@ -332,7 +332,7 @@ class SgfConverterTests {
     }
 
     @Test
-    fun gameResultInvalid() {
+    fun gameResultIsInvalid() {
         val valuesToErrors = listOf<Triple<String, LineColumnDiagnostic, GameResult?>>(
             Triple("",
                 LineColumnDiagnostic(
@@ -384,9 +384,10 @@ class SgfConverterTests {
     }
 
     @Test
-    fun gameResultValid() {
+    fun gameResultIsValid() {
         val valuesToGameResults = listOf(
             Triple("0", GameResult.Draw(endGameKind = null), null),
+            Triple("Draw", GameResult.Draw(endGameKind = null), null),
             Triple("B+R", GameResult.ResignWin(Player.First), null),
             Triple("B+T" , GameResult.TimeWin(Player.First), null),
             Triple("B+?" , GameResult.UnknownWin(Player.First), null),

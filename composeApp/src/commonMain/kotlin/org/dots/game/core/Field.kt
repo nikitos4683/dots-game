@@ -153,28 +153,43 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             require(rules.baseMode != BaseMode.AllOpponentDots) { "${BaseMode.AllOpponentDots::class.simpleName} is not yet supported (it requires handling of immortal groups that have two or more eyes)" }
             require(!rules.captureByBorder) { "${rules.captureByBorder::class.simpleName} is not yet supported" }
             originalState = DotState.Empty
-            val (localResultBases, localExtraPreviousStates) = captureGroups(currentPlayer, isGrounding = isGrounding)
-            resultBases = localResultBases
-            extraPreviousStates = localExtraPreviousStates
 
-            gameResult = if (isGrounding) {
-                val scoreForFirstPlayer = getScoreDiff(Player.First)
-                if (scoreForFirstPlayer == 0) {
-                    GameResult.Draw(EndGameKind.Grounding)
-                } else {
-                    val winner: Player
-                    val score: Int
-                    if (scoreForFirstPlayer > 0) {
-                        winner = Player.First
-                        score = scoreForFirstPlayer
-                    } else {
-                        winner = Player.Second
-                        score = -scoreForFirstPlayer
-                    }
-                    GameResult.ScoreWin(score.toDouble(), EndGameKind.Grounding, winner)
-                }
+            if (position != Position.DRAW) {
+                val (localResultBases, localExtraPreviousStates) = captureGroups(
+                    currentPlayer,
+                    isGrounding = isGrounding
+                )
+                resultBases = localResultBases
+                extraPreviousStates = localExtraPreviousStates
             } else {
-                GameResult.ResignWin(currentPlayer.opposite())
+                resultBases = emptyList()
+                extraPreviousStates = emptyMap()
+            }
+
+            gameResult = when {
+                isGrounding -> {
+                    val scoreForFirstPlayer = getScoreDiff(Player.First)
+                    if (scoreForFirstPlayer == 0) {
+                        GameResult.Draw(EndGameKind.Grounding)
+                    } else {
+                        val winner: Player
+                        val score: Int
+                        if (scoreForFirstPlayer > 0) {
+                            winner = Player.First
+                            score = scoreForFirstPlayer
+                        } else {
+                            winner = Player.Second
+                            score = -scoreForFirstPlayer
+                        }
+                        GameResult.ScoreWin(score.toDouble(), EndGameKind.Grounding, winner)
+                    }
+                }
+                position == Position.DRAW -> {
+                    GameResult.Draw(endGameKind = null)
+                }
+                else -> {
+                    GameResult.ResignWin(currentPlayer.opposite())
+                }
             }
         } else {
             originalState = position.getState()

@@ -8,6 +8,10 @@ value class Position private constructor(val position: Int) {
         val ZERO = Position(0, 0)
         val GROUND = Position(1, 0)
         val RESIGN = Position(2, 0)
+        val STOP = Position(3, 0)
+        val TIME = Position(4, 0)
+        val INTERRUPT = Position(5, 0)
+        val DRAW = Position(6, 0)
         const val COORDINATE_BITS_COUNT = 8
         const val MASK = (1 shl COORDINATE_BITS_COUNT) - 1
     }
@@ -20,7 +24,7 @@ value class Position private constructor(val position: Int) {
 
     val y: Int get() = position and MASK
 
-    fun isGameOverMove(): Boolean = isGrounding() || isResigning()
+    fun isGameOverMove(): Boolean = isGrounding() || isResigning() || this == STOP || this == TIME || this == INTERRUPT || this == DRAW
 
     fun isGrounding(): Boolean = this == GROUND
 

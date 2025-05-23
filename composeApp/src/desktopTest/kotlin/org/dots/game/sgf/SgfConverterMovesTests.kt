@@ -226,6 +226,25 @@ class SgfConverterMovesTests {
     }
 
     @Test
+    fun grounding() {
+        fun createInput(firstPlayerWinsByProperty: Boolean, firstPlayerWinsByField: Boolean): String {
+            return "(;GM[40]FF[4]SZ[39:32]RE[${if (firstPlayerWinsByProperty) "B+G" else "Draw"}];W[${if (firstPlayerWinsByField) "bb" else "aa"}])"
+        }
+
+        parseConvertAndCheck(createInput(firstPlayerWinsByProperty = true, firstPlayerWinsByField = true))
+        // Draw may occur with any score
+        parseConvertAndCheck(createInput(firstPlayerWinsByProperty = false, firstPlayerWinsByField = true))
+        parseConvertAndCheck(createInput(firstPlayerWinsByProperty = true, firstPlayerWinsByField = false), listOf(
+            LineColumnDiagnostic(
+                "Property RE (Result) has `First` player as winner but the result of the game from field: Draw.",
+                LineColumn(1, 37),
+                DiagnosticSeverity.Warning,
+            )
+        ))
+        parseConvertAndCheck(createInput(firstPlayerWinsByProperty = false, firstPlayerWinsByField = false))
+    }
+
+    @Test
     fun definedWinGameResultByRePropertyDoesntMatchResultFromField() {
         parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[39:32]RE[W+2];B[bb];W[ab];W[ba];W[cb];W[bc])", listOf(

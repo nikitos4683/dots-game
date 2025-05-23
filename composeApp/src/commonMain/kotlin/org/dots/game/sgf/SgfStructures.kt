@@ -152,6 +152,7 @@ object SgfMetaInfo {
     const val RESIGN_WIN_GAME_RESULT = 'R'
     const val TIME_WIN_GAME_RESULT = 'T'
     const val UNKNOWN_WIN_GAME_RESULT = '?'
+    const val GROUNDING_WIN_GAME_RESULT = 'G'
 
     val propertyInfos: Map<String, SgfPropertyInfo> = mapOf(
         GAME_MODE_KEY to SgfPropertyInfo("Game Mode", SgfPropertyType.Number),
