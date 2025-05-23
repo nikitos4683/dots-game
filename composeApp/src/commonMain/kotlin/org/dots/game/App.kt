@@ -9,7 +9,6 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -30,12 +29,12 @@ private val uiSettings = UiSettings.Standard
 @Preview
 fun App() {
     MaterialTheme {
-        var start by rememberSaveable { mutableStateOf(true) }
+        var start by remember { mutableStateOf(true) }
         var newGameDialogRules by remember { mutableStateOf(loadRules()) }
-        var field: Field by rememberSaveable {  mutableStateOf(Field(newGameDialogRules)) }
-        var fieldViewData: FieldViewData by rememberSaveable { mutableStateOf<FieldViewData>(FieldViewData(field)) }
-        var gameTree: GameTree by rememberSaveable { mutableStateOf(GameTree(field)) }
-        var gameTreeViewData: GameTreeViewData by rememberSaveable { mutableStateOf(GameTreeViewData(gameTree)) }
+        var field: Field by remember {  mutableStateOf(Field(newGameDialogRules)) }
+        var fieldViewData: FieldViewData by remember { mutableStateOf<FieldViewData>(FieldViewData(field)) }
+        var gameTree: GameTree by remember { mutableStateOf(GameTree(field)) }
+        var gameTreeViewData: GameTreeViewData by remember { mutableStateOf(GameTreeViewData(gameTree)) }
 
         var lastMove: MoveResult? by remember { mutableStateOf(null) }
         var currentGameTreeNode by remember { mutableStateOf<GameTreeNode?>(null) }

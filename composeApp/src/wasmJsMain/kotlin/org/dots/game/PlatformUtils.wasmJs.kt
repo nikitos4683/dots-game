@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.StorageSettings
 
-actual val appSettings: Settings = StorageSettings()
+actual var appSettings: Settings? = StorageSettings()
 
 @Composable
 actual fun HorizontalScrollbar(

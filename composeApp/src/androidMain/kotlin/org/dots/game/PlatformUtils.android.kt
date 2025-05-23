@@ -3,8 +3,11 @@ package org.dots.game
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.russhwolf.settings.Settings
 import java.io.File
 import java.net.URI
+
+actual var appSettings: Settings? = null
 
 @Composable
 actual fun VerticalScrollbar(

@@ -13,7 +13,8 @@ private const val firstLevelSeparator = ","
 private const val secondLevelSeparator = ";"
 
 fun loadRules(): Rules {
-    with (appSettings) {
+    val settings = appSettings ?: return Rules.Standard
+    with (settings) {
         return Rules(
             getInt(Rules::width.rulesSettingName, Rules.Standard.width),
             getInt(Rules::height.rulesSettingName, Rules.Standard.height),
@@ -41,7 +42,8 @@ fun loadRules(): Rules {
 }
 
 fun saveRules(rules: Rules) {
-    with (appSettings) {
+    val settings = appSettings ?: return
+    with (settings) {
         putInt(Rules::width.rulesSettingName, rules.width)
         putInt(Rules::height.rulesSettingName, rules.height)
         putBoolean(Rules::captureByBorder.rulesSettingName, rules.captureByBorder)
@@ -57,7 +59,8 @@ private val KProperty<*>.rulesSettingName: String
     get() = Rules::class.settingName(this)
 
 fun loadDumpParameters(): DumpParameters {
-    with (appSettings) {
+    val settings = appSettings ?: return DumpParameters()
+    with (settings) {
         return DumpParameters(
             printNumbers = getBoolean(DumpParameters::printNumbers.dumpSettingName, DumpParameters.DEFAULT.printNumbers),
             padding = getInt(DumpParameters::padding.dumpSettingName, DumpParameters.DEFAULT.padding),
@@ -68,7 +71,8 @@ fun loadDumpParameters(): DumpParameters {
 }
 
 fun saveDumpParameters(dumpParameters: DumpParameters) {
-    with (appSettings) {
+    val settings = appSettings ?: return
+    with (settings) {
         putBoolean(DumpParameters::printNumbers.dumpSettingName, dumpParameters.printNumbers)
         putInt(DumpParameters::padding.dumpSettingName, dumpParameters.padding)
         putBoolean(DumpParameters::printCoordinates.dumpSettingName, dumpParameters.printCoordinates)

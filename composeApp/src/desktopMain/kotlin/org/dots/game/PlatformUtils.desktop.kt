@@ -12,7 +12,7 @@ import java.io.File
 import java.net.URI
 import java.util.prefs.Preferences
 
-actual val appSettings: Settings = PreferencesSettings(Preferences.userRoot())
+actual var appSettings: Settings? = PreferencesSettings(Preferences.userRoot())
 
 @Composable
 actual fun HorizontalScrollbar(
