@@ -10,17 +10,14 @@ fun Field.getStrongConnectionLinePositions(position: Position): List<Position> {
 
     val player = state.getPlacedPlayer()
     val playerPlaced = player.createPlacedState()
-    val (x, y) = position
 
     return buildList {
-        fun Position.addIfActive() {
-            if (getState().checkActive(playerPlaced)) add(this)
+        position.forEachAdjacent {
+            if (it.getState().checkActive(playerPlaced)) {
+                add(it)
+            }
+            true
         }
-
-        Position(x, y - 1).addIfActive()
-        Position(x + 1, y).addIfActive()
-        Position(x, y + 1).addIfActive()
-        Position(x - 1, y).addIfActive()
     }
 }
 

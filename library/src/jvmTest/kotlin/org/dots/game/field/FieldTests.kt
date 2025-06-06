@@ -28,6 +28,7 @@ abstract class FieldTests {
             assertEquals(0, player1Score)
             assertEquals(0, player2Score)
             assertNull(gameResult)
+            assertEquals(width * height, numberOfLegalMoves)
             for (x in 0 until realWidth) {
                 for (y in 0 until realHeight) {
                     val position = Position(x, y)

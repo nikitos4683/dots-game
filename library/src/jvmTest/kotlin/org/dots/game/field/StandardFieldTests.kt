@@ -1,6 +1,8 @@
 package org.dots.game.field
 
 import org.dots.game.core.DotState
+import org.dots.game.core.EndGameKind
+import org.dots.game.core.GameResult
 import org.dots.game.core.Player
 import org.dots.game.core.Position
 import org.dots.game.core.x
@@ -507,6 +509,47 @@ class StandardFieldTests : FieldTests() {
             .  *4 *5 .
         """) {
             it.makeMove(3 x 2, Player.Second)!!
+        }
+    }
+
+    @Test
+    fun gameFinishedWithNoLegalMoves() {
+        testFieldWithRollback("""
+            * * *
+            * * *
+            * * *
+        """.trimIndent()) {
+            assertEquals(EndGameKind.NoLegalMoves, (it.gameResult as GameResult.Draw).endGameKind)
+        }
+    }
+
+    @Test
+    fun gameFinishedWithNoLegalMovesAndBase() {
+        testFieldWithRollback("""
+            * * * *
+            * + . *
+            * * * *
+        """.trimIndent()) {
+            val gameResult = it.gameResult as GameResult.ScoreWin
+            assertEquals(EndGameKind.NoLegalMoves, gameResult.endGameKind)
+            assertEquals(1.0, gameResult.score)
+            assertEquals(Player.First, gameResult.player)
+        }
+    }
+
+    @Test
+    fun noGameFinishedIfSuicidalMoveToEmptyTerritoryRemains() {
+        testFieldWithRollback("""
+            * * * *
+            * . . *
+            * * * *
+        """.trimIndent()) {
+            assertNull(it.gameResult)
+            it.makeMove(2 x 2, Player.Second)
+            val gameResult = it.gameResult as GameResult.ScoreWin
+            assertEquals(EndGameKind.NoLegalMoves, gameResult.endGameKind)
+            assertEquals(1.0, gameResult.score)
+            assertEquals(Player.First, gameResult.player)
         }
     }
 }

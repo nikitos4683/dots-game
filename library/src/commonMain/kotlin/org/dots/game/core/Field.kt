@@ -18,12 +18,15 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     val realHeight: Int = height + OFFSET * 2
     val initialMovesCount: Int
 
-    // Initialize field as a primitive int array with expanded borders to get rid of extra range checks and boxing
+    // Initialize the field as a primitive int array with expanded borders to get rid of extra range checks and boxing
     private val dots: IntArray = IntArray(realWidth * realHeight) { DotState.Empty.value }
 
     private val moveResults = mutableListOf<MoveResult>()
 
     fun isGameOver(): Boolean = gameResult != null
+
+    var numberOfLegalMoves: Int = width * height
+        private set
 
     var gameResult: GameResult? = null
         private set
@@ -135,6 +138,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             position.setState(previousState)
         }
 
+        numberOfLegalMoves = moveResult.previousNumberOfLegalMoves
         gameResult = null
 
         return moveResult
@@ -147,6 +151,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val originalState: DotState
         val resultBases: List<Base>
         val extraPreviousStates: Map<Position, DotState>
+        val previousNumberOfLegalMoves: Int = numberOfLegalMoves
 
         if (position.isGameOverMove()) {
             val isGrounding = position.isGrounding()
@@ -168,21 +173,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
             gameResult = when {
                 isGrounding -> {
-                    val scoreForFirstPlayer = getScoreDiff(Player.First)
-                    if (scoreForFirstPlayer == 0) {
-                        GameResult.Draw(EndGameKind.Grounding)
-                    } else {
-                        val winner: Player
-                        val score: Int
-                        if (scoreForFirstPlayer > 0) {
-                            winner = Player.First
-                            score = scoreForFirstPlayer
-                        } else {
-                            winner = Player.Second
-                            score = -scoreForFirstPlayer
-                        }
-                        GameResult.ScoreWin(score.toDouble(), EndGameKind.Grounding, winner)
-                    }
+                    finishGame(EndGameKind.Grounding)
                 }
                 position == Position.DRAW -> {
                     GameResult.Draw(endGameKind = null)
@@ -192,6 +183,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 }
             }
         } else {
+            numberOfLegalMoves--
+
             originalState = position.getState()
 
             val state = currentPlayer.createPlacedState()
@@ -244,6 +237,22 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                     emptyMap()
                 }
             }
+
+            for (resultBase in resultBases) {
+                for (state in resultBase.previousStates.values) {
+                    if (!state.checkPlacedOrTerritory()) {
+                        if (resultBase.isReal) {
+                            numberOfLegalMoves--
+                        } else {
+                            // TODO: implement for suicidal case
+                        }
+                    }
+                }
+            }
+        }
+
+        if (numberOfLegalMoves == 0) {
+            gameResult = finishGame(EndGameKind.NoLegalMoves)
         }
 
         return MoveResult(
@@ -253,7 +262,26 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             originalState,
             extraPreviousStates,
             resultBases,
+            previousNumberOfLegalMoves,
         ).also { moveResults.add(it) }
+    }
+
+    private fun finishGame(endGameKind: EndGameKind): GameResult {
+        val scoreForFirstPlayer = getScoreDiff(Player.First)
+        return if (scoreForFirstPlayer == 0) {
+            GameResult.Draw(endGameKind)
+        } else {
+            val winner: Player
+            val score: Int
+            if (scoreForFirstPlayer > 0) {
+                winner = Player.First
+                score = scoreForFirstPlayer
+            } else {
+                winner = Player.Second
+                score = -scoreForFirstPlayer
+            }
+            GameResult.ScoreWin(score.toDouble(), endGameKind, winner)
+        }
     }
 
     private fun captureGroups(player: Player, isGrounding: Boolean): Pair<List<Base>, Map<Position, DotState>> {
@@ -803,6 +831,7 @@ data class MoveResult(
     val previousState: DotState,
     val extraPreviousStates: Map<Position, DotState>,
     val bases: List<Base>,
+    val previousNumberOfLegalMoves: Int,
 ) {
     val positionPlayer: PositionPlayer
         get() = PositionPlayer(position, player)

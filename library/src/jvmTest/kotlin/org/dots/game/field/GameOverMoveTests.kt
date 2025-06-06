@@ -42,7 +42,7 @@ class GameOverMoveTests : FieldTests() {
     @Test
     fun groundingDraw() {
         testFieldWithRollback("""
-             * +
+             * + .
         """) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
             assertTrue(moveResult.bases.isEmpty())
