@@ -533,7 +533,7 @@ class StandardFieldTests : FieldTests() {
             val gameResult = it.gameResult as GameResult.ScoreWin
             assertEquals(EndGameKind.NoLegalMoves, gameResult.endGameKind)
             assertEquals(1.0, gameResult.score)
-            assertEquals(Player.First, gameResult.player)
+            assertEquals(Player.First, gameResult.winner)
         }
     }
 
@@ -549,7 +549,7 @@ class StandardFieldTests : FieldTests() {
             val gameResult = it.gameResult as GameResult.ScoreWin
             assertEquals(EndGameKind.NoLegalMoves, gameResult.endGameKind)
             assertEquals(1.0, gameResult.score)
-            assertEquals(Player.First, gameResult.player)
+            assertEquals(Player.First, gameResult.winner)
         }
     }
 }

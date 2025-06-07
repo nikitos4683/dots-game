@@ -84,19 +84,19 @@ sealed class GameResult {
         }
     }
 
-    sealed class WinGameResult(val player: Player) : GameResult() {
+    sealed class WinGameResult(val winner: Player) : GameResult() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other == null || this::class != other::class) return false
-            return player == (other as WinGameResult).player
+            return winner == (other as WinGameResult).winner
         }
 
         override fun hashCode(): Int {
-            return player.hashCode()
+            return winner.hashCode()
         }
     }
 
-    class ScoreWin(val score: Double, val endGameKind: EndGameKind?, player: Player) : WinGameResult(player) {
+    class ScoreWin(val score: Double, val endGameKind: EndGameKind?, winner: Player) : WinGameResult(winner) {
         override fun equals(other: Any?): Boolean {
             if (!super.equals(other)) return false
             other as ScoreWin
@@ -111,11 +111,11 @@ sealed class GameResult {
         }
     }
 
-    class ResignWin(player: Player) : WinGameResult(player)
+    class ResignWin(winner: Player) : WinGameResult(winner)
 
-    class TimeWin(player: Player) : WinGameResult(player)
+    class TimeWin(winner: Player) : WinGameResult(winner)
 
-    class UnknownWin(player: Player) : WinGameResult(player)
+    class UnknownWin(winner: Player) : WinGameResult(winner)
 }
 
 data class MoveInfo(val position: Position, val player: Player, val extraInfo: Any? = null)

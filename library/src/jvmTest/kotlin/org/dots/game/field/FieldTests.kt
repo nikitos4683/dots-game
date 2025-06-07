@@ -22,20 +22,29 @@ abstract class FieldTests {
     fun testFieldWithRollback(fieldData: String, check: (Field) -> Unit) {
         with (FieldParser.parseAndConvert(fieldData, initializeRules = { width, height -> initRules(width, height) })) {
             check(this)
-            unmakeAllMoves()
+            unmakeAllMovesAndCheck()
+        }
+    }
 
-            assertTrue(moveSequence.isEmpty())
-            assertEquals(0, player1Score)
-            assertEquals(0, player2Score)
-            assertNull(gameResult)
-            assertEquals(width * height, numberOfLegalMoves)
-            for (x in 0 until realWidth) {
-                for (y in 0 until realHeight) {
-                    val position = Position(x, y)
-                    val expectedState = if (captureByBorder && position.isBorder()) DotState.Border else DotState.Empty
-                    assertEquals(expectedState, Position(x, y).getState())
+    protected fun Field.unmakeAllMovesAndCheck() {
+        unmakeAllMoves()
+
+        assertTrue(moveSequence.size == initialMovesCount)
+        assertEquals(0, player1Score)
+        assertEquals(0, player2Score)
+        assertNull(gameResult)
+        assertEquals(width * height - initialMovesCount, numberOfLegalMoves)
+        var actualInitialMovesCount = 0
+        for (x in 0 until realWidth) {
+            for (y in 0 until realHeight) {
+                val position = Position(x, y)
+                val borderOrEmptyState = if (captureByBorder && position.isBorder()) DotState.Border else DotState.Empty
+                if (borderOrEmptyState != Position(x, y).getState()) {
+                    actualInitialMovesCount++
                 }
             }
         }
+
+        assertEquals(initialMovesCount, actualInitialMovesCount)
     }
 }

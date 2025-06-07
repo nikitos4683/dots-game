@@ -178,12 +178,12 @@ class SgfConverter private constructor(
                 is GameResult.UnknownWin -> Position.INTERRUPT
             }
 
-            val expectedWinner = definedGameResult.player
+            val expectedWinner = definedGameResult.winner
 
             val actualWinner: Player? = if (useEndingMove) {
                 gameTree.add(field.makeMove(lastPosition, expectedWinner.opposite())!!)
                 addedMovesCount = 1
-                (field.gameResult as? GameResult.WinGameResult)?.player
+                (field.gameResult as? GameResult.WinGameResult)?.winner
             } else {
                 expectedWinner
             }

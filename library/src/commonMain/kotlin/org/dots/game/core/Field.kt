@@ -19,17 +19,37 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     val realHeight: Int = height + OFFSET * 2
     val initialMovesCount: Int
 
+    fun clone(): Field {
+        val new = Field(rules)
+        dots.copyInto(new.dots)
+        var moveResultCounter = 0
+        for (moveResult in moveResults) {
+            if (++moveResultCounter > initialMovesCount) {
+                new.moveResults.add(moveResult)
+            }
+        }
+        new.numberOfLegalMoves = numberOfLegalMoves
+        new.gameResult = gameResult
+        new.player1Score = player1Score
+        new.player2Score = player2Score
+        return new
+    }
+
     // Initialize the field as a primitive int array with expanded borders to get rid of extra range checks and boxing
     private val dots: IntArray = IntArray(realWidth * realHeight) { DotState.Empty.value }
 
     private val moveResults = mutableListOf<MoveResult>()
 
-    fun isGameOver(): Boolean = gameResult != null
-
     var numberOfLegalMoves: Int = width * height
         private set
 
     var gameResult: GameResult? = null
+        private set
+
+    var player1Score: Int = 0
+        private set
+
+    var player2Score: Int = 0
         private set
 
     init {
@@ -64,6 +84,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         initialMovesCount = moveResults.size
     }
 
+    fun isGameOver(): Boolean = gameResult != null
+
     val moveSequence: List<MoveResult> = moveResults
 
     val currentMoveNumber: Int
@@ -71,12 +93,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     val lastMove: MoveResult?
         get() = moveResults.lastOrNull()
-
-    var player1Score: Int = 0
-        private set
-
-    var player2Score: Int = 0
-        private set
 
     fun getCurrentPlayer(): Player = moveResults.lastOrNull()?.player?.opposite() ?: Player.First
 

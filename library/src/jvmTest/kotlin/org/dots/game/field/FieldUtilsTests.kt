@@ -1,6 +1,11 @@
 package org.dots.game.field
 
+import org.dots.game.core.GameResult
+import org.dots.game.core.InitialPositionType.Cross
+import org.dots.game.core.Player
 import org.dots.game.core.Position
+import org.dots.game.core.Rules
+import org.dots.game.core.generateDefaultInitialPositions
 import org.dots.game.core.getPositionsOfConnection
 import org.dots.game.dump.FieldParser
 import kotlin.test.Test
@@ -111,5 +116,42 @@ class FieldUtilsTests : FieldTests() {
             listOf(Position(2, 6), Position(2, 5)),
             sampleField.getPositionsOfConnection(Position(2, 5))
         )
+    }
+
+    @Test
+    fun clone() {
+        val field = FieldParser.parseAndConvert("""
+            . . . .
+            . . . .
+            . . . .
+            . . . .
+        """, initializeRules = { width, height ->
+            Rules(width, height, initialMoves = Cross.generateDefaultInitialPositions(width, height)!!)
+        })
+
+        field.makeMove(Position(3, 1), Player.First)
+        field.makeMove(Position(4, 2), Player.First)
+        field.makeMove(Position.RESIGN, Player.Second)
+
+        val newField = field.clone()
+        assertEquals(field.width, newField.width)
+        assertEquals(field.height, newField.height)
+        assertEquals(field.realWidth, newField.realWidth)
+        assertEquals(field.realHeight, newField.realHeight)
+        assertEquals(10, field.numberOfLegalMoves)
+        assertEquals(field.numberOfLegalMoves, newField.numberOfLegalMoves)
+        assertEquals(4, field.initialMovesCount)
+        assertEquals(field.initialMovesCount, newField.initialMovesCount)
+        assertEquals(7, field.moveSequence.size)
+        assertEquals(field.moveSequence.size, newField.moveSequence.size)
+        assertEquals(1, field.player1Score)
+        assertEquals(field.player1Score, newField.player1Score)
+        assertEquals(0, field.player2Score)
+        assertEquals(field.player2Score, newField.player2Score)
+        assertEquals(field.gameResult, GameResult.ResignWin(Player.First))
+        assertEquals(field.gameResult, newField.gameResult)
+
+        field.unmakeAllMovesAndCheck()
+        newField.unmakeAllMovesAndCheck()
     }
 }
