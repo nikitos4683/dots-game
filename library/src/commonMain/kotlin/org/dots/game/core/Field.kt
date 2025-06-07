@@ -5,11 +5,12 @@ import render
 class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }) {
     companion object {
         const val OFFSET: Int = 1
+        // Max field size is 62 * 62 (2 positions are reserved for a border)
         const val MAX_WIDTH = (1 shl Position.COORDINATE_BITS_COUNT) - 2
         const val MAX_HEIGHT = (1 shl Position.COORDINATE_BITS_COUNT) - 2
 
-        fun checkWidth(value: Int): Boolean = value >= 0 && value < MAX_WIDTH
-        fun checkHeight(value: Int): Boolean = value >= 0 && value < MAX_HEIGHT
+        fun checkWidth(value: Int): Boolean = value >= 0 && value <= MAX_WIDTH
+        fun checkHeight(value: Int): Boolean = value >= 0 && value <= MAX_HEIGHT
     }
 
     val width: Int = rules.width

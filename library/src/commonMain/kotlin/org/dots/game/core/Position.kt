@@ -12,7 +12,7 @@ value class Position private constructor(val position: Int) {
         val TIME = Position(4, 0)
         val INTERRUPT = Position(5, 0)
         val DRAW = Position(6, 0)
-        const val COORDINATE_BITS_COUNT = 8
+        const val COORDINATE_BITS_COUNT = 6
         const val MASK = (1 shl COORDINATE_BITS_COUNT) - 1
     }
 

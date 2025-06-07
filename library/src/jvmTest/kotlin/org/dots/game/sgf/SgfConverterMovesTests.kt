@@ -14,7 +14,7 @@ class SgfConverterMovesTests {
     @Test
     fun initialPositionsAreCorrect() {
         val rules = parseConvertAndCheck(
-            "(;GM[40]FF[4]SZ[100:100]AB[az][mm]AW[AZ][])"
+            "(;GM[40]FF[4]SZ[62:62]AB[az][mm]AW[AZ][])"
         ).single().rules
         assertEquals(3, rules.initialMoves.size)
         checkMoveDisregardExtraInfo(Position(1, 26), Player.First, rules.initialMoves[0])

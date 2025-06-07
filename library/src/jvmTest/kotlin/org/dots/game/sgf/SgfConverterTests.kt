@@ -131,12 +131,12 @@ class SgfConverterTests {
                         DiagnosticSeverity.Critical
                     ),
                     LineColumnDiagnostic(
-                        "Property SZ (Size) has invalid width: `1234`. Expected: 0..254.",
+                        "Property SZ (Size) has invalid width: `1234`. Expected: 0..62.",
                         LineColumn(1, 16),
                         DiagnosticSeverity.Critical
                     ),
                     LineColumnDiagnostic(
-                        "Property SZ (Size) has invalid height: `5678`. Expected: 0..254.",
+                        "Property SZ (Size) has invalid height: `5678`. Expected: 0..62.",
                         LineColumn(1, 21),
                         DiagnosticSeverity.Critical
                     ),
@@ -188,7 +188,7 @@ class SgfConverterTests {
         parseConvertAndCheck(
             "(;GM[40]FF[4]SZ[str])", listOf(
                 LineColumnDiagnostic(
-                    "Property SZ (Size) has invalid value `str`. Expected: 0..254.",
+                    "Property SZ (Size) has invalid value `str`. Expected: 0..62.",
                     LineColumn(1, 17),
                     DiagnosticSeverity.Critical,
                 )
