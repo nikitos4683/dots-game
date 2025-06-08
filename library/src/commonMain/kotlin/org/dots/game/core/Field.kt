@@ -410,7 +410,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
             buildList {
                 for (oppositeAdjacentPosition in oppositeAdjacentPositions) {
-                    if (any { it.previousStates.containsKey(oppositeAdjacentPosition) }) continue // Ignore already processed bases
                     tryGetBaseForAllOpponentDotsMode(oppositeAdjacentPosition, playerPlaced, capturingByOppositePlayer = false)?.let {
                         require(!it.suicidalMove)
                         add(it.base!!)
@@ -617,15 +616,20 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     ): BaseWithRollbackInfo? {
         require(rules.baseMode == BaseMode.AllOpponentDots)
 
+        val player = playerPlaced.getPlacedPlayer()
+        val playerTerritory = player.createTerritoryState()
+        val oppositePlayer = player.opposite()
+        val oppositePlayerTerritory = oppositePlayer.createTerritoryState()
+
+        if (territoryFirstPosition.getState().checkTerritory(playerTerritory)) {
+            return null // Ignore already processed bases
+        }
+
         val walkStack = mutableListOf<Position>()
         val territoryPositions = mutableSetOf<Position>()
         val closurePositions = mutableSetOf<Position>()
         var currentPlayerDiff = 0
         var oppositePlayerDiff = 0
-        val player = playerPlaced.getPlacedPlayer()
-        val playerTerritory = player.createTerritoryState()
-        val oppositePlayer = player.opposite()
-        val oppositePlayerTerritory = oppositePlayer.createTerritoryState()
 
         fun Position.checkAndAdd(): Boolean {
             val state = getState()
@@ -705,14 +709,14 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         var oppositePlayerDiff = 0
 
         val player = playerPlaced.getPlacedPlayer()
-        val playerTerritory = player.createTerritoryState()
         val oppositePlayer = player.opposite()
         val oppositePlayerPlaced = oppositePlayer.createPlacedState()
         val oppositePlayerTerritory = oppositePlayer.createTerritoryState()
 
         fun DotState.updateScoreDiff() {
-            if (checkPlaced(oppositePlayerPlaced) && !checkTerritory(playerTerritory)) {
-                // No diff for already captured territory (it's actual for empty bases)
+            if (checkPlaced(oppositePlayerPlaced)) {
+                // The `getTerritoryPositions` never returns positions inside already owned territory,
+                // so there is no need to check for the territory flag.
                 currentPlayerDiff++
             } else if (checkPlaced(playerPlaced) && checkTerritory(oppositePlayerTerritory)) {
                 // No diff for the territory of the current player

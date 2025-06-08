@@ -552,4 +552,20 @@ class StandardFieldTests : FieldTests() {
             assertEquals(Player.First, gameResult.winner)
         }
     }
+
+    @Test
+    fun gameFinishedWithNoLegalMovesAndBaseInsideBase() {
+        testFieldWithRollback("""
+            * * * * * *
+            * . + + . *
+            * + * . + *
+            * . + + . *
+            * * * * * *
+        """.trimIndent()) {
+            val gameResult = it.gameResult as GameResult.ScoreWin
+            assertEquals(EndGameKind.NoLegalMoves, gameResult.endGameKind)
+            assertEquals(6.0, gameResult.score)
+            assertEquals(Player.First, gameResult.winner)
+        }
+    }
 }
