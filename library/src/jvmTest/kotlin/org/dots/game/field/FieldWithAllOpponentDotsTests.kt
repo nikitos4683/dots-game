@@ -29,7 +29,7 @@ class FieldWithAllOpponentDotsAndBorderTests : FieldTests() {
             assertNull(it.makeMove(1 x 2, Player.Second)) // Suicide is disallowed
 
             val moveResult = it.makeMove(1 x 2, Player.First)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             val (outerClosure, innerClosure) = base.getSortedClosurePositions(it)
 
             assertEquals(listOf(1 x 0, 0 x 1, 1 x 2, 2 x 1), outerClosure)
@@ -39,7 +39,7 @@ class FieldWithAllOpponentDotsAndBorderTests : FieldTests() {
 
             it.makeMove(3 x 4, Player.Second)
             it.makeMove(2 x 4, Player.First)
-            val base2 = it.makeMove(3 x 3, Player.First)!!.bases.single()
+            val base2 = it.makeMove(3 x 3, Player.First)!!.bases!!.single()
 
             val (outerClosure2, innerClosure2) = base2.getSortedClosurePositions(it)
             assertEquals(listOf(3 x 3, 2 x 4, 3 x 5, 4 x 4), outerClosure2)
@@ -141,7 +141,7 @@ class FieldWithAllOpponentDotsAndNoBorderTests : FieldTests() {
 
             val moveResult = it.makeMove(3 x 3, Player.First)!!
             val bases = moveResult.bases
-            assertEquals(4, bases.size)
+            assertEquals(4, bases!!.size)
             assertEquals(4, it.player1Score)
             assertEquals(0, it.player2Score)
         }
@@ -161,7 +161,7 @@ class FieldWithAllOpponentDotsAndNoBorderTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(2 x 2, Player.Second)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             assertEquals(16, base.playerDiff)
             val (_, innerClosures) = base.getSortedClosurePositions(it)
             val innerClosure = innerClosures.single()
@@ -183,7 +183,7 @@ class FieldWithAllOpponentDotsAndNoBorderTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(2 x 2, Player.Second)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             assertEquals(22, base.playerDiff)
             val (_, innerClosures) = base.getSortedClosurePositions(it)
             assertTrue(innerClosures.single().size.let { size -> size == 7 || size == 8 })
@@ -204,7 +204,7 @@ class FieldWithAllOpponentDotsAndNoBorderTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(2 x 2, Player.Second)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             assertEquals(31, base.playerDiff)
             val (_, innerClosures) = base.getSortedClosurePositions(it)
             assertEquals(2, innerClosures.size)
@@ -223,7 +223,7 @@ class FieldWithAllOpponentDotsAndNoBorderTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(3 x 3, Player.First)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             val (outerClosure, innerClosure) = base.getSortedClosurePositions(it)
             assertEquals(
                 listOf(
@@ -258,7 +258,7 @@ class FieldWithAllOpponentDotsAndNoBorderTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(4 x 3, Player.First)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             val (outerClosure, innerClosure) = base.getSortedClosurePositions(it)
             assertTrue(outerClosure.isNotEmpty())
             assertEquals(listOf(4 x 3, 3 x 3), innerClosure.single())
@@ -278,7 +278,7 @@ class FieldWithAllOpponentDotsAndNoBorderTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(4 x 4, Player.First)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             val (outerClosure, innerClosure) = base.getSortedClosurePositions(it)
             assertTrue(outerClosure.isNotEmpty())
             assertEquals(listOf(3 x 3, 4 x 3, 4 x 4), innerClosure.single())

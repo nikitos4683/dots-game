@@ -8,6 +8,7 @@ import org.dots.game.core.getSortedClosurePositions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class GameOverMoveTests : FieldTests() {
@@ -19,7 +20,7 @@ class GameOverMoveTests : FieldTests() {
              . . . . .
         """) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
 
             val sortedPositions = base.getSortedClosurePositions(it, considerTerritoryPositions = true)
             assertEquals(2, sortedPositions.outerClosure.size)
@@ -45,7 +46,7 @@ class GameOverMoveTests : FieldTests() {
              * + .
         """) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
-            assertTrue(moveResult.bases.isEmpty())
+            assertNull(moveResult.bases)
             assertEquals(0, it.player1Score)
             assertEquals(0, it.player2Score)
             assertEquals(GameResult.Draw(EndGameKind.Grounding), it.gameResult)
@@ -69,7 +70,7 @@ class GameOverMoveTests : FieldTests() {
             . . . . . .
         """) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             val sortedPositions = base.getSortedClosurePositions(it, considerTerritoryPositions = true)
             assertEquals(6, sortedPositions.outerClosure.size)
             assertTrue(sortedPositions.innerClosures.isEmpty())
@@ -90,7 +91,7 @@ class GameOverMoveTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
-            assertEquals(2, moveResult.bases.size)
+            assertEquals(2, moveResult.bases!!.size)
 
             val firstBase = moveResult.bases[0]
             val sortedPositions = firstBase.getSortedClosurePositions(it, considerTerritoryPositions = true)
@@ -114,7 +115,7 @@ class GameOverMoveTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
-            assertEquals(4, moveResult.bases.size)
+            assertEquals(4, moveResult.bases!!.size)
 
             with (it) {
                 assertFalse(Position(3, 3).getState().checkWithinEmptyTerritory())
@@ -133,7 +134,7 @@ class GameOverMoveTests : FieldTests() {
         """
         ) {
             val moveResult = it.makeMove(Position.GROUND, Player.First)!!
-            assertTrue(moveResult.bases.isEmpty())
+            assertNull(moveResult.bases)
 
             with (it) {
                 assertTrue(Position(2, 2).getState().checkWithinEmptyTerritory(Player.First))
@@ -151,7 +152,7 @@ class GameOverMoveTests : FieldTests() {
             . . . . . .
         """) {
             val moveResult = it.makeMove(Position.RESIGN, Player.First)!!
-            val base = moveResult.bases.single()
+            val base = moveResult.bases!!.single()
             // Grounded bases captured anyway in case of resigning
             val sortedPositions = base.getSortedClosurePositions(it, considerTerritoryPositions = true)
             assertEquals(7, sortedPositions.outerClosure.size)

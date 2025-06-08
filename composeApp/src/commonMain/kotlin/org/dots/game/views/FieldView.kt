@@ -244,17 +244,19 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
                 moveResultPosition.toPxOffset(this)
             )
 
-            for (base in moveResult.bases) {
-                if (!base.isReal) continue
+            if (moveResult.bases != null) {
+                for (base in moveResult.bases) {
+                    if (!base.isReal) continue
 
-                val (outerClosure, innerClosures) = base.getSortedClosurePositions(fieldWithIncrementalUpdate)
-                drawPolygon(
-                    outerClosure,
-                    innerClosures,
-                    base.player,
-                    baseDrawMode,
-                    uiSettings,
-                )
+                    val (outerClosure, innerClosures) = base.getSortedClosurePositions(fieldWithIncrementalUpdate)
+                    drawPolygon(
+                        outerClosure,
+                        innerClosures,
+                        base.player,
+                        baseDrawMode,
+                        uiSettings,
+                    )
+                }
             }
         }
 
@@ -272,29 +274,31 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
 
             val dotRadiusPx = dotRadius.toPx()
 
-            for (base in gameOverMove.bases) {
-                if (!base.isReal) continue
+            if (gameOverMove.bases != null) {
+                for (base in gameOverMove.bases) {
+                    if (!base.isReal) continue
 
-                val (outerClosure, innerClosures) = base.getSortedClosurePositions(
-                    fieldWithIncrementalUpdate,
-                    considerTerritoryPositions = true,
-                )
+                    val (outerClosure, innerClosures) = base.getSortedClosurePositions(
+                        fieldWithIncrementalUpdate,
+                        considerTerritoryPositions = true,
+                    )
 
-                if (outerClosure.size == 1) {
-                    drawCircle(
-                        uiSettings.toColor(base.player),
-                        dotRadiusPx,
-                        outerClosure.single().toPxOffset(this)
-                    )
-                } else {
-                    drawPolygon(
-                        outerClosure,
-                        innerClosures,
-                        base.player,
-                        baseDrawMode,
-                        uiSettings,
-                        isGrounding = true
-                    )
+                    if (outerClosure.size == 1) {
+                        drawCircle(
+                            uiSettings.toColor(base.player),
+                            dotRadiusPx,
+                            outerClosure.single().toPxOffset(this)
+                        )
+                    } else {
+                        drawPolygon(
+                            outerClosure,
+                            innerClosures,
+                            base.player,
+                            baseDrawMode,
+                            uiSettings,
+                            isGrounding = true
+                        )
+                    }
                 }
             }
         }

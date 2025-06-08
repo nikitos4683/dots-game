@@ -143,18 +143,22 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
         val moveResult = moveResults.removeLast()
 
-        for (base in moveResult.bases) {
-            for ((position, previousState) in base.previousPositionStates) {
-                position.setState(previousState)
+        if (moveResult.bases != null) {
+            for (base in moveResult.bases) {
+                for ((position, previousState) in base.previousPositionStates) {
+                    position.setState(previousState)
+                }
+                updateScoreCount(base.player, base.playerDiff, base.oppositePlayerDiff, rollback = true)
             }
-            updateScoreCount(base.player, base.playerDiff, base.oppositePlayerDiff, rollback = true)
         }
 
         if (!moveResult.position.isGameOverMove()) {
             moveResult.position.setState(moveResult.previousState)
         }
-        for ((position, previousState) in moveResult.extraPreviousStates) {
-            position.setState(previousState)
+        if (moveResult.extraPreviousPositionStates != null) {
+            for ((position, previousState) in moveResult.extraPreviousPositionStates) {
+                position.setState(previousState)
+            }
         }
 
         numberOfLegalMoves = moveResult.previousNumberOfLegalMoves
@@ -279,8 +283,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             currentPlayer,
             currentMoveNumber + 1,
             originalState,
-            extraPreviousStates,
-            resultBases,
+            extraPreviousStates.takeIf { it.isNotEmpty() },
+            resultBases.takeIf { it.isNotEmpty() },
             previousNumberOfLegalMoves,
         ).also { moveResults.add(it) }
     }
@@ -850,8 +854,8 @@ data class MoveResult(
     val player: Player,
     val number: Int,
     val previousState: DotState,
-    val extraPreviousStates: List<PositionState>,
-    val bases: List<Base>,
+    val extraPreviousPositionStates: List<PositionState>?,
+    val bases: List<Base>?,
     val previousNumberOfLegalMoves: Int,
 ) {
     val positionPlayer: PositionPlayer

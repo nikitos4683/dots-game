@@ -175,14 +175,16 @@ fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePosition
                     if (moveResult != null) {
                         unmakeMove()
 
-                        if (moveResult.bases.any { it.isReal && it.player == player }) {
-                            oneMoveCapturingPositions.getValue(player).add(position)
-                        }
+                        if (moveResult.bases != null) {
+                            if (moveResult.bases.any { it.isReal && it.player == player }) {
+                                oneMoveCapturingPositions.getValue(player).add(position)
+                            }
 
-                        for (base in moveResult.bases) {
-                            for ((position, oldState) in base.previousPositionStates) {
-                                if (!oldState.checkPlacedOrTerritory()) {
-                                    oneMoveBasePositions.getValue(base.player).add(position)
+                            for (base in moveResult.bases) {
+                                for ((position, oldState) in base.previousPositionStates) {
+                                    if (!oldState.checkPlacedOrTerritory()) {
+                                        oneMoveBasePositions.getValue(base.player).add(position)
+                                    }
                                 }
                             }
                         }
