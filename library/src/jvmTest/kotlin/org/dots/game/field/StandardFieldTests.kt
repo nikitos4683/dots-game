@@ -36,7 +36,7 @@ class StandardFieldTests : FieldTests() {
                 listOf(Position(2, 3), Position(3, 2), Position(2, 1), Position(1, 2)),
                 base.closurePositions
             )
-            assertEquals(setOf(Position(2, 2)), base.previousStates.keys)
+            assertEquals(Position(2, 2), base.previousPositionStates.single().position)
         }
     }
 
@@ -484,7 +484,7 @@ class StandardFieldTests : FieldTests() {
         """) {
             val moveResult = it.makeMove(3 x 3, Player.Second)!!
             val base = moveResult.bases.single()
-            assertEquals(1, base.previousStates.size)
+            assertEquals(1, base.previousPositionStates.size)
         }
     }
 

@@ -1,13 +1,15 @@
 package org.dots.game.core
 
+import org.dots.game.core.Position.Companion.COORDINATE_BITS_COUNT
 import render
+import kotlin.jvm.JvmInline
 
 class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }) {
     companion object {
         const val OFFSET: Int = 1
         // Max field size is 62 * 62 (2 positions are reserved for a border)
-        const val MAX_WIDTH = (1 shl Position.COORDINATE_BITS_COUNT) - 2
-        const val MAX_HEIGHT = (1 shl Position.COORDINATE_BITS_COUNT) - 2
+        const val MAX_WIDTH = (1 shl COORDINATE_BITS_COUNT) - 2
+        const val MAX_HEIGHT = (1 shl COORDINATE_BITS_COUNT) - 2
 
         fun checkWidth(value: Int): Boolean = value >= 0 && value <= MAX_WIDTH
         fun checkHeight(value: Int): Boolean = value >= 0 && value <= MAX_HEIGHT
@@ -142,7 +144,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val moveResult = moveResults.removeLast()
 
         for (base in moveResult.bases) {
-            for ((position, previousState) in base.previousStates) {
+            for ((position, previousState) in base.previousPositionStates) {
                 position.setState(previousState)
             }
             updateScoreCount(base.player, base.playerDiff, base.oppositePlayerDiff, rollback = true)
@@ -167,7 +169,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val currentPlayer = player ?: getCurrentPlayer()
         val originalState: DotState
         val resultBases: List<Base>
-        val extraPreviousStates: Map<Position, DotState>
+        val extraPreviousStates: List<PositionState>
         val previousNumberOfLegalMoves: Int = numberOfLegalMoves
 
         if (position.isGameOverMove()) {
@@ -185,7 +187,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 extraPreviousStates = localExtraPreviousStates
             } else {
                 resultBases = emptyList()
-                extraPreviousStates = emptyMap()
+                extraPreviousStates = emptyList()
             }
 
             gameResult = when {
@@ -241,7 +243,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                         }
                     } ?: bases
                 }
-                extraPreviousStates = emptyMap() // Not used in `AllOpponentDots` mode
+                extraPreviousStates = emptyList() // Not used in `AllOpponentDots` mode
             } else {
                 resultBases = bases
                 extraPreviousStates = if (rules.baseMode != BaseMode.AllOpponentDots &&
@@ -251,13 +253,13 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                     // It makes the positions legal for further game.
                     invalidateEmptyTerritory(position)
                 } else {
-                    emptyMap()
+                    emptyList()
                 }
             }
 
             for (resultBase in resultBases) {
-                for (state in resultBase.previousStates.values) {
-                    if (!state.checkPlacedOrTerritory()) {
+                for ((_, previousState) in resultBase.previousPositionStates) {
+                    if (!previousState.checkPlacedOrTerritory()) {
                         if (resultBase.isReal) {
                             numberOfLegalMoves--
                         } else {
@@ -301,13 +303,13 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         }
     }
 
-    private fun captureGroups(player: Player, isGrounding: Boolean): Pair<List<Base>, Map<Position, DotState>> {
-        val processedPositions = mutableSetOf<Position>()
+    private fun captureGroups(player: Player, isGrounding: Boolean): Pair<List<Base>, List<PositionState>> {
+        val processedPositions = hashSetOf<Position>()
         val playerPlaced = player.createPlacedState()
         val playerTerritory = player.createTerritoryState()
         val oppositePlayer = player.opposite()
         val oppositePlayerPlaced = oppositePlayer.createPlacedState()
-        val extraPreviousStates = mutableMapOf<Position, DotState>()
+        val extraPreviousStates = mutableListOf<PositionState>()
 
         val bases = mutableListOf<Base>()
 
@@ -334,7 +336,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                     for (position in territoryPositions) {
                         position.forEachAdjacent {
                             if (it.getState().checkWithinEmptyTerritory(player)) {
-                                extraPreviousStates.putAll(invalidateEmptyTerritory(position))
+                                extraPreviousStates.addAll(invalidateEmptyTerritory(position))
                                 false
                             } else {
                                 true
@@ -583,7 +585,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     private fun getTerritoryPositions(playerPlaced: DotState, firstPosition: Position, positionCheck: (Position) -> Boolean): Set<Position> {
         val walkStack = mutableListOf<Position>()
-        val territoryPositions = mutableSetOf<Position>()
+        val territoryPositions = hashSetOf<Position>()
         val player = playerPlaced.getPlacedPlayer()
         val playerTerritory = player.createTerritoryState()
 
@@ -626,8 +628,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         }
 
         val walkStack = mutableListOf<Position>()
-        val territoryPositions = mutableSetOf<Position>()
-        val closurePositions = mutableSetOf<Position>()
+        val territoryPositions = hashSetOf<Position>()
+        val closurePositions = hashSetOf<Position>()
         var currentPlayerDiff = 0
         var oppositePlayerDiff = 0
 
@@ -752,16 +754,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         territoryPositions: Set<Position>,
         isReal: Boolean,
     ): Base {
-        val previousStates = mutableMapOf<Position, DotState>()
-
-        val base = Base(
-            player,
-            currentPlayerDiff,
-            oppositePlayerDiff,
-            closurePositions,
-            previousStates,
-            isReal,
-        )
+        val previousPositionStates = mutableListOf<PositionState>()
 
         updateScoreCount(player, currentPlayerDiff, oppositePlayerDiff, rollback = false)
 
@@ -772,7 +765,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             val territoryPositionState = territoryPosition.getState()
 
             fun savePreviousStateAndSetNew(newState: DotState) {
-                previousStates[territoryPosition] = territoryPositionState
+                previousPositionStates.add(PositionState(territoryPosition, territoryPositionState))
                 territoryPosition.setState(newState)
             }
 
@@ -785,7 +778,14 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             }
         }
 
-        return base
+        return Base(
+            player,
+            currentPlayerDiff,
+            oppositePlayerDiff,
+            closurePositions,
+            previousPositionStates,
+            isReal,
+        )
     }
 
     private fun updateScoreCount(player: Player, currentPlayerDiff: Int, oppositePlayerDiff: Int, rollback: Boolean) {
@@ -802,9 +802,9 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     /**
      * Invalidates states of an empty base that becomes broken.
      */
-    private fun invalidateEmptyTerritory(position: Position): Map<Position, DotState> {
+    private fun invalidateEmptyTerritory(position: Position): List<PositionState> {
         val walkStack = mutableListOf<Position>().also { it.add(position) }
-        val emptyTerritoryPositions = mutableMapOf<Position, DotState>()
+        val emptyTerritoryPositions = hashMapOf<Position, DotState>()
 
         fun Position.checkAndAdd() {
             val state = getState()
@@ -827,7 +827,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             }
         }
 
-        return emptyTerritoryPositions
+        return emptyTerritoryPositions.map { PositionState(it.key, it.value) }
     }
 
     fun Position.getState(): DotState {
@@ -850,7 +850,7 @@ data class MoveResult(
     val player: Player,
     val number: Int,
     val previousState: DotState,
-    val extraPreviousStates: Map<Position, DotState>,
+    val extraPreviousStates: List<PositionState>,
     val bases: List<Base>,
     val previousNumberOfLegalMoves: Int,
 ) {
@@ -863,7 +863,7 @@ class Base(
     val playerDiff: Int,
     val oppositePlayerDiff: Int,
     val closurePositions: List<Position>,
-    val previousStates: Map<Position, DotState>,
+    val previousPositionStates: List<PositionState>,
     val isReal: Boolean,
 )
 
@@ -871,3 +871,32 @@ data class PositionPlayer(
     val position: Position,
     val player: Player,
 )
+
+@JvmInline
+value class PositionState(val value: Int) {
+    companion object {
+        const val POSITION_BITS_COUNT = COORDINATE_BITS_COUNT * 2
+        const val STATE_BITS_COUNT = 8
+        const val STATE_MASK = (1 shl STATE_BITS_COUNT) - 1
+
+        init {
+            require(POSITION_BITS_COUNT + STATE_BITS_COUNT <= Int.SIZE_BITS)
+        }
+    }
+
+    constructor(position: Position, state: DotState) : this((position.position shl STATE_BITS_COUNT) or (state.value and STATE_MASK))
+
+    val position: Position
+        get() = Position(value shr STATE_BITS_COUNT)
+
+    val state: DotState
+        get() = DotState(value and STATE_MASK)
+
+    operator fun component1(): Position = position
+
+    operator fun component2(): DotState = state
+
+    override fun toString(): String {
+        return "${position};${state}"
+    }
+}

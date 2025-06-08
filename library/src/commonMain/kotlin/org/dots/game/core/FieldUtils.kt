@@ -1,9 +1,5 @@
 package org.dots.game.core
 
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.iterator
-
 fun Field.getStrongConnectionLinePositions(position: Position): List<Position> {
     val state = position.getState()
     if (!state.checkPlaced() || state.checkTerritory()) return emptyList()
@@ -81,7 +77,7 @@ fun Base.getSortedClosurePositions(field: Field, considerTerritoryPositions: Boo
     if (baseMode != BaseMode.AllOpponentDots && !considerTerritoryPositions) {
         return ExtendedClosureInfo(closurePositions, emptyList())
     } else {
-        val closureSet = (if (considerTerritoryPositions) previousStates.keys else closurePositions).toMutableSet()
+        val closureSet = (if (considerTerritoryPositions) previousPositionStates.map { it.position } else closurePositions).toHashSet()
         var outerClosure: List<Position> = emptyList()
         val innerClosures = mutableListOf<List<Position>>()
 
@@ -112,7 +108,7 @@ fun Base.getSortedClosurePositions(field: Field, considerTerritoryPositions: Boo
 
 data class ExtendedClosureInfo(val outerClosure: List<Position>, val innerClosures: List<List<Position>>)
 
-private fun MutableSet<Position>.extractClosure(initialPosition: Position, innerWalk: Boolean): List<Position> {
+private fun HashSet<Position>.extractClosure(initialPosition: Position, innerWalk: Boolean): List<Position> {
     val closurePositions = mutableListOf(initialPosition)
     var square = 0
     var currentPosition: Position = initialPosition
@@ -151,14 +147,14 @@ private fun MutableSet<Position>.extractClosure(initialPosition: Position, inner
 }
 
 fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePositions {
-    val oneMoveCapturingPositions = mapOf<Player, MutableSet<Position>>(
-        Player.First to mutableSetOf(),
-        Player.Second to mutableSetOf(),
+    val oneMoveCapturingPositions = mapOf<Player, HashSet<Position>>(
+        Player.First to hashSetOf(),
+        Player.Second to hashSetOf(),
     )
 
-    val oneMoveBasePositions = mapOf<Player, MutableSet<Position>>(
-        Player.First to mutableSetOf(),
-        Player.Second to mutableSetOf(),
+    val oneMoveBasePositions = mapOf<Player, HashSet<Position>>(
+        Player.First to hashSetOf(),
+        Player.Second to hashSetOf(),
     )
 
     for (x in 1..width) {
@@ -184,7 +180,7 @@ fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePosition
                         }
 
                         for (base in moveResult.bases) {
-                            for ((position, oldState) in base.previousStates) {
+                            for ((position, oldState) in base.previousPositionStates) {
                                 if (!oldState.checkPlacedOrTerritory()) {
                                     oneMoveBasePositions.getValue(base.player).add(position)
                                 }

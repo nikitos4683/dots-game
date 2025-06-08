@@ -3,7 +3,7 @@ package org.dots.game.core
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class Position private constructor(val position: Int) {
+value class Position internal constructor(val position: Int) {
     companion object {
         val ZERO = Position(0, 0)
         val GROUND = Position(1, 0)
