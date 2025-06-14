@@ -236,12 +236,37 @@ class SgfConverterMovesTests {
         parseConvertAndCheck(createInput(firstPlayerWinsByProperty = false, firstPlayerWinsByField = true))
         parseConvertAndCheck(createInput(firstPlayerWinsByProperty = true, firstPlayerWinsByField = false), listOf(
             LineColumnDiagnostic(
-                "Property RE (Result) has `First` player as winner but the result of the game from field: Draw.",
+                "Property RE (Result) has `First` player as winner but the result of the game from field: Draw/Unknown.",
                 LineColumn(1, 37),
                 DiagnosticSeverity.Warning,
             )
         ))
         parseConvertAndCheck(createInput(firstPlayerWinsByProperty = false, firstPlayerWinsByField = false))
+    }
+
+    @Test
+    fun noLegalMovesAndDefinedGameResult() {
+        parseConvertAndCheck("(;GM[40]FF[4]SZ[2]RE[Draw];B[aa];B[ab];W[ba];W[bb])")
+        parseConvertAndCheck("(;GM[40]FF[4]SZ[3]RE[Draw];W[aa];W[ca];W[bb];W[ac];W[cc];B[ba];B[ab];B[cb];B[bc])",
+            listOf(
+                LineColumnDiagnostic(
+                    "Property RE (Result) has Draw value but the result of the game from field: First wins.",
+                    LineColumn(1, 82),
+                    DiagnosticSeverity.Warning
+                )
+            )
+        )
+
+        parseConvertAndCheck("(;GM[40]FF[4]SZ[3]RE[B+1];W[aa];W[ca];W[bb];W[ac];W[cc];B[ba];B[ab];B[cb];B[bc])")
+        parseConvertAndCheck("(;GM[40]FF[4]SZ[3]RE[W+1];W[aa];W[ca];W[bb];W[ac];W[cc];B[ba];B[ab];B[cb];B[bc])",
+            listOf(
+                LineColumnDiagnostic(
+                    "Property RE (Result) has `Second` player as winner but the result of the game from field: First wins.",
+                    LineColumn(1, 81),
+                    DiagnosticSeverity.Warning
+                )
+            )
+        )
     }
 
     @Test

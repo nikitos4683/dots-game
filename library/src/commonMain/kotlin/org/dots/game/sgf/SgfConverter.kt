@@ -158,14 +158,24 @@ class SgfConverter private constructor(
         val field = gameTree.field
         var addedMovesCount = 0
 
+        val gameResultProperty by lazy(LazyThreadSafetyMode.NONE) { getValue(RESULT_KEY) }
+
         if (definedGameResult is GameResult.Draw) {
-            if (useEndingMove) {
-                gameTree.add(field.makeMove(Position.DRAW))
+            // Check if the game is not automatically over because of no legal moves
+            if (useEndingMove && field.gameResult == null) {
+                gameTree.add(field.makeMove(Position.DRAW)!!)
                 addedMovesCount = 1
             }
-        } else if (definedGameResult is GameResult.WinGameResult) {
-            val gameResultProperty = getValue(RESULT_KEY)
 
+            val actualWinner = (field.gameResult as? GameResult.WinGameResult)?.winner
+            if (actualWinner != null) {
+                gameResultProperty.info.reportPropertyDiagnostic(
+                    "has Draw value but the result of the game from field: $actualWinner wins.",
+                    TextSpan(currentGameTree.textSpan.end, 0),
+                    DiagnosticSeverity.Warning,
+                )
+            }
+        } else if (definedGameResult is GameResult.WinGameResult) {
             val lastPosition = when (definedGameResult) {
                 is GameResult.ScoreWin -> {
                     if (definedGameResult.endGameKind == EndGameKind.Grounding)
@@ -180,9 +190,13 @@ class SgfConverter private constructor(
 
             val expectedWinner = definedGameResult.winner
 
-            val actualWinner: Player? = if (useEndingMove) {
+            if (useEndingMove && field.gameResult == null) {
+                // Check if the game is not automatically over because of no legal moves
                 gameTree.add(field.makeMove(lastPosition, expectedWinner.opposite())!!)
                 addedMovesCount = 1
+            }
+
+            val actualWinner = if (field.gameResult != null) {
                 (field.gameResult as? GameResult.WinGameResult)?.winner
             } else {
                 expectedWinner
@@ -190,12 +204,12 @@ class SgfConverter private constructor(
 
             if (expectedWinner != actualWinner) {
                 gameResultProperty.info.reportPropertyDiagnostic(
-                    "has `${expectedWinner}` player as winner but the result of the game from field: ${actualWinner?.let { "$it wins" } ?: "Draw"}.",
+                    "has `${expectedWinner}` player as winner but the result of the game from field: ${actualWinner?.let { "$it wins" } ?: "Draw/Unknown"}.",
                     TextSpan(currentGameTree.textSpan.end, 0),
                     DiagnosticSeverity.Warning,
                 )
             } else {
-                // Don't check for GROUND because typical SGF (notago) doesn't contain about score in case of grounding
+                // Don't check for GROUND because typical SGF (notago) doesn't contain info about score in case of grounding
                 if (definedGameResult is GameResult.ScoreWin && lastPosition != Position.GROUND) {
                     val definedGameScore = definedGameResult.score.toInt()
                     val scoreFromField = game.gameTree.field.getScoreDiff(expectedWinner)
