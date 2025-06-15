@@ -391,7 +391,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             val minNumberOfConnections = if (emptyBaseCapturing) 1 else 2
             if (unconnectedPositions.size < minNumberOfConnections) return emptyList()
 
-            val closures = buildList {
+            val closures = ArrayList<ClosureData>(4).apply {
                 for (unconnectedPosition in unconnectedPositions) {
                     tryGetCounterCounterClockwiseClosure(position, unconnectedPosition, playerPlaced)?.let { add(it) }
                 }
@@ -405,16 +405,11 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 closures
             }
 
-            resultClosures.map {
-                buildBase(
-                    playerPlaced,
-                    it.closure,
-                )
-            }
+            resultClosures.map { buildBase(playerPlaced, it.closure) }
         } else {
             val oppositeAdjacentPositions = getOppositeAdjacentPositions(position, playerPlaced)
 
-            buildList {
+            ArrayList<Base>(4).apply {
                 for (oppositeAdjacentPosition in oppositeAdjacentPositions) {
                     tryGetBaseForAllOpponentDotsMode(oppositeAdjacentPosition, playerPlaced, capturingByOppositePlayer = false)?.let {
                         require(!it.suicidalMove)
@@ -479,7 +474,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
      * Where `o` is the checking @param [position].
      */
     private fun getUnconnectedPositions(position: Position, playerPlaced: DotState): List<Position> {
-        val startPositions = mutableListOf<Position>()
+        val startPositions = ArrayList<Position>(4)
 
         val (x, y) = position
         val xMinusOneY = Position(x - 1, y)
@@ -518,7 +513,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val player = playerPlaced.getPlacedPlayer()
         val oppositePlaced = player.opposite().createPlacedState()
 
-        return buildList {
+        return ArrayList<Position>(4).apply {
             position.forEachAdjacent {
                 if (it.getState().checkPlaced(oppositePlaced)) {
                     add(it)
@@ -529,7 +524,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     }
 
     private fun buildBase(playerPlaced: DotState, closurePositions: List<Position>): Base {
-        val closurePositionsSet = closurePositions.toSet()
+        val closurePositionsSet = HashSet<Position>(closurePositions.size).also { it.addAll(closurePositions) }
         val territoryFirstPosition = closurePositions[1].getNextClockwisePosition(closurePositions[0])
         val territoryPositions = getTerritoryPositions(playerPlaced, territoryFirstPosition) {
             it !in closurePositionsSet
@@ -587,7 +582,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         return if (square > 0) ClosureData(square, closurePositions, containsBorder) else null
     }
 
-    private fun getTerritoryPositions(playerPlaced: DotState, firstPosition: Position, positionCheck: (Position) -> Boolean): Set<Position> {
+    private fun getTerritoryPositions(playerPlaced: DotState, firstPosition: Position, positionCheck: (Position) -> Boolean): HashSet<Position> {
         val walkStack = mutableListOf<Position>()
         val territoryPositions = hashSetOf<Position>()
         val player = playerPlaced.getPlacedPlayer()
@@ -693,7 +688,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 player,
                 currentPlayerDiff,
                 oppositePlayerDiff,
-                closurePositions.toList(),
+                ArrayList<Position>(closurePositions.size).apply { addAll(closurePositions) },
                 territoryPositions,
                 isReal = true,
             )
@@ -758,7 +753,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         territoryPositions: Set<Position>,
         isReal: Boolean,
     ): Base {
-        val previousPositionStates = mutableListOf<PositionState>()
+        val previousPositionStates = ArrayList<PositionState>(territoryPositions.size)
 
         updateScoreCount(player, currentPlayerDiff, oppositePlayerDiff, rollback = false)
 
