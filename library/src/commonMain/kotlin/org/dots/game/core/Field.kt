@@ -397,6 +397,13 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
             val closuresData = closuresList.apply {
                 clear()
                 for (unconnectedPosition in startPositionsList) {
+                    // Optimization: it doesn't make sense to check the latest unconnected dot
+                    // when all previous connections form minimal bases
+                    // because the latest always forms a base with maximal square that should be dropped
+                    if (!rules.captureByBorder && isNotEmpty() && size == startPositionsList.size - 1) {
+                        break
+                    }
+
                     tryGetCounterCounterClockwiseClosure(position, unconnectedPosition, playerPlaced)?.let { add(it) }
                 }
             }
