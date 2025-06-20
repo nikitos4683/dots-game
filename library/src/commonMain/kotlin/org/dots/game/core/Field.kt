@@ -54,6 +54,9 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     var player2Score: Int = 0
         private set
 
+    private val startPositionsList = ArrayList<Position>(4)
+    private val closuresList = ArrayList<ClosureData>(4)
+
     init {
         require(checkWidth(width) && checkHeight(height))
 
@@ -384,33 +387,34 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
     private fun tryCapture(position: Position, playerPlaced: DotState, emptyBaseCapturing: Boolean): List<Base> {
         return if (rules.baseMode != BaseMode.AllOpponentDots) {
-            val unconnectedPositions = getUnconnectedPositions(position, playerPlaced)
+            getUnconnectedPositions(position, playerPlaced)
 
             // Optimization: in a regular case it should be at least 2 connection dots, otherwise there is no surrounding.
             // However, in the case of empty territory, the connection might be singular since the base is already built.
             val minNumberOfConnections = if (emptyBaseCapturing) 1 else 2
-            if (unconnectedPositions.size < minNumberOfConnections) return emptyList()
+            if (startPositionsList.size < minNumberOfConnections) return emptyList()
 
-            val closures = ArrayList<ClosureData>(4).apply {
-                for (unconnectedPosition in unconnectedPositions) {
+            val closuresData = closuresList.apply {
+                clear()
+                for (unconnectedPosition in startPositionsList) {
                     tryGetCounterCounterClockwiseClosure(position, unconnectedPosition, playerPlaced)?.let { add(it) }
                 }
             }
 
             val resultClosures = if (rules.captureByBorder) {
                 // Ignore bound closure with max square
-                val topLeftBoundClosureWithMaxSquare = calculateTopLeftBoundClosureWithMaxSquare(closures)
-                closures.filter { it != topLeftBoundClosureWithMaxSquare }
+                val topLeftBoundClosureWithMaxSquare = calculateTopLeftBoundClosureWithMaxSquare(closuresData)
+                closuresData.filter { it != topLeftBoundClosureWithMaxSquare }
             } else {
-                closures
+                closuresData
             }
 
             resultClosures.map { buildBase(playerPlaced, it.closure) }
         } else {
-            val oppositeAdjacentPositions = getOppositeAdjacentPositions(position, playerPlaced)
+            getOppositeAdjacentPositions(position, playerPlaced)
 
             ArrayList<Base>(4).apply {
-                for (oppositeAdjacentPosition in oppositeAdjacentPositions) {
+                for (oppositeAdjacentPosition in startPositionsList) {
                     tryGetBaseForAllOpponentDotsMode(oppositeAdjacentPosition, playerPlaced, capturingByOppositePlayer = false)?.let {
                         require(!it.suicidalMove)
                         add(it.base!!)
@@ -473,8 +477,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
      *
      * Where `o` is the checking @param [position].
      */
-    private fun getUnconnectedPositions(position: Position, playerPlaced: DotState): List<Position> {
-        val startPositions = ArrayList<Position>(4)
+    private fun getUnconnectedPositions(position: Position, playerPlaced: DotState) {
+        startPositionsList.clear()
 
         val (x, y) = position
         val xMinusOneY = Position(x - 1, y)
@@ -494,9 +498,9 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         ) {
             if (!checkState.checkActive(playerPlaced)) {
                 if (addPosition1.getState().checkActive(playerPlaced)) {
-                    startPositions.add(addPosition1)
+                    startPositionsList.add(addPosition1)
                 } else if (addPosition2State.checkActive(playerPlaced)) {
-                    startPositions.add(addPosition2)
+                    startPositionsList.add(addPosition2)
                 }
             }
         }
@@ -505,21 +509,18 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         checkAndAdd(xYPlusOneState, Position(x - 1, y + 1), xMinusOneY, xMinusOneYState)
         checkAndAdd(xMinusOneYState, Position(x - 1, y - 1), xYMinusOne, xYMinusOneState)
         checkAndAdd(xYMinusOneState, Position(x + 1, y - 1), xPlusOneY, xPlusOneYState)
-
-        return startPositions
     }
 
-    private fun getOppositeAdjacentPositions(position: Position, playerPlaced: DotState): List<Position> {
+    private fun getOppositeAdjacentPositions(position: Position, playerPlaced: DotState) {
         val player = playerPlaced.getPlacedPlayer()
         val oppositePlaced = player.opposite().createPlacedState()
 
-        return ArrayList<Position>(4).apply {
-            position.forEachAdjacent {
-                if (it.getState().checkPlaced(oppositePlaced)) {
-                    add(it)
-                }
-                true
+        startPositionsList.clear()
+        position.forEachAdjacent {
+            if (it.getState().checkPlaced(oppositePlaced)) {
+                startPositionsList.add(it)
             }
+            true
         }
     }
 
