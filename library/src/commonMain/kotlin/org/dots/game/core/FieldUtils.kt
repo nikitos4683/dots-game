@@ -174,10 +174,8 @@ fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePosition
                             }
 
                             for (base in moveResult.bases) {
-                                for ((position, oldState) in base.previousPositionStates) {
-                                    if (!oldState.checkPlacedOrTerritory()) {
-                                        oneMoveBasePositions[position] = (oneMoveBasePositions[position] ?: Player.None) + base.player
-                                    }
+                                for ((position, _) in base.previousPositionStates) {
+                                    oneMoveBasePositions[position] = (oneMoveBasePositions[position] ?: Player.None) + base.player
                                 }
                             }
                         }
@@ -189,8 +187,6 @@ fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePosition
             collectCapturingAndPotentiallyBasePositions(Player.Second)
         }
     }
-
-    oneMoveCapturingPositions.keys.forEach { oneMoveBasePositions.remove(it) }
 
     return OneMoveCapturingAndBasePositions(oneMoveCapturingPositions, oneMoveBasePositions)
 }

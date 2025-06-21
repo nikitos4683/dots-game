@@ -7,6 +7,7 @@ import org.dots.game.core.Position
 import org.dots.game.core.SECOND_PLAYER_MARKER
 import org.dots.game.core.getOneMoveCapturingAndBasePositions
 import org.dots.game.dump.FieldParser
+import org.junit.jupiter.api.assertAll
 import java.util.SortedMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,7 +27,11 @@ class FieldOneMovePositionsTests {
 . . . . . . .
 . * . . . + .
 """,
-            expectedSurroundingPositionsData = null,
+            expectedSurroundingPositionsData = """
+.  .  .  .  .  .  .
+.  *  .  .  .  +  .
+.  .  .  .  .  .  .
+""",
         )
     }
 
@@ -82,7 +87,7 @@ class FieldOneMovePositionsTests {
     }
 
     @Test
-    fun noBaseIfCapturing() {
+    fun emptyBaseWithCapturing() {
         checkOneMoveCapturingAndSurroundPositions(
             fieldData = """
 . * .
@@ -96,7 +101,12 @@ class FieldOneMovePositionsTests {
 . * .
 . . .
 """,
-            expectedSurroundingPositionsData = null,
+            expectedSurroundingPositionsData = """
+.  .  .
+.  *  .
+.  +  .
+.  .  .
+""",
         )
     }
 
@@ -117,7 +127,13 @@ class FieldOneMovePositionsTests {
 . .  .
 . .  .
 """,
-            expectedSurroundingPositionsData = null,
+            expectedSurroundingPositionsData = """
+.  .  .
+.  *  .
+.  .  .
+.  +  .
+.  .  .
+""",
         )
     }
 
@@ -132,20 +148,45 @@ class FieldOneMovePositionsTests {
 . * . * .
 """,
             expectedCapturingPositionsData = """
-.  .  .  .  .  
-.  .  .  .  .  
-.  .  .  .  .  
-.  .  *  .  .  
+.  .  .  .  .
+.  .  .  .  .
+.  .  .  .  .
+.  .  *  .  .
 .  .  *  .  .
 """,
             expectedSurroundingPositionsData = """
-.  .  .  .  .  
-.  *  .  *  .  
-.  .  *+ .  .  
-.  *  .  *  .  
+.  .  .  .  .
+.  *  *  *  .
+.  *  *+ *  .
+.  *  *  *  .
 .  .  .  .  .
 """.trimIndent(),
         )
+    }
+
+    @Test
+    fun complexExampleWithMultipleStates() {
+        checkOneMoveCapturingAndSurroundPositions(fieldData = """
+. + + * * .
++ . * + . *
++ * . + * .
++ * . + * .
+. + . * . .
+""",
+            expectedCapturingPositionsData = """
+.  .  .  .  .  .
+.  .  .  .  .  .
+.  .  .  .  .  .
+.  .  *+ .  .  .
+.  .  *+ .  .  .
+""",
+            expectedSurroundingPositionsData = """
+.  .  .  .  .  .
+.  +  +  *  *  .
+.  +  *+ *  .  .
+.  +  *+ *  .  .
+.  .  .  .  .  .
+""")
     }
 
     private fun checkOneMoveCapturingAndSurroundPositions(
@@ -156,7 +197,11 @@ class FieldOneMovePositionsTests {
         val field = FieldParser.parseAndConvertWithNoInitialMoves(fieldData)
         val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
 
-        fun checkMoves(expectedPositionsData: String?, actualPositionsMap: Map<Position, Player>, capturing: Boolean) {
+        fun checkMoves(
+            expectedPositionsData: String?,
+            actualPositionsMap: Map<Position, Player>,
+            capturing: Boolean
+        ): (() -> Unit)? {
             val expectedPositions: SortedMap<Position, Player> = if (expectedPositionsData != null) {
                 val (width, height, expectedLightMoves) = FieldParser.parse(expectedPositionsData)
                 assertEquals(field.width, width)
@@ -169,35 +214,46 @@ class FieldOneMovePositionsTests {
             val actualPositions: SortedMap<Position, Player> = actualPositionsMap.toSortedMap()
 
             if (expectedPositions != actualPositions) {
-                fun SortedMap<Position, Player>.dump(): String {
-                    return buildString {
-                        for (y in 1..field.height) {
-                            for (x in 1..field.width) {
-                                append(
-                                    when (this@dump[Position(x, y)]) {
-                                        Player.First -> "$FIRST_PLAYER_MARKER "
-                                        Player.Second -> "$SECOND_PLAYER_MARKER "
-                                        Player.Both -> "$FIRST_PLAYER_MARKER$SECOND_PLAYER_MARKER"
-                                        else -> "$EMPTY_POSITION "
+                return {
+                    fun SortedMap<Position, Player>.dump(): String {
+                        return buildString {
+                            for (y in 1..field.height) {
+                                for (x in 1..field.width) {
+                                    append(
+                                        when (this@dump[Position(x, y)]) {
+                                            Player.First -> "$FIRST_PLAYER_MARKER "
+                                            Player.Second -> "$SECOND_PLAYER_MARKER "
+                                            Player.Both -> "$FIRST_PLAYER_MARKER$SECOND_PLAYER_MARKER"
+                                            else -> "$EMPTY_POSITION "
+                                        }
+                                    )
+                                    if (x != field.width) {
+                                        append(' ')
                                     }
-                                )
-                                append(' ')
+                                }
+                                if (y != field.height) {
+                                    appendLine()
+                                }
                             }
-                            appendLine()
                         }
                     }
-                }
 
-                // Check string for a more convenient comparison
-                assertEquals(
-                    expectedPositions.dump(),
-                    actualPositions.dump(),
-                    "Different ${if (capturing) "capturing" else "surrounding" } positions")
-                fail("Should not be here. Fix the comparison function")
+                    // Check string for a more convenient comparison
+                    assertEquals(
+                        expectedPositions.dump(),
+                        actualPositions.dump(),
+                        "Different ${if (capturing) "capturing" else "surrounding"} positions"
+                    )
+                    fail("Should not be here. Fix the comparison function")
+                }
+            } else {
+                return null
             }
         }
 
-        checkMoves(expectedCapturingPositionsData, capturingPositions, capturing = true)
-        checkMoves(expectedSurroundingPositionsData, basePositions, capturing = false)
+        val capturingFailure = checkMoves(expectedCapturingPositionsData, capturingPositions, capturing = true)
+        val surroundingFailure = checkMoves(expectedSurroundingPositionsData, basePositions, capturing = false)
+
+        assertAll(listOfNotNull(capturingFailure, surroundingFailure))
     }
 }

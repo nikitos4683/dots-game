@@ -133,13 +133,13 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
             }
     ) {
         Grid(field)
+        Moves(currentMove, field, uiSettings)
         if (!field.isGameOver()) {
             if (drawDiagonalConnections) {
                 DiagonalConnections(currentMove, field, uiSettings)
             }
             HelperMovesPositions(currentMove, field, uiSettings)
         }
-        Moves(currentMove, field, uiSettings)
         Pointer(pointerFieldPosition, moveMode, field, uiSettings)
     }
 }
