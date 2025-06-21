@@ -1,137 +1,203 @@
 package org.dots.game.field
 
+import org.dots.game.core.EMPTY_POSITION
+import org.dots.game.core.FIRST_PLAYER_MARKER
 import org.dots.game.core.Player
 import org.dots.game.core.Position
+import org.dots.game.core.SECOND_PLAYER_MARKER
 import org.dots.game.core.getOneMoveCapturingAndBasePositions
 import org.dots.game.dump.FieldParser
+import java.util.SortedMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class FieldOneMovePositionsTests {
     @Test
     fun twoCapturing() {
-        val field = FieldParser.parseAndConvertWithNoInitialMoves("""
-            . * . . . + .
-            * + * . + * +
-            . . . . . . .
-        """.trimIndent())
-
-        val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
-
-        assertEffectivelyEmpty(basePositions)
-
-        val player1Position = capturingPositions.getValue(Player.First).single()
-        val player2Position = capturingPositions.getValue(Player.Second).single()
-
-        assertEquals(Position(2, 3), player1Position)
-        assertEquals(Position(6, 3), player2Position)
+        checkOneMoveCapturingAndSurroundPositions(
+            fieldData = """
+. * . . . + .
+* + * . + * +
+. . . . . . .
+""",
+            expectedCapturingPositionsData = """
+. . . . . . .
+. . . . . . .
+. * . . . + .
+""",
+            expectedSurroundingPositionsData = null,
+        )
     }
 
     @Test
     fun twoBases() {
-        val field = FieldParser.parseAndConvertWithNoInitialMoves("""
-            . * . . . + .
-            * . * . + . +
-            . . . . . . .
-        """.trimIndent())
-
-        val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
-
-        assertEffectivelyEmpty(capturingPositions)
-
-        val player1Position = basePositions.getValue(Player.First).single()
-        val player2Position = basePositions.getValue(Player.Second).single()
-
-        assertEquals(Position(2, 2), player1Position)
-        assertEquals(Position(6, 2), player2Position)
+        checkOneMoveCapturingAndSurroundPositions(
+            fieldData = """
+. * . . . + .
+* . * . + . +
+. . . . . . .
+""",
+            expectedCapturingPositionsData = null,
+            expectedSurroundingPositionsData = """
+. . . . . . .
+. * . . . + .
+. . . . . . .
+"""
+        )
     }
 
     @Test
     fun emptyBasePosition() {
-        val field = FieldParser.parseAndConvertWithNoInitialMoves("""
-            . * .
-            * . *
-            . * .
-        """.trimIndent())
+        checkOneMoveCapturingAndSurroundPositions(
+            fieldData = """
+. * .
+* . *
+. * .
+""",
+            expectedCapturingPositionsData = null,
+            expectedSurroundingPositionsData = """
+. . .
+. * .
+. . .
+"""
+        )
+    }
 
-        val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
-
-        assertEffectivelyEmpty(capturingPositions)
-
-        val basePosition = basePositions.getValue(Player.First).single()
-        assertEquals(Position(2, 2), basePosition)
-        assertTrue(basePositions.getValue(Player.Second).isEmpty())
+    @Test
+    fun emptyBasePosition2() {
+        checkOneMoveCapturingAndSurroundPositions(
+            fieldData = """
+. + .
++ . +
+. + .
+""",
+            expectedCapturingPositionsData = null,
+            expectedSurroundingPositionsData = """
+. . .
+. + .
+. . .
+"""
+        )
     }
 
     @Test
     fun noBaseIfCapturing() {
-        val field = FieldParser.parseAndConvertWithNoInitialMoves("""
-            . * .
-            * + *
-            + . +
-            . + .
-        """.trimIndent())
-
-        val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
-
-        val player1Capturing = capturingPositions.getValue(Player.First).single()
-        assertEquals(Position(2, 3), player1Capturing)
-        assertTrue(capturingPositions.getValue(Player.Second).isEmpty())
-
-        assertEffectivelyEmpty(basePositions)
+        checkOneMoveCapturingAndSurroundPositions(
+            fieldData = """
+. * .
+* + *
++ . +
+. + .
+""",
+            expectedCapturingPositionsData = """
+. . .
+. . .
+. * .
+. . .
+""",
+            expectedSurroundingPositionsData = null,
+        )
     }
 
     @Test
     fun twoCapturingOnTheSamePosition() {
-        val field = FieldParser.parseAndConvertWithNoInitialMoves("""
-            . * .
-            * + *
-            . . .
-            + * +
-            . + .
-        """.trimIndent())
-
-        val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
-
-        val player1Position = capturingPositions.getValue(Player.First).single()
-        val player2Position = capturingPositions.getValue(Player.Second).single()
-        assertEquals(Position(2, 3), player1Position)
-        assertEquals(player1Position, player2Position)
-
-        assertEffectivelyEmpty(basePositions)
+        checkOneMoveCapturingAndSurroundPositions(
+            fieldData = """
+. * .
+* + *
+. . .
++ * +
+. + .
+""",
+            expectedCapturingPositionsData = """
+. .  .
+. .  .
+. *+ .
+. .  .
+. .  .
+""",
+            expectedSurroundingPositionsData = null,
+        )
     }
 
     @Test
     fun twoBasesOnTheSamePosition() {
-        // Probably it makes sense to filter out inner capturing positions
-        val field = FieldParser.parseAndConvertWithNoInitialMoves(
-            """
-            . * * * .
-            * . + . *
-            * + . + *
-            * . . . * 
-            . * . * .
-        """.trimIndent()
-        )
-
-        val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
-
-        val player1Capturing = capturingPositions.getValue(Player.First)
-        assertEquals(setOf(Position(3, 4), Position(3, 5)), player1Capturing)
-
-        // Capturing positions always overlap base positions
-        assertTrue(capturingPositions.getValue(Player.Second).isEmpty())
-
-        val player1Base = basePositions.getValue(Player.First)
-        assertEquals(
-            setOf(Position(4, 4), Position(4, 2), Position(3, 3), Position(2, 2), Position(2, 4)),
-            player1Base
+        checkOneMoveCapturingAndSurroundPositions(
+            fieldData = """
+. * * * .
+* . + . *
+* + . + *
+* . . . *
+. * . * .
+""",
+            expectedCapturingPositionsData = """
+.  .  .  .  .  
+.  .  .  .  .  
+.  .  .  .  .  
+.  .  *  .  .  
+.  .  *  .  .
+""",
+            expectedSurroundingPositionsData = """
+.  .  .  .  .  
+.  *  .  *  .  
+.  .  *+ .  .  
+.  *  .  *  .  
+.  .  .  .  .
+""".trimIndent(),
         )
     }
 
-    private fun assertEffectivelyEmpty(positions: Map<Player, Set<Position>>) {
-        assertTrue(positions.getValue(Player.First).isEmpty())
-        assertTrue(positions.getValue(Player.Second).isEmpty())
+    private fun checkOneMoveCapturingAndSurroundPositions(
+        fieldData: String,
+        expectedCapturingPositionsData: String? = null,
+        expectedSurroundingPositionsData: String? = null,
+    ) {
+        val field = FieldParser.parseAndConvertWithNoInitialMoves(fieldData)
+        val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
+
+        fun checkMoves(expectedPositionsData: String?, actualPositionsMap: Map<Position, Player>, capturing: Boolean) {
+            val expectedPositions: SortedMap<Position, Player> = if (expectedPositionsData != null) {
+                val (width, height, expectedLightMoves) = FieldParser.parse(expectedPositionsData)
+                assertEquals(field.width, width)
+                assertEquals(field.height, height)
+                expectedLightMoves.map { it.value }.associate { it.position to it.player }.toSortedMap()
+            } else {
+                sortedMapOf()
+            }
+
+            val actualPositions: SortedMap<Position, Player> = actualPositionsMap.toSortedMap()
+
+            if (expectedPositions != actualPositions) {
+                fun SortedMap<Position, Player>.dump(): String {
+                    return buildString {
+                        for (y in 1..field.height) {
+                            for (x in 1..field.width) {
+                                append(
+                                    when (this@dump[Position(x, y)]) {
+                                        Player.First -> "$FIRST_PLAYER_MARKER "
+                                        Player.Second -> "$SECOND_PLAYER_MARKER "
+                                        Player.Both -> "$FIRST_PLAYER_MARKER$SECOND_PLAYER_MARKER"
+                                        else -> "$EMPTY_POSITION "
+                                    }
+                                )
+                                append(' ')
+                            }
+                            appendLine()
+                        }
+                    }
+                }
+
+                // Check string for a more convenient comparison
+                assertEquals(
+                    expectedPositions.dump(),
+                    actualPositions.dump(),
+                    "Different ${if (capturing) "capturing" else "surrounding" } positions")
+                fail("Should not be here. Fix the comparison function")
+            }
+        }
+
+        checkMoves(expectedCapturingPositionsData, capturingPositions, capturing = true)
+        checkMoves(expectedSurroundingPositionsData, basePositions, capturing = false)
     }
 }

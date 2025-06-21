@@ -147,15 +147,8 @@ private fun HashSet<Position>.extractClosure(initialPosition: Position, innerWal
 }
 
 fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePositions {
-    val oneMoveCapturingPositions = mapOf<Player, HashSet<Position>>(
-        Player.First to hashSetOf(),
-        Player.Second to hashSetOf(),
-    )
-
-    val oneMoveBasePositions = mapOf<Player, HashSet<Position>>(
-        Player.First to hashSetOf(),
-        Player.Second to hashSetOf(),
-    )
+    val oneMoveCapturingPositions = hashMapOf<Position, Player>()
+    val oneMoveBasePositions = hashMapOf<Position, Player>()
 
     for (x in 1..width) {
         for (y in 1..height) {
@@ -166,7 +159,7 @@ fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePosition
                     val state = position.getState()
                     if (state.checkWithinEmptyTerritory()) {
                         val emptyTerritoryPlayer = state.getEmptyTerritoryPlayer()
-                        oneMoveBasePositions.getValue(emptyTerritoryPlayer).add(position)
+                        oneMoveBasePositions[position] = (oneMoveBasePositions[position] ?: Player.None) + emptyTerritoryPlayer
                         // Optimization: the dot placed into own empty territory never captures anything
                         if (emptyTerritoryPlayer == player) return
                     }
@@ -177,13 +170,13 @@ fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePosition
 
                         if (moveResult.bases != null) {
                             if (moveResult.bases.any { it.isReal && it.player == player }) {
-                                oneMoveCapturingPositions.getValue(player).add(position)
+                                oneMoveCapturingPositions[position] = (oneMoveCapturingPositions[position] ?: Player.None) + player
                             }
 
                             for (base in moveResult.bases) {
                                 for ((position, oldState) in base.previousPositionStates) {
                                     if (!oldState.checkPlacedOrTerritory()) {
-                                        oneMoveBasePositions.getValue(base.player).add(position)
+                                        oneMoveBasePositions[position] = (oneMoveBasePositions[position] ?: Player.None) + base.player
                                     }
                                 }
                             }
@@ -197,17 +190,12 @@ fun Field.getOneMoveCapturingAndBasePositions(): OneMoveCapturingAndBasePosition
         }
     }
 
-    fun refineOneMoveDeadPositions(player: Player) {
-        oneMoveBasePositions.getValue(player).removeAll {
-            oneMoveCapturingPositions.getValue(Player.First).contains(it) ||
-                    oneMoveCapturingPositions.getValue(Player.Second).contains(it)
-        }
-    }
-
-    refineOneMoveDeadPositions(Player.First)
-    refineOneMoveDeadPositions(Player.Second)
+    oneMoveCapturingPositions.keys.forEach { oneMoveBasePositions.remove(it) }
 
     return OneMoveCapturingAndBasePositions(oneMoveCapturingPositions, oneMoveBasePositions)
 }
 
-data class OneMoveCapturingAndBasePositions(val capturingPositions: Map<Player, Set<Position>>, val basePositions: Map<Player, Set<Position>>)
+data class OneMoveCapturingAndBasePositions(
+    val capturingPositions: Map<Position, Player>,
+    val basePositions: Map<Position, Player>,
+)

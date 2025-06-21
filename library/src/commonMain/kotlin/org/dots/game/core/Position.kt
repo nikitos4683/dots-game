@@ -3,7 +3,7 @@ package org.dots.game.core
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class Position internal constructor(val position: Int) {
+value class Position internal constructor(val position: Int) : Comparable<Position> {
     companion object {
         val ZERO = Position(0, 0)
         val GROUND = Position(1, 0)
@@ -32,6 +32,10 @@ value class Position internal constructor(val position: Int) {
 
     operator fun component1(): Int = x
     operator fun component2(): Int = y
+
+    override fun compareTo(other: Position): Int {
+        return position.compareTo(other.position)
+    }
 }
 
 infix fun Int.x(that: Int): Position = Position(this, that)

@@ -9,6 +9,9 @@ value class DotState(val value: Int) {
     companion object {
         val Empty = DotState(0)
         val Border = DotState(DotStateFlags.Border.value)
+        val Player1Placed = DotState(0 or DotStateFlags.Placed.value)
+        val Player2Placed = DotState(DotStateFlags.PlacedPlayer.value or DotStateFlags.Placed.value)
+        val BothPlayersPlaced = DotState(DotStateFlags.PlacedPlayer.value or 0) // Special value
 
         private val PlacedTerritoryMask = DotStateFlags.Placed.value or DotStateFlags.Territory.value
         private val PlacedMask = DotStateFlags.Placed.value or DotStateFlags.PlacedPlayer.value

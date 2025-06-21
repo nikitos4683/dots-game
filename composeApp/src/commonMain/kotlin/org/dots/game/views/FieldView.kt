@@ -362,21 +362,9 @@ private fun HelperMovesPositions(currentMove: MoveResult?, field: Field, uiSetti
     Canvas(Modifier.fillMaxSize().graphicsLayer()) {
         val (oneMoveCapturingPositions, oneMoveBasePositions) = field.getOneMoveCapturingAndBasePositions()
 
-        fun Map<Player, Set<Position>>.forEachPosition(action: (position: Position, player: Player, matchesOppositePlayer: Boolean) -> Unit) {
-            fun forPosition(localPosition: Position, localPlayer: Player) {
-                action(localPosition, localPlayer, getValue(localPlayer.opposite()).contains(localPosition))
-            }
-
-            for (position in getValue(Player.First)) {
-                forPosition(position, Player.First)
-            }
-            for (position in getValue(Player.Second)) {
-                forPosition(position, Player.Second)
-            }
-        }
-
         val capturingMarkerSize = capturingMoveMarkerSize.toPx()
-        oneMoveCapturingPositions.forEachPosition { position, player, matchesOppositePlayer ->
+        oneMoveCapturingPositions.forEach  {
+            val (position, player) = it
             val (xPx, yPx) = position.toPxOffset(this)
             drawLine(
                 uiSettings.toColor(player).copy(0.7f),
@@ -385,7 +373,7 @@ private fun HelperMovesPositions(currentMove: MoveResult?, field: Field, uiSetti
                 strokeWidth = 3.dp.toPx(),
             )
             drawLine(
-                uiSettings.toColor(if (matchesOppositePlayer) player.opposite() else player).copy(0.7f),
+                uiSettings.toColor(if (player == Player.Both) player.opposite() else player).copy(0.7f),
                 Offset(xPx, yPx - capturingMarkerSize),
                 Offset(xPx, yPx + capturingMarkerSize),
                 strokeWidth = 3.dp.toPx(),
@@ -394,7 +382,8 @@ private fun HelperMovesPositions(currentMove: MoveResult?, field: Field, uiSetti
 
         if (helperMovesMode == HelperMovesMode.CapturingAndBase) {
             val baseMarkerSize = capturingBaseMoveMarkerSize.toPx()
-            oneMoveBasePositions.forEachPosition { position, player, matchesOppositePlayer ->
+            oneMoveBasePositions.forEach {
+                val (position, player) = it
                 val (xPx, yPx) = position.toPxOffset(this)
                 drawLine(
                     uiSettings.toColor(player).copy(0.7f),
@@ -403,7 +392,7 @@ private fun HelperMovesPositions(currentMove: MoveResult?, field: Field, uiSetti
                     strokeWidth = 2.dp.toPx(),
                 )
                 drawLine(
-                    uiSettings.toColor(if (matchesOppositePlayer) player.opposite() else player).copy(0.7f),
+                    uiSettings.toColor(if (player == Player.Both) player.opposite() else player).copy(0.7f),
                     Offset(xPx + baseMarkerSize, yPx - baseMarkerSize),
                     Offset(xPx - baseMarkerSize, yPx + baseMarkerSize),
                     strokeWidth = 2.dp.toPx(),

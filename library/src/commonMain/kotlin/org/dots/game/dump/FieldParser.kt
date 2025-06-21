@@ -38,7 +38,7 @@ object FieldParser {
         }
     }
 
-    fun parse(data: String, diagnosticReporter: (Diagnostic) -> Unit = { error(it.toString()) }): Triple<Int, Int, LinkedHashMap<Int, LightMove>> {
+    fun parse(data: String, diagnosticReporter: (Diagnostic) -> Unit = { error(it.toString()) }): RawFieldData {
         val numberedMoves = mutableMapOf<Int, LightMove>()
         val unnumberedMoves = mutableListOf<LightMove>()
 
@@ -73,7 +73,15 @@ object FieldParser {
 
                     charIndex++
 
-                    val player = if (char == FIRST_PLAYER_MARKER) Player.First else Player.Second
+                    val opponentMarker = if (char == FIRST_PLAYER_MARKER) SECOND_PLAYER_MARKER else FIRST_PLAYER_MARKER
+                    val player = if (data.elementAtOrNull(charIndex) == opponentMarker) {
+                        charIndex++
+                        Player.Both
+                    } else if (char == FIRST_PLAYER_MARKER) {
+                        Player.First
+                    } else {
+                        Player.Second
+                    }
 
                     var digitIndex = charIndex
                     while (data.elementAtOrNull(digitIndex)?.isDigit() == true) {
@@ -150,7 +158,7 @@ object FieldParser {
 
         val allMoves = mergeMoves(numberedMoves, unnumberedMoves, diagnosticReporter)
 
-        return Triple(maxWidth, lineIndex, allMoves)
+        return RawFieldData(maxWidth, lineIndex, allMoves)
     }
 
     private fun mergeMoves(
@@ -197,6 +205,12 @@ object FieldParser {
             }
         }
     }
+
+    data class RawFieldData(
+        val width: Int,
+        val height: Int,
+        val moves: LinkedHashMap<Int, LightMove>,
+    )
 
     data class LightMove(
         val position: Position,
