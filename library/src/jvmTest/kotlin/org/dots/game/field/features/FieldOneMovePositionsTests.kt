@@ -1,17 +1,10 @@
-package org.dots.game.field
+package org.dots.game.field.features
 
-import org.dots.game.core.EMPTY_POSITION
-import org.dots.game.core.FIRST_PLAYER_MARKER
-import org.dots.game.core.Player
-import org.dots.game.core.Position
-import org.dots.game.core.SECOND_PLAYER_MARKER
-import org.dots.game.core.getOneMoveCapturingAndBasePositions
+import org.dots.game.core.features.getOneMoveCapturingAndBasePositions
 import org.dots.game.dump.FieldParser
 import org.junit.jupiter.api.assertAll
-import java.util.SortedMap
+
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.fail
 
 class FieldOneMovePositionsTests {
     @Test
@@ -197,62 +190,18 @@ class FieldOneMovePositionsTests {
         val field = FieldParser.parseAndConvertWithNoInitialMoves(fieldData)
         val (capturingPositions, basePositions) = field.getOneMoveCapturingAndBasePositions()
 
-        fun checkMoves(
-            expectedPositionsData: String?,
-            actualPositionsMap: Map<Position, Player>,
-            capturing: Boolean
-        ): (() -> Unit)? {
-            val expectedPositions: SortedMap<Position, Player> = if (expectedPositionsData != null) {
-                val (width, height, expectedLightMoves) = FieldParser.parse(expectedPositionsData)
-                assertEquals(field.width, width)
-                assertEquals(field.height, height)
-                expectedLightMoves.map { it.value }.associate { it.position to it.player }.toSortedMap()
-            } else {
-                sortedMapOf()
-            }
-
-            val actualPositions: SortedMap<Position, Player> = actualPositionsMap.toSortedMap()
-
-            if (expectedPositions != actualPositions) {
-                return {
-                    fun SortedMap<Position, Player>.dump(): String {
-                        return buildString {
-                            for (y in 1..field.height) {
-                                for (x in 1..field.width) {
-                                    append(
-                                        when (this@dump[Position(x, y)]) {
-                                            Player.First -> "$FIRST_PLAYER_MARKER "
-                                            Player.Second -> "$SECOND_PLAYER_MARKER "
-                                            Player.Both -> "$FIRST_PLAYER_MARKER$SECOND_PLAYER_MARKER"
-                                            else -> "$EMPTY_POSITION "
-                                        }
-                                    )
-                                    if (x != field.width) {
-                                        append(' ')
-                                    }
-                                }
-                                if (y != field.height) {
-                                    appendLine()
-                                }
-                            }
-                        }
-                    }
-
-                    // Check string for a more convenient comparison
-                    assertEquals(
-                        expectedPositions.dump(),
-                        actualPositions.dump(),
-                        "Different ${if (capturing) "capturing" else "surrounding"} positions"
-                    )
-                    fail("Should not be here. Fix the comparison function")
-                }
-            } else {
-                return null
-            }
-        }
-
-        val capturingFailure = checkMoves(expectedCapturingPositionsData, capturingPositions, capturing = true)
-        val surroundingFailure = checkMoves(expectedSurroundingPositionsData, basePositions, capturing = false)
+        val capturingFailure = checkFeatures(
+            field,
+            expectedCapturingPositionsData,
+            capturingPositions,
+            "Different capturing positions"
+        )
+        val surroundingFailure = checkFeatures(
+            field,
+            expectedSurroundingPositionsData,
+            basePositions,
+            "Different surrounding positions"
+        )
 
         assertAll(listOfNotNull(capturingFailure, surroundingFailure))
     }

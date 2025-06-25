@@ -37,11 +37,13 @@ import org.dots.game.core.MoveMode
 import org.dots.game.core.MoveResult
 import org.dots.game.core.Player
 import org.dots.game.core.Position
-import org.dots.game.core.createPlacedState
-import org.dots.game.core.getOneMoveCapturingAndBasePositions
+import org.dots.game.core.features.getOneMoveCapturingAndBasePositions
+import org.dots.game.core.features.getPositionsAtDistance
+import org.dots.game.core.features.squareDistances
 import org.dots.game.core.getPositionsOfConnection
 import org.dots.game.core.getSortedClosurePositions
 import org.dots.game.core.getStrongConnectionLinePositions
+import org.dots.game.core.squareDistanceTo
 import kotlin.math.round
 
 private val borderPaddingRatio = 2.0f
@@ -65,7 +67,9 @@ private val connectionThickness = 2.dp
 private val outOfBoundDrawRatio = dotRadiusRatio
 private val baseDrawMode: PolygonDrawMode = PolygonDrawMode.OutlineAndFill
 private val connectionDrawMode: ConnectionDrawMode = ConnectionDrawMode.Polygon(baseDrawMode)
-private val drawDiagonalConnections: Boolean = true
+private val drawConnections: Boolean = true
+private val minDistanceId = 2
+private val maxDistanceId = 2
 private val helperMovesMode: HelperMovesMode = HelperMovesMode.CapturingAndBase
 
 enum class HelperMovesMode {
@@ -135,10 +139,10 @@ fun FieldView(currentMove: MoveResult?, moveMode: MoveMode, fieldViewData: Field
         Grid(field)
         Moves(currentMove, field, uiSettings)
         if (!field.isGameOver()) {
-            if (drawDiagonalConnections) {
-                DiagonalConnections(currentMove, field, uiSettings)
+            if (drawConnections) {
+                AllConnections(currentMove, field, uiSettings)
             }
-            HelperMovesPositions(currentMove, field, uiSettings)
+            ThreatsAndSurroundings(currentMove, field, uiSettings)
         }
         Pointer(pointerFieldPosition, moveMode, field, uiSettings)
     }
@@ -306,57 +310,54 @@ private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings
 }
 
 @Composable
-private fun DiagonalConnections(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
+private fun AllConnections(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
     Canvas(Modifier.fillMaxSize().graphicsLayer()) {
-        for (move in field.moveSequence) {
-            val position = move.position
+        with(field) {
+            for (distanceId in minDistanceId..maxDistanceId) {
+                val distantPositions = field.getPositionsAtDistance(distanceId).toList()
+                val squaredDistance = squareDistances[distanceId]
 
-            val state = with(field) {
-                position.getState()
-            }
+                val lines = buildSet {
+                    for (i in 0 until distantPositions.size) {
+                        val startPosition = distantPositions[i]
+                        val stateState = startPosition.getState()
+                        if (stateState.checkTerritory()) continue
 
-            if (!state.checkPlaced() || state.checkTerritory()) continue
+                        val player = stateState.getTerritoryOrPlacedPlayer()
+                        for (j in i + 1 until distantPositions.size) {
+                            val endPosition = distantPositions[j]
 
-            val player = state.getPlacedPlayer()
-            val playerPlaced = player.createPlacedState()
-
-            fun drawConnectionIfNeeded(
-                end: Position,
-                adjacentPrevPosition: Position,
-                adjacentNextPosition: Position
-            ) {
-                with(field) {
-                    if (connectionDrawMode is ConnectionDrawMode.Polygon && connectionDrawMode.polygonDrawMode.drawFill) {
-                        if (adjacentPrevPosition.getState().checkActive(playerPlaced) ||
-                            adjacentNextPosition.getState().checkActive(playerPlaced)
-                        ) {
-                            return
+                            if (endPosition.getState().let {
+                                !it.checkTerritory() &&
+                                it.getTerritoryOrPlacedPlayer() == player
+                            } &&
+                                startPosition.squareDistanceTo(endPosition) == squaredDistance
+                            ) {
+                                add(startPosition to endPosition)
+                            }
                         }
                     }
+                }
 
-                    if (field.checkPositionWithinBounds(end) && end.getState().checkActive(playerPlaced))
-                        drawLine(
-                            uiSettings.toColor(player),
-                            position.toPxOffset(this@Canvas),
-                            end.toPxOffset(this@Canvas),
-                            strokeWidth = connectionThickness.toPx(),
-                            alpha = 0.3f
-                        )
+                for (line in lines) {
+                    val (start, end) = line
+                    drawLine(
+                        uiSettings.toColor(start.getState().getTerritoryOrPlacedPlayer()),
+                        start.toPxOffset(this@Canvas),
+                        end.toPxOffset(this@Canvas),
+                        strokeWidth = connectionThickness.toPx(),
+                        alpha = 0.3f
+                    )
                 }
             }
 
-            val (x, y) = position
-            val adjacentCommonPosition = Position(x, y + 1)
-            drawConnectionIfNeeded(Position(x - 1, y + 1), adjacentCommonPosition, Position(x - 1, y))
-            drawConnectionIfNeeded(Position(x + 1, y + 1), Position(x + 1, y), adjacentCommonPosition)
+            currentMove
         }
-
-        currentMove
     }
 }
 
 @Composable
-private fun HelperMovesPositions(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
+private fun ThreatsAndSurroundings(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
     if (helperMovesMode == HelperMovesMode.None) return
 
     Canvas(Modifier.fillMaxSize().graphicsLayer()) {

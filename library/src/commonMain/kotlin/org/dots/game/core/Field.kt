@@ -117,7 +117,10 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     }
 
     fun checkPositionWithinBounds(position: Position): Boolean {
-        val (x, y) = position
+        return checkPositionWithinBounds(position.x, position.y)
+    }
+
+    fun checkPositionWithinBounds(x: Int, y: Int): Boolean {
         return x >= OFFSET && x < width + OFFSET && y >= OFFSET && y < height + OFFSET
     }
 

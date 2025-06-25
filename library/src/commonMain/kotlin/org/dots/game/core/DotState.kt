@@ -19,6 +19,7 @@ value class DotState(val value: Int) {
         private val TerritoryMask = DotStateFlags.Territory.value or DotStateFlags.TerritoryPlayer.value
         private val EmptyTerritoryMask = DotStateFlags.EmptyTerritory.value or DotStateFlags.EmptyTerritoryPlayer.value
         private val InvalidateTerritoryMask = (DotStateFlags.Territory.value or DotStateFlags.TerritoryPlayer.value or EmptyTerritoryMask).inv()
+        private val PlacedAndNotTerritory = DotStateFlags.Placed.value
     }
 
     fun checkPlacedOrTerritory(): Boolean {
@@ -31,6 +32,10 @@ value class DotState(val value: Int) {
 
     fun checkPlaced(playerPlacedValue: DotState): Boolean {
         return value and PlacedMask == playerPlacedValue.value
+    }
+
+    fun checkActive(): Boolean {
+        return value and PlacedTerritoryMask == PlacedAndNotTerritory
     }
 
     fun checkActive(playerActiveValue: DotState): Boolean {
@@ -68,6 +73,34 @@ value class DotState(val value: Int) {
 
     fun getPlacedPlayer(): Player {
         return if (value and DotStateFlags.PlacedPlayer.value == 0) First else Second
+    }
+
+    fun getTerritoryOrPlacedPlayer(): Player {
+        return when {
+            value and DotStateFlags.Territory.value != 0 -> {
+                if (value and DotStateFlags.TerritoryPlayer.value == 0) First else Second
+            }
+            value and DotStateFlags.Placed.value != 0 -> {
+                if (value and DotStateFlags.PlacedPlayer.value == 0) First else Second
+            }
+            else -> {
+                Player.None
+            }
+        }
+    }
+
+    fun checkTerritoryOrPlacedPlayer(player: Player): Boolean {
+        return when {
+            value and DotStateFlags.Territory.value != 0 -> {
+                ((value shr 2) and 0x3) == player.value
+            }
+            value and DotStateFlags.Placed.value != 0 -> {
+                (value and 0x3) == player.value
+            }
+            else -> {
+                false
+            }
+        }
     }
 
     fun setTerritory(playerAndTerritory: DotState): DotState {

@@ -6,7 +6,12 @@ enum class Player(val value: Int) {
     Second(DotState.Player2Placed.value),
     Both(DotState.BothPlayersPlaced.value);
 
-    fun opposite(): Player = if (this == First) Second else First
+    fun opposite(): Player = when (this) {
+        First -> Second
+        Second -> First
+        None -> Both
+        Both -> None
+    }
 
     operator fun plus(other: Player): Player = when (this) {
         None -> other
