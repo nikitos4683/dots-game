@@ -62,11 +62,12 @@ import org.dots.game.sgf.SgfMetaInfo.UNKNOWN_WIN_GAME_RESULT
 import org.dots.game.sgf.SgfMetaInfo.propertyInfoToKey
 import org.dots.game.sgf.SgfMetaInfo.propertyInfos
 
-class SgfConverter private constructor(
+class SgfConverter(
     val sgf: SgfRoot,
     val warnOnMultipleGames: Boolean = false,
     val useEndingMove: Boolean = true,
-    val diagnosticReporter: (Diagnostic) -> Unit
+    val measureNanos: (() -> Long)?,
+    val diagnosticReporter: (Diagnostic) -> Unit,
 ) {
     companion object {
         private const val LOWER_CHAR_OFFSET = 'a' - Field.OFFSET
@@ -80,14 +81,17 @@ class SgfConverter private constructor(
          *   * Unsupported mode (not Kropki)
          *   * Incorrect or unspecified size
          */
-        fun convert(sgf: SgfRoot, warnOnMultipleGames: Boolean = false, useEndingMove: Boolean = true, diagnosticReporter: (Diagnostic) -> Unit): List<Game> {
-            return SgfConverter(sgf, warnOnMultipleGames, useEndingMove, diagnosticReporter).convert()
+        fun convert(sgf: SgfRoot, warnOnMultipleGames: Boolean = false, useEndingMove: Boolean = true, measureNanos: (() -> Long)? = null, diagnosticReporter: (Diagnostic) -> Unit): List<Game> {
+            return SgfConverter(sgf, warnOnMultipleGames, useEndingMove, measureNanos, diagnosticReporter).convert()
         }
     }
 
     private fun TextSpan.getText() = sgf.text.substring(start, end)
 
-    private fun convert(): List<Game> {
+    var fieldNanos: Long = 0L
+        private set
+
+    fun convert(): List<Game> {
         if (sgf.gameTree.isEmpty()) {
             reportDiagnostic("Empty game trees.", sgf.textSpan, DiagnosticSeverity.Warning)
         }
@@ -146,7 +150,11 @@ class SgfConverter private constructor(
                 )
             }
 
+            val startNanos = measureNanos?.invoke()
             initializedGame.gameTree.back(movesCount)
+            if (measureNanos != null) {
+                fieldNanos += measureNanos() - startNanos!!
+            }
         }
 
         return initializedGame
@@ -336,7 +344,11 @@ class SgfConverter private constructor(
                 var moveResult: MoveResult?
                 val withinBounds: Boolean
                 if (field.checkPositionWithinBounds(moveInfo.position)) {
+                    val startNanos = measureNanos?.invoke()
                     moveResult = field.makeMove(moveInfo.position, moveInfo.player)
+                    if (measureNanos != null) {
+                        fieldNanos += measureNanos() - startNanos!!
+                    }
                     withinBounds = true
                 } else {
                     moveResult = null
