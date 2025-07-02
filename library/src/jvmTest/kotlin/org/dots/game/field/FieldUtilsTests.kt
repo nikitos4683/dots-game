@@ -1,5 +1,6 @@
 package org.dots.game.field
 
+import org.dots.game.core.Field
 import org.dots.game.core.GameResult
 import org.dots.game.core.InitialPositionType.Cross
 import org.dots.game.core.Player
@@ -11,6 +12,7 @@ import org.dots.game.core.unmakeAllMovesAndCheck
 import org.dots.game.dump.FieldParser
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -122,14 +124,10 @@ class FieldUtilsTests : FieldTests() {
 
     @Test
     fun clone() {
-        val field = FieldParser.parseAndConvert("""
-            . . . .
-            . . . .
-            . . . .
-            . . . .
-        """, initializeRules = { width, height ->
-            Rules(width, height, initialMoves = Cross.generateDefaultInitialPositions(width, height)!!)
-        })
+        val width = 4
+        val height = 4
+        val rules = Rules(width, height, initialMoves = Cross.generateDefaultInitialPositions(width, height)!!)
+        val field = Field(rules)
 
         field.makeMove(Position(3, 1), Player.First)
         field.makeMove(Position(4, 2), Player.First)
@@ -155,5 +153,24 @@ class FieldUtilsTests : FieldTests() {
 
         field.unmakeAllMovesAndCheck { fail(it) }
         newField.unmakeAllMovesAndCheck { fail(it) }
+    }
+
+    @Test
+    fun clear() {
+        val width = 4
+        val height = 4
+        val rules = Rules(width, height, initialMoves = Cross.generateDefaultInitialPositions(width, height)!!)
+        val field = Field(rules)
+
+        field.makeMove(Position(3, 1), Player.First)
+        field.makeMove(Position(4, 2), Player.First)
+        field.makeMove(Position.RESIGN, Player.Second)
+
+        field.clear()
+        assertEquals(width * height - rules.initialMoves.size, field.numberOfLegalMoves)
+        assertEquals(rules.initialMoves.map { it.position }, field.moveSequence.map { it.position })
+        assertEquals(0, field.player1Score)
+        assertEquals(0, field.player2Score)
+        assertNull(field.gameResult)
     }
 }

@@ -61,9 +61,9 @@ object RandomGameAnalyser {
         }.toTypedArray()
 
         val startNanos = System.nanoTime()
+        val field = Field(rules)
 
         for (gameNumber in 0 until gamesCount) {
-            val field = Field(rules)
             randomMoves.shuffle(random)
 
             for (randomMove in randomMoves) {
@@ -98,9 +98,9 @@ object RandomGameAnalyser {
             }
 
             if (checkRollback) {
-                field.unmakeAllMovesAndCheck {
-                    println(it)
-                }
+                field.unmakeAllMovesAndCheck { println(it) }
+            } else {
+                field.clear()
             }
         }
 
