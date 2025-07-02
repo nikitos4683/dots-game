@@ -87,8 +87,8 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
             val startPosition = Position(width / 2, height / 2)
             return listOf(
                 MoveInfo(startPosition, Player.First),
-                MoveInfo(Position(startPosition.x + 1, startPosition.y + 1), Player.First),
                 MoveInfo(Position(startPosition.x + 1, startPosition.y), Player.Second),
+                MoveInfo(Position(startPosition.x + 1, startPosition.y + 1), Player.First),
                 MoveInfo(Position(startPosition.x, startPosition.y + 1), Player.Second),
             )
         }

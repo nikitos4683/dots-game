@@ -83,8 +83,8 @@ class InitialPositionTests {
     private fun List<MoveInfo>.checkCross(x: Int, y: Int) {
         assertEquals(4, this.size)
         assertEquals(MoveInfo(Position(x, y), Player.First), this[0])
-        assertEquals(MoveInfo(Position(x + 1, x + 1), Player.First), this[1])
-        assertEquals(MoveInfo(Position(x + 1, y), Player.Second), this[2])
+        assertEquals(MoveInfo(Position(x + 1, y), Player.Second), this[1])
+        assertEquals(MoveInfo(Position(x + 1, x + 1), Player.First), this[2])
         assertEquals(MoveInfo(Position(x, y + 1), Player.Second), this[3])
     }
 }
