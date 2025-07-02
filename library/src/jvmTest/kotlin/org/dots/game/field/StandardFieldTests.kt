@@ -66,9 +66,9 @@ class StandardFieldTests : FieldTests() {
     @Test
     fun simpleCaptureForOppositePlayer() {
         testFieldWithRollback("""
-            . + .
-            + * +
-            . + .
+            .  +4 .
+            +3 *0 +1
+            .  +2 .
         """) {
             assertEquals(0, it.player1Score)
             assertEquals(1, it.player2Score)
@@ -395,7 +395,6 @@ class StandardFieldTests : FieldTests() {
         """) {
             assertEquals(1, it.player1Score)
         }
-
     }
 
     @Test
@@ -566,6 +565,20 @@ class StandardFieldTests : FieldTests() {
             assertEquals(EndGameKind.NoLegalMoves, gameResult.endGameKind)
             assertEquals(6.0, gameResult.score)
             assertEquals(Player.First, gameResult.winner)
+        }
+    }
+
+    @Test
+    fun adjacentEmptyBaseToNonEmpty() {
+        testFieldWithRollback("""
+. + + . + + .
++ . . . * . +
++ . + . + . +
++ . . + . . +
+. + . . . + .
+. . + + + . .
+""") {
+            it.makeMove(4 x 2, Player.Second)
         }
     }
 }

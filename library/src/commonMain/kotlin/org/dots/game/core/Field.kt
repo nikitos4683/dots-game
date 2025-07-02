@@ -150,7 +150,7 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         val moveResult = moveResults.removeLast()
 
         if (moveResult.bases != null) {
-            for (base in moveResult.bases) {
+            for (base in moveResult.bases.reversed()) {
                 for ((position, previousState) in base.previousPositionStates) {
                     position.setState(previousState)
                 }
