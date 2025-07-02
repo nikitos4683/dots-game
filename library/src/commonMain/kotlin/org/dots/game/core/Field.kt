@@ -575,6 +575,12 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 val state = it.getState()
                 val isActive = state.checkActive(playerPlaced)
 
+                if (!rules.captureByBorder && !checkPositionWithinBounds(it)) {
+                    // Optimization: there is no need to walk anymore because the border can't enclosure anything
+                    square = 0
+                    break@loop
+                }
+
                 if (isActive) {
                     square += currentPosition.getSquare(it)
 
