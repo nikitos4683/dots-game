@@ -69,11 +69,11 @@ class FieldRenderTests : FieldTests() {
     fun numbers() {
         assertEquals(
             """
-            .   *4  *5  *6  .   *16 *17 *18 .
-            *15 +2  .   .   *7  .   .   .   *19
-            *14 .   *1  .   *8  .   *3  .   *20
-            *13 .   .   .   *9  .   .   .   *21
-            .   *12 *11 *10 .   *22 *23 *24 .
+                .   *3  *4  *5  .   *15 *16 *17 .
+                *14 +1  .   .   *6  .   .   .   *18
+                *13 .   *0  .   *7  .   *2  .   *19
+                *12 .   .   .   *8  .   .   .   *20
+                .   *11 *10 *9  .   *21 *22 *23 .
         """.trimIndent(),
             sampleField.render(DumpParameters(printNumbers = true, padding = 0, printCoordinates = false, debugInfo = false))
         )

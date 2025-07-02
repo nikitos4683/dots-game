@@ -1,7 +1,6 @@
 import org.dots.game.core.EMPTY_POSITION
 import org.dots.game.core.EMPTY_TERRITORY_MARKER
 import org.dots.game.core.Field
-import org.dots.game.core.Field.Companion.OFFSET
 import org.dots.game.core.Position
 import org.dots.game.core.TERRITORY_EMPTY_MARKER
 import org.dots.game.core.playerMarker
@@ -26,7 +25,11 @@ fun Field.render(dumpParameters: DumpParameters = DumpParameters.DEFAULT): Strin
     var maxY = 0
 
     var maxMarkerLength = 0
-    val positionToMoveResult = moveSequence.associateBy { it.position }
+    val positionToNumber = buildMap {
+        moveSequence.forEachIndexed { index, move ->
+            this[move.position] = index
+        }
+    }
 
     val dotsRepresentation = Array(realWidth) { x ->
         Array(realHeight) { y ->
@@ -78,7 +81,7 @@ fun Field.render(dumpParameters: DumpParameters = DumpParameters.DEFAULT): Strin
                     )
                 } else {
                     if (printNumbers) {
-                        positionToMoveResult[position]?.number?.let { append(it) }
+                        positionToNumber[position]?.let { append(it) }
                     }
 
                     if (x < minX) minX = x

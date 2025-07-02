@@ -11,8 +11,8 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         const val MAX_WIDTH = (1 shl COORDINATE_BITS_COUNT) - 2
         const val MAX_HEIGHT = (1 shl COORDINATE_BITS_COUNT) - 2
 
-        fun checkWidth(value: Int): Boolean = value >= 0 && value <= MAX_WIDTH
-        fun checkHeight(value: Int): Boolean = value >= 0 && value <= MAX_HEIGHT
+        fun checkWidth(value: Int): Boolean = value in 0..MAX_WIDTH
+        fun checkHeight(value: Int): Boolean = value in 0..MAX_HEIGHT
     }
 
     val width: Int = rules.width
@@ -287,7 +287,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
         return MoveResult(
             position,
             currentPlayer,
-            currentMoveNumber + 1,
             originalState,
             extraPreviousStates.takeIf { it.isNotEmpty() },
             resultBases.takeIf { it.isNotEmpty() },
@@ -858,7 +857,6 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 data class MoveResult(
     val position: Position,
     val player: Player,
-    val number: Int,
     val previousState: DotState,
     val extraPreviousPositionStates: List<PositionState>?,
     val bases: List<Base>?,
