@@ -222,7 +222,7 @@ class GameTreeTests : FieldTests() {
     }
 
     private fun initializeGameTree(): GameTree {
-        val field = Field(Rules(4, 4))
+        val field = Field(Rules(4, 4, initialMoves = emptyList()))
         return GameTree(field)
     }
 

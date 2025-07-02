@@ -7,10 +7,12 @@ import org.dots.game.core.Position
 import org.dots.game.core.Rules
 import org.dots.game.core.generateDefaultInitialPositions
 import org.dots.game.core.getPositionsOfConnection
+import org.dots.game.core.unmakeAllMovesAndCheck
 import org.dots.game.dump.FieldParser
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class FieldUtilsTests : FieldTests() {
     val sampleField = FieldParser.parseAndConvertWithNoInitialMoves("""
@@ -151,7 +153,7 @@ class FieldUtilsTests : FieldTests() {
         assertEquals(field.gameResult, GameResult.ResignWin(Player.First))
         assertEquals(field.gameResult, newField.gameResult)
 
-        field.unmakeAllMovesAndCheck()
-        newField.unmakeAllMovesAndCheck()
+        field.unmakeAllMovesAndCheck { fail(it) }
+        newField.unmakeAllMovesAndCheck { fail(it) }
     }
 }

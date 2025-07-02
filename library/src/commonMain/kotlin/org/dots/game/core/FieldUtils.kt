@@ -1,5 +1,7 @@
 package org.dots.game.core
 
+import kotlin.reflect.KProperty
+
 fun Field.getStrongConnectionLinePositions(position: Position): List<Position> {
     val state = position.getState()
     if (!state.checkActive()) return emptyList()
@@ -146,4 +148,31 @@ private fun HashSet<Position>.extractClosure(initialPosition: Position, innerWal
     return closurePositions
 }
 
+fun Field.unmakeAllMovesAndCheck(failFunc: (String) -> Unit) {
+    fun check(assertion: Boolean, property: KProperty<*>) {
+        if (!assertion) {
+            failFunc("❗Failed check `${property.name}`")
+        }
+    }
+
+    unmakeAllMoves()
+
+    check(moveSequence.size == initialMovesCount, ::moveSequence)
+    check(0 == player1Score, ::player1Score)
+    check(0 == player2Score, ::player2Score)
+    check(gameResult == null, ::gameResult)
+    check(width * height - initialMovesCount == numberOfLegalMoves, ::numberOfLegalMoves)
+    var actualInitialMovesCount = 0
+    for (x in 0 until realWidth) {
+        for (y in 0 until realHeight) {
+            val position = Position(x, y)
+            val borderOrEmptyState = if (rules.captureByBorder && position.isBorder()) DotState.Border else DotState.Empty
+            if (borderOrEmptyState != Position(x, y).getState()) {
+                actualInitialMovesCount++
+            }
+        }
+    }
+
+    check(initialMovesCount == actualInitialMovesCount, ::initialMovesCount)
+}
 

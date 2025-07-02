@@ -30,3 +30,4 @@ dependencyResolutionManagement {
 
 include(":library")
 include(":composeApp")
+include(":cli")

@@ -1,40 +1,35 @@
-package org.dots.game.sgf
-
 import org.dots.game.buildLineOffsets
+import org.dots.game.sgf.SgfConverter
+import org.dots.game.sgf.SgfParser
 import org.dots.game.toLineColumnDiagnostic
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 import kotlin.math.round
-import kotlin.test.Test
 
-class SgfConverterFilesTests {
-    private val nanosInSec: Long = TimeUnit.SECONDS.toNanos(1)
-
-    private fun processFileOrDirectory(
-        fileOrDirectoryPath: String,
+object SgfAnalyser {
+    fun process(
+        fileOrDirectoryFile: File,
         logFile: File?,
         numberOfFilesToDrop: Int = 0,
         numberOfFilesToProcess: Int = Int.MAX_VALUE
     ) {
-        val fileOrDirectory = File(fileOrDirectoryPath)
-
         val isDirectory: Boolean
-        val sgfFiles = if (fileOrDirectory.isDirectory) {
+        val sgfFiles = if (fileOrDirectoryFile.isDirectory) {
             isDirectory = true
-            fileOrDirectory.walkTopDown()
+            fileOrDirectoryFile.walkTopDown()
                 .filter { it.isFile && it.extension == "sgf" }
                 .drop(numberOfFilesToDrop)
                 .take(numberOfFilesToProcess)
                 .toList()
                 .takeIf { it.isNotEmpty() } ?: run {
-                    println("The directory ${fileOrDirectory.absolutePath} does not contain sgf files")
-                    return
-                }
+                println("The directory ${fileOrDirectoryFile.absolutePath} does not contain sgf files")
+                return
+            }
         } else {
             isDirectory = false
-            fileOrDirectory.takeIf { it.extension == "sgf" }?.let { listOf(it) } ?: run {
-                println("The file ${fileOrDirectory.absolutePath} does not have sgf extension")
+            fileOrDirectoryFile.takeIf { it.extension == "sgf" }?.let { listOf(it) } ?: run {
+                println("The file ${fileOrDirectoryFile.absolutePath} does not have sgf extension")
                 return
             }
         }
@@ -95,7 +90,7 @@ class SgfConverterFilesTests {
 
         if (isDirectory) {
             fun printTime(name: String, value: Long) {
-                println("$name time: ${TimeUnit.NANOSECONDS.toMillis(value)} ms (${"%.2f".format(value / totalSgfNanos * 100)} %)")
+                println("$name time: ${TimeUnit.NANOSECONDS.toMillis(value)} ms (${(value * 100 / totalSgfNanos).toInt()} %)")
             }
 
             println()
@@ -105,11 +100,9 @@ class SgfConverterFilesTests {
             println("Total time: ${TimeUnit.NANOSECONDS.toMillis(totalTime)} ms")
             println("Total files count: ${sgfFiles.size}")
             println("Total moves count: $totalMovesCount")
-            println()
-
             println("Field moves per second: ${(totalMovesCount.toDouble() / totalFieldNanos * nanosInSec).toInt()}")
             println("Fields per second: ${(sgfFiles.size.toDouble() / totalFieldNanos * nanosInSec).toInt()}")
-            println("Millis per field: ${totalFieldNanos.toDouble() / sgfFiles.size / TimeUnit.MILLISECONDS.toNanos(1)}")
+            println("Millis per field: ${formatDouble(totalFieldNanos.toDouble() / sgfFiles.size / TimeUnit.MILLISECONDS.toNanos(1))}")
             println("Average number of moves per field: ${(totalMovesCount.toDouble() / sgfFiles.size).toInt()}")
         }
     }
