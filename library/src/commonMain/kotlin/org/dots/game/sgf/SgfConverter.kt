@@ -88,10 +88,14 @@ class SgfConverter(
 
     private fun TextSpan.getText() = sgf.text.substring(start, end)
 
+    private var capturingIsCalculatedAutomaticallyIsReported: Boolean = false
+
     var fieldNanos: Long = 0L
         private set
 
     fun convert(): List<Game> {
+        capturingIsCalculatedAutomaticallyIsReported = false
+
         if (sgf.gameTree.isEmpty()) {
             reportDiagnostic("Empty game trees.", sgf.textSpan, DiagnosticSeverity.Warning)
         }
@@ -694,20 +698,23 @@ class SgfConverter(
         val isMoveInfo = T::class == MoveInfo::class
 
         if (isMoveInfo && value.elementAtOrNull(EXTRA_MOVE_INFO_INDEX - 1) == '.') {
-            val capturingMoveInfos = buildList {
-                for (internalIndex in EXTRA_MOVE_INFO_INDEX until value.length step 2) {
-                    convertCoordinates(propertyInfo, internalIndex).let { coordinates ->
-                        coordinates.toPosition()?.let { add(it) }
+            if (!capturingIsCalculatedAutomaticallyIsReported) {
+                val capturingMoveInfos = buildList {
+                    for (internalIndex in EXTRA_MOVE_INFO_INDEX until value.length step 2) {
+                        convertCoordinates(propertyInfo, internalIndex).let { coordinates ->
+                            coordinates.toPosition()?.let { add(it) }
+                        }
                     }
                 }
+                val textSpan = TextSpan(textSpan.start + EXTRA_MOVE_INFO_INDEX, value.length - EXTRA_MOVE_INFO_INDEX)
+                propertyInfo.reportPropertyDiagnostic(
+                    "has capturing positions that are not yet supported: ${capturingMoveInfos.joinToString()} (`${textSpan.getText()}`). " +
+                            "The capturing is calculated automatically according game rules for this and next cases.",
+                    textSpan,
+                    DiagnosticSeverity.Warning,
+                )
+                capturingIsCalculatedAutomaticallyIsReported = true
             }
-            val textSpan = TextSpan(textSpan.start + EXTRA_MOVE_INFO_INDEX, value.length - EXTRA_MOVE_INFO_INDEX)
-            propertyInfo.reportPropertyDiagnostic(
-                "has capturing positions that are not yet supported: ${capturingMoveInfos.joinToString()} (`${textSpan.getText()}`). " +
-                        "The capturing is calculated automatically according game rules.",
-                textSpan,
-                DiagnosticSeverity.Warning,
-            )
         } else if (value.length > 2) {
             val textSpan = TextSpan(textSpan.start + 2, value.length - 2)
             propertyInfo.reportPropertyDiagnostic(

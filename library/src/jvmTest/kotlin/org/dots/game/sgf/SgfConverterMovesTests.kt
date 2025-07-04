@@ -201,7 +201,7 @@ class SgfConverterMovesTests {
         val gameTree = parseConvertAndCheck(
             "(;GM[40]FF[4]AP[zagram.org]SZ[39:32];B[bb];W[ab];W[ba];W[cb];W[bc.bccbbaabbc])", listOf(
                 LineColumnDiagnostic(
-                    "Property W (Player2 move) has capturing positions that are not yet supported: (2;3), (3;2), (2;1), (1;2), (2;3) (`bccbbaabbc`). The capturing is calculated automatically according game rules.",
+                    "Property W (Player2 move) has capturing positions that are not yet supported: (2;3), (3;2), (2;1), (1;2), (2;3) (`bccbbaabbc`). The capturing is calculated automatically according game rules for this and next cases.",
                     LineColumn(1, 67),
                     DiagnosticSeverity.Warning
                 ),
@@ -368,5 +368,19 @@ class SgfConverterMovesTests {
         gameTree.next()
         val squares = gameTree.currentNode.squares
         assertEquals(listOf(Position(2, 1), Position(3, 2), Position(2, 3), Position(1, 2)), squares)
+    }
+
+    @Test
+    fun warnAboutCapturingPositionsThatAreNotYetSupportedOnlyOnce() {
+        parseConvertAndCheck(
+            "(;GM[40]FF[4]SZ[5];B[cc]W[cb][dc][cd][bc.cbdccdbc];B[ca][db][ec][dd][ce][bd][ac][bb.cadbecddcebdac])",
+            listOf(
+                LineColumnDiagnostic(
+                    "Property W (Player2 move) has capturing positions that are not yet supported: (3;2), (4;3), (3;4), (2;3) (`cbdccdbc`). The capturing is calculated automatically according game rules for this and next cases.",
+                    LineColumn(1, 42),
+                    DiagnosticSeverity.Warning
+                ),
+            )
+        )
     }
 }
