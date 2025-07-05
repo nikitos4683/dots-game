@@ -3,6 +3,8 @@ package org.dots.game.core
 import org.dots.game.core.InitialPositionType.Cross
 import org.dots.game.core.InitialPositionType.Empty
 import org.dots.game.core.InitialPositionType.Single
+import org.dots.game.core.InitialPositionType.DoubleCross
+import org.dots.game.core.InitialPositionType.Custom
 
 class Rules(
     val width: Int = 39,
@@ -16,31 +18,49 @@ class Rules(
         val Standard = Rules()
     }
 
+    /**
+     * The recognizer doesn't consider crosses orientation and positions.
+     */
     val initialPositionType: InitialPositionType by lazy(LazyThreadSafetyMode.PUBLICATION) {
         when (initialMoves.size) {
             0 -> Empty
             1 -> Single
             4 -> {
                 val sortedMoveInfos = initialMoves.sortedBy { it.position.squareDistanceToZero() }
-                val firstMoveInfo =  sortedMoveInfos.first()
-                val secondMoveInfo = sortedMoveInfos[1]
-                val thirdMoveInfo = sortedMoveInfos[2]
-                if (secondMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
-                    thirdMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
-                    secondMoveInfo.position != thirdMoveInfo.position &&
-                    secondMoveInfo.player == thirdMoveInfo.player &&
-                    secondMoveInfo.player != firstMoveInfo.player
-                ) {
-                    val fourthMoveInfo =  sortedMoveInfos[3]
-                    if (fourthMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 2 &&
-                        fourthMoveInfo.player == firstMoveInfo.player) {
-                        return@lazy Cross
-                    }
-                }
-                InitialPositionType.Custom
+                if (recognizeCross(sortedMoveInfos, 0))
+                    Cross
+                else
+                    Custom
             }
-            else -> InitialPositionType.Custom
+            8 -> {
+                val sortedMoveInfos = initialMoves.sortedBy { it.position.squareDistanceToZero() }
+                if (recognizeCross(sortedMoveInfos, 0) && recognizeCross(sortedMoveInfos, 4))
+                    DoubleCross
+                else
+                    Custom
+            }
+            else -> Custom
         }
+    }
+
+    private fun recognizeCross(sortedMoveInfos: List<MoveInfo>, startMoveInfoIndex: Int): Boolean {
+        val firstMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex) ?: return false
+        val secondMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex + 1) ?: return false
+        val thirdMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex + 2) ?: return false
+        if (secondMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
+            thirdMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
+            secondMoveInfo.position != thirdMoveInfo.position &&
+            secondMoveInfo.player == thirdMoveInfo.player &&
+            secondMoveInfo.player != firstMoveInfo.player
+        ) {
+            val fourthMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex + 3) ?: return false
+            if (fourthMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 2 &&
+                fourthMoveInfo.player == firstMoveInfo.player
+            ) {
+                return true
+            }
+        }
+        return false
     }
 }
 
@@ -48,6 +68,7 @@ enum class InitialPositionType {
     Empty,
     Single,
     Cross,
+    DoubleCross,
     Custom;
 }
 
@@ -92,16 +113,28 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
         Cross -> {
             if (width < 2 || height < 2) return null
 
-            val startPosition = Position(width / 2, height / 2)
-            return listOf(
-                MoveInfo(startPosition, Player.First),
-                MoveInfo(Position(startPosition.x + 1, startPosition.y), Player.Second),
-                MoveInfo(Position(startPosition.x + 1, startPosition.y + 1), Player.First),
-                MoveInfo(Position(startPosition.x, startPosition.y + 1), Player.Second),
-            )
+            return mutableListOf<MoveInfo>().apply { addCross(Position(width / 2, height / 2), Player.First) }
+        }
+        DoubleCross -> {
+            if (width < 4 || height < 2) return null
+
+            val middleX = width / 2 + 1
+            val middleY = height / 2
+            return mutableListOf<MoveInfo>().apply {
+                addCross(Position(middleX - 2, middleY), Player.First)
+                addCross(Position(middleX, middleY), Player.Second)
+            }
         }
         else -> {
             return emptyList()
         }
     }
+}
+
+private fun MutableList<MoveInfo>.addCross(position: Position, startPlayer: Player) {
+    val oppPlayer = startPlayer.opposite()
+    add(MoveInfo(position, startPlayer))
+    add(MoveInfo(Position(position.x + 1, position.y), oppPlayer))
+    add(MoveInfo(Position(position.x + 1, position.y + 1), startPlayer))
+    add(MoveInfo(Position(position.x, position.y + 1), oppPlayer))
 }
