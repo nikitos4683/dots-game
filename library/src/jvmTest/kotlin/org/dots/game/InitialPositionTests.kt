@@ -35,10 +35,18 @@ class InitialPositionTests {
     }
 
     @Test
+    fun singlePositionGeneration() {
+        assertNull(InitialPositionType.Single.generateDefaultInitialPositions(0, 0))
+        assertEquals(MoveInfo(Position(0, 0), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(1, 1)!!.single())
+        assertEquals(MoveInfo(Position(1, 1), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(2, 2)!!.single())
+    }
+
+    @Test
     fun initialPositionTypeRecognition() {
         checkRecognition(InitialPositionType.Empty)
 
-        checkRecognition(InitialPositionType.Custom, MoveInfo(Position(19, 19), Player.First))
+        checkRecognition(InitialPositionType.Single, MoveInfo(Position(19, 19), Player.First))
+        checkRecognition(InitialPositionType.Single, MoveInfo(Position(19, 19), Player.Second))
 
         checkRecognition(InitialPositionType.Cross,
             MoveInfo(Position(19, 19), Player.First),

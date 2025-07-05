@@ -2,6 +2,7 @@ package org.dots.game.core
 
 import org.dots.game.core.InitialPositionType.Cross
 import org.dots.game.core.InitialPositionType.Empty
+import org.dots.game.core.InitialPositionType.Single
 
 class Rules(
     val width: Int = 39,
@@ -15,11 +16,11 @@ class Rules(
         val Standard = Rules()
     }
 
-    val initialPositionType: InitialPositionType by lazy {
-        if (initialMoves.isEmpty()) {
-            Empty
-        } else {
-            if (initialMoves.size == 4) {
+    val initialPositionType: InitialPositionType by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        when (initialMoves.size) {
+            0 -> Empty
+            1 -> Single
+            4 -> {
                 val sortedMoveInfos = initialMoves.sortedBy { it.position.squareDistanceToZero() }
                 val firstMoveInfo =  sortedMoveInfos.first()
                 val secondMoveInfo = sortedMoveInfos[1]
@@ -32,18 +33,20 @@ class Rules(
                 ) {
                     val fourthMoveInfo =  sortedMoveInfos[3]
                     if (fourthMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 2 &&
-                            fourthMoveInfo.player == firstMoveInfo.player) {
+                        fourthMoveInfo.player == firstMoveInfo.player) {
                         return@lazy Cross
                     }
                 }
+                InitialPositionType.Custom
             }
-            InitialPositionType.Custom
+            else -> InitialPositionType.Custom
         }
     }
 }
 
 enum class InitialPositionType {
     Empty,
+    Single,
     Cross,
     Custom;
 }
@@ -77,11 +80,16 @@ enum class BaseMode {
 }
 
 fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int): List<MoveInfo>? {
-    when {
-        this == Empty -> {
+    when (this) {
+        Empty -> {
             return emptyList()
         }
-        this == Cross -> {
+        Single -> {
+            if (width < 1 || height < 1) return null
+
+            return listOf(MoveInfo(Position(width / 2, height / 2), Player.First))
+        }
+        Cross -> {
             if (width < 2 || height < 2) return null
 
             val startPosition = Position(width / 2, height / 2)
