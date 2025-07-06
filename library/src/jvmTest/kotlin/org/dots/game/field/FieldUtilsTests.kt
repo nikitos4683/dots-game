@@ -129,8 +129,8 @@ class FieldUtilsTests : FieldTests() {
         val rules = Rules(width, height, initialMoves = Cross.generateDefaultInitialPositions(width, height)!!)
         val field = Field(rules)
 
-        field.makeMove(Position(3, 1), Player.First)
-        field.makeMove(Position(4, 2), Player.First)
+        field.makeMove(Position(2, 1), Player.First)
+        field.makeMove(Position(1, 2), Player.First)
         field.makeMove(Position.RESIGN, Player.Second)
 
         val newField = field.clone()

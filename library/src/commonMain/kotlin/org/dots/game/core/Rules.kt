@@ -136,7 +136,7 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
             if (width < 2 || height < 2) return null
 
             // Obey notago implementation for odd height
-            return mutableListOf<MoveInfo>().apply { addCross(Position((width + 1) / 2, height / 2), Player.First) }
+            return mutableListOf<MoveInfo>().apply { addCross(Position((width + 1) / 2, height / 2), Player.Second) }
         }
         DoubleCross -> {
             if (width < 4 || height < 2) return null
@@ -144,8 +144,8 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
             val middleX = (width + 1) / 2 + 1
             val middleY = height / 2 // Obey notago implementation for odd height
             return mutableListOf<MoveInfo>().apply {
-                addCross(Position(middleX - 2, middleY), Player.First)
-                addCross(Position(middleX, middleY), Player.Second)
+                addCross(Position(middleX - 2, middleY), Player.Second)
+                addCross(Position(middleX, middleY), Player.First)
             }
         }
         QuadrupleCross -> {
@@ -162,10 +162,10 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
                 offsetY = (height - 3) / 3 + 1
             }
             return mutableListOf<MoveInfo>().apply {
-                addCross(Position(offsetX, offsetY), Player.First)
-                addCross(Position(width - offsetX, offsetY), Player.First)
-                addCross(Position(width - offsetX, height - offsetY), Player.First)
-                addCross(Position(offsetX, height - offsetY), Player.First)
+                addCross(Position(offsetX, offsetY), Player.Second)
+                addCross(Position(width - offsetX, offsetY), Player.Second)
+                addCross(Position(width - offsetX, height - offsetY), Player.Second)
+                addCross(Position(offsetX, height - offsetY), Player.Second)
             }
         }
         else -> {
