@@ -4,7 +4,9 @@ import org.dots.game.core.InitialPositionType.Cross
 import org.dots.game.core.InitialPositionType.Empty
 import org.dots.game.core.InitialPositionType.Single
 import org.dots.game.core.InitialPositionType.DoubleCross
+import org.dots.game.core.InitialPositionType.QuadrupleCross
 import org.dots.game.core.InitialPositionType.Custom
+import kotlin.math.round
 
 class Rules(
     val width: Int = 39,
@@ -25,42 +27,59 @@ class Rules(
         when (initialMoves.size) {
             0 -> Empty
             1 -> Single
-            4 -> {
-                val sortedMoveInfos = initialMoves.sortedBy { it.position.squareDistanceToZero() }
-                if (recognizeCross(sortedMoveInfos, 0))
-                    Cross
-                else
-                    Custom
+            else -> {
+                var maxX = 0
+                var maxY = 0
+                for (initialMove in initialMoves) {
+                    initialMove.position.let {
+                        if (it.x > maxX) maxX = it.x
+                        if (it.y > maxY) maxY = it.y
+                    }
+                }
+
+                val movesArray: Array<Array<Player?>> = Array(maxX) { Array(maxY) { null } }
+
+                for (initialMove in initialMoves) {
+                    val (position, player, _) = initialMove
+                    movesArray[position.x - 1][position.y - 1] = player
+                }
+
+                var crossesCount = 0
+                val ignoredPositions = hashSetOf<Pair<Int, Int>>()
+                for (y in 0 until maxY) {
+                    for (x in 0 until maxX) {
+                        if (!ignoredPositions.contains(x to y) && movesArray.recognizeCross(x, y)) {
+                            ignoredPositions.apply {
+                                add(Pair(x, y))
+                                add(Pair(x + 1, y))
+                                add(Pair(x + 1, y + 1))
+                                add(Pair(x, y + 1))
+                            }
+                            crossesCount++
+                        }
+                    }
+                }
+
+                when (crossesCount) {
+                    1 -> Cross
+                    2 -> DoubleCross
+                    4 -> QuadrupleCross
+                    else -> Custom
+                }
             }
-            8 -> {
-                val sortedMoveInfos = initialMoves.sortedBy { it.position.squareDistanceToZero() }
-                if (recognizeCross(sortedMoveInfos, 0) && recognizeCross(sortedMoveInfos, 4))
-                    DoubleCross
-                else
-                    Custom
-            }
-            else -> Custom
         }
     }
 
-    private fun recognizeCross(sortedMoveInfos: List<MoveInfo>, startMoveInfoIndex: Int): Boolean {
-        val firstMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex) ?: return false
-        val secondMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex + 1) ?: return false
-        val thirdMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex + 2) ?: return false
-        if (secondMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
-            thirdMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 1 &&
-            secondMoveInfo.position != thirdMoveInfo.position &&
-            secondMoveInfo.player == thirdMoveInfo.player &&
-            secondMoveInfo.player != firstMoveInfo.player
-        ) {
-            val fourthMoveInfo = sortedMoveInfos.elementAtOrNull(startMoveInfoIndex + 3) ?: return false
-            if (fourthMoveInfo.position.squareDistanceTo(firstMoveInfo.position) == 2 &&
-                fourthMoveInfo.player == firstMoveInfo.player
-            ) {
-                return true
-            }
+    private fun Array<Array<Player?>>.recognizeCross(x: Int, y: Int): Boolean {
+        fun getPlayer(x: Int, y: Int): Player? {
+            return elementAtOrNull(x)?.elementAtOrNull(y)
         }
-        return false
+
+        val firstPlayer = getPlayer(x, y) ?: return false
+        val secondPlayer = getPlayer(x + 1, y) ?: return false
+        if (getPlayer(x + 1, y + 1) != firstPlayer) return false
+        if (getPlayer(x, y + 1) != secondPlayer) return false
+        return true
     }
 }
 
@@ -69,6 +88,7 @@ enum class InitialPositionType {
     Single,
     Cross,
     DoubleCross,
+    QuadrupleCross,
     Custom;
 }
 
@@ -123,6 +143,26 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
             return mutableListOf<MoveInfo>().apply {
                 addCross(Position(middleX - 2, middleY), Player.First)
                 addCross(Position(middleX, middleY), Player.Second)
+            }
+        }
+        QuadrupleCross -> {
+            if (width < 4 || height < 4) return null
+
+            val offsetX: Int
+            val offsetY: Int
+            if (width == 39 && height == 32) {
+                offsetX = 12
+                offsetY = 11
+            } else {
+                offsetX = round((width - 4).toDouble() / 3).toInt() + 1
+                offsetY = round((height - 4).toDouble() / 3).toInt() + 1
+            }
+            // Keep symmetry of crosses on arbitrary size
+            return mutableListOf<MoveInfo>().apply {
+                addCross(Position(offsetX, offsetY), Player.First)
+                addCross(Position(width - offsetX, offsetY), Player.First)
+                addCross(Position(width - offsetX, height - offsetY), Player.First)
+                addCross(Position(offsetX, height - offsetY), Player.First)
             }
         }
         else -> {
