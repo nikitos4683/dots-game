@@ -13,6 +13,8 @@ import org.dots.game.core.Field
 import org.dots.game.core.InitialPositionType
 import org.dots.game.core.Rules
 import java.io.File
+import java.io.PrintStream
+import java.nio.charset.StandardCharsets.UTF_8
 import kotlin.reflect.KProperty
 
 class CliArgs : CliktCommand() {
@@ -27,7 +29,7 @@ class CliArgs : CliktCommand() {
     val gamesCount: Int by option("-c", "--count")
         .int()
         .restrictTo(1)
-        .default(1000)
+        .default(10000)
         .help("Number of games to process")
     val gamesCountToDrop: Int? by option()
         .int()
@@ -57,19 +59,22 @@ class CliArgs : CliktCommand() {
         .help("Enabled extra checks (for instance, on rollback)")
 
     override fun run() {
+        val outputStream = PrintStream(System.out, true, UTF_8)
+
         val path = path
         if (path != null) {
-            println("SGF Directory or File mode activated...")
-            reportSpecifiedButUnusedParameter(::width, width)
-            reportSpecifiedButUnusedParameter(::height, height)
-            reportSpecifiedButUnusedParameter(captureEmptyBasesOption, captureEmptyBases)
-            reportSpecifiedButUnusedParameter(::initialPosition, initialPosition)
-            reportSpecifiedButUnusedParameter(::seed, seed)
-            SgfAnalyser.process(path, logFile, numberOfFilesToProcess = gamesCount)
+            outputStream.println("SGF Directory or File mode activated...")
+            outputStream.reportSpecifiedButUnusedParameter(::width, width)
+            outputStream.reportSpecifiedButUnusedParameter(::height, height)
+            outputStream.reportSpecifiedButUnusedParameter(captureEmptyBasesOption, captureEmptyBases)
+            outputStream.reportSpecifiedButUnusedParameter(::initialPosition, initialPosition)
+            outputStream.reportSpecifiedButUnusedParameter(::seed, seed)
+            SgfAnalyser.process(outputStream, path, logFile, numberOfFilesToProcess = gamesCount)
         } else {
-            println("Random games mode activated...")
-            reportSpecifiedButUnusedParameter(::gamesCountToDrop, gamesCountToDrop)
+            outputStream.println("Random games mode activated...")
+            outputStream.reportSpecifiedButUnusedParameter(::gamesCountToDrop, gamesCountToDrop)
             RandomGameAnalyser.process(
+                outputStream,
                 gamesCount,
                 width ?: Rules.Standard.width,
                 height ?: Rules.Standard.height,
@@ -80,11 +85,11 @@ class CliArgs : CliktCommand() {
             )
         }
     }
-    fun reportSpecifiedButUnusedParameter(property: KProperty<*>, value: Any?) {
+    fun PrintStream.reportSpecifiedButUnusedParameter(property: KProperty<*>, value: Any?) {
         return reportSpecifiedButUnusedParameter("--" + property.name, value)
     }
 
-    fun reportSpecifiedButUnusedParameter(optionName: String, value: Any?) {
+    fun PrintStream.reportSpecifiedButUnusedParameter(optionName: String, value: Any?) {
         if (value != null) {
             println("⚠ The parameter `${optionName}` is specified but unused")
         }
