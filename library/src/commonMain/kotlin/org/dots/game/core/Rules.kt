@@ -6,7 +6,6 @@ import org.dots.game.core.InitialPositionType.Single
 import org.dots.game.core.InitialPositionType.DoubleCross
 import org.dots.game.core.InitialPositionType.QuadrupleCross
 import org.dots.game.core.InitialPositionType.Custom
-import kotlin.math.round
 
 class Rules(
     val width: Int = 39,
@@ -120,6 +119,9 @@ enum class BaseMode {
     AllOpponentDots;
 }
 
+/**
+ * The generator tries to obey notago and bbs implementations
+ */
 fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int): List<MoveInfo>? {
     when (this) {
         Empty -> {
@@ -128,18 +130,19 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
         Single -> {
             if (width < 1 || height < 1) return null
 
-            return listOf(MoveInfo(Position(width / 2, height / 2), Player.First))
+            return listOf(MoveInfo(Position(width / 2 + 1, height / 2 + 1), Player.First))
         }
         Cross -> {
             if (width < 2 || height < 2) return null
 
-            return mutableListOf<MoveInfo>().apply { addCross(Position(width / 2, height / 2), Player.First) }
+            // Obey notago implementation for odd height
+            return mutableListOf<MoveInfo>().apply { addCross(Position((width + 1) / 2, height / 2), Player.First) }
         }
         DoubleCross -> {
             if (width < 4 || height < 2) return null
 
-            val middleX = width / 2 + 1
-            val middleY = height / 2
+            val middleX = (width + 1) / 2 + 1
+            val middleY = height / 2 // Obey notago implementation for odd height
             return mutableListOf<MoveInfo>().apply {
                 addCross(Position(middleX - 2, middleY), Player.First)
                 addCross(Position(middleX, middleY), Player.Second)
@@ -151,13 +154,13 @@ fun InitialPositionType.generateDefaultInitialPositions(width: Int, height: Int)
             val offsetX: Int
             val offsetY: Int
             if (width == 39 && height == 32) {
+                // Obey notago and bbs implementation for the standard field
                 offsetX = 12
                 offsetY = 11
             } else {
-                offsetX = round((width - 4).toDouble() / 3).toInt() + 1
-                offsetY = round((height - 4).toDouble() / 3).toInt() + 1
+                offsetX = (width - 3) / 3 + 1
+                offsetY = (height - 3) / 3 + 1
             }
-            // Keep symmetry of crosses on arbitrary size
             return mutableListOf<MoveInfo>().apply {
                 addCross(Position(offsetX, offsetY), Player.First)
                 addCross(Position(width - offsetX, offsetY), Player.First)

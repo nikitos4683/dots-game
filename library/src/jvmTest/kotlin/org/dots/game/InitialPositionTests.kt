@@ -24,15 +24,29 @@ class InitialPositionTests {
         }
 
         with(InitialPositionType.Cross.generateDefaultInitialPositions(9, 9)!!) {
-            checkCross(4, 4)
+            checkCross(5, 4)
+        }
+
+        with(InitialPositionType.Cross.generateDefaultInitialPositions(19, 19)!!) {
+            checkCross(10, 9)
+        }
+
+        with(InitialPositionType.Cross.generateDefaultInitialPositions(39, 32)!!) {
+            checkCross(20, 16)
+        }
+
+        with(InitialPositionType.Cross.generateDefaultInitialPositions(36, 36)!!) {
+            checkCross(18, 18)
         }
     }
 
     @Test
     fun singlePositionGeneration() {
         assertNull(InitialPositionType.Single.generateDefaultInitialPositions(0, 0))
-        assertEquals(MoveInfo(Position(0, 0), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(1, 1)!!.single())
-        assertEquals(MoveInfo(Position(1, 1), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(2, 2)!!.single())
+        assertEquals(MoveInfo(Position(1, 1), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(1, 1)!!.single())
+        assertEquals(MoveInfo(Position(2, 2), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(2, 2)!!.single())
+        assertEquals(MoveInfo(Position(10, 10), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(19, 19)!!.single())
+        assertEquals(MoveInfo(Position(20, 17), Player.First), InitialPositionType.Single.generateDefaultInitialPositions(39, 32)!!.single())
     }
 
     @Test
@@ -45,8 +59,23 @@ class InitialPositionTests {
         }
 
         with(InitialPositionType.DoubleCross.generateDefaultInitialPositions(5, 2)!!) {
-            take(4).checkCross(1, 1)
-            drop(4).checkCross(3, 1, startPlayer = Player.Second)
+            take(4).checkCross(2, 1)
+            drop(4).checkCross(4, 1, startPlayer = Player.Second)
+        }
+
+        with(InitialPositionType.DoubleCross.generateDefaultInitialPositions(19, 19)!!) {
+            take(4).checkCross(9, 9)
+            drop(4).checkCross(11, 9, startPlayer = Player.Second)
+        }
+
+        with(InitialPositionType.DoubleCross.generateDefaultInitialPositions(39, 32)!!) {
+            take(4).checkCross(19, 16)
+            drop(4).checkCross(21, 16, startPlayer = Player.Second)
+        }
+
+        with(InitialPositionType.DoubleCross.generateDefaultInitialPositions(36, 36)!!) {
+            take(4).checkCross(17, 18)
+            drop(4).checkCross(19, 18, startPlayer = Player.Second)
         }
     }
 
@@ -94,6 +123,13 @@ class InitialPositionTests {
             drop(4).take(4).checkCross(27, 11)
             drop(8).take(4).checkCross(27, 21)
             drop(12).take(4).checkCross(12, 21)
+        }
+
+        with(InitialPositionType.QuadrupleCross.generateDefaultInitialPositions(36, 36)!!) {
+            take(4).checkCross(12, 12)
+            drop(4).take(4).checkCross(24, 12)
+            drop(8).take(4).checkCross(24, 24)
+            drop(12).take(4).checkCross(12, 24)
         }
     }
 
