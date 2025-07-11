@@ -232,7 +232,7 @@ class GameTreeElementTests {
     }
 
     private fun initializeGameTree(): GameTree {
-        val field = Field(Rules(8, 8))
+        val field = Field.create(Rules(8, 8))
         return GameTree(field)
     }
 

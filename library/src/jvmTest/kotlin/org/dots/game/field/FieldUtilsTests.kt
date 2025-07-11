@@ -127,7 +127,7 @@ class FieldUtilsTests : FieldTests() {
         val width = 4
         val height = 4
         val rules = Rules(width, height, initialMoves = Cross.generateDefaultInitialPositions(width, height)!!)
-        val field = Field(rules)
+        val field = Field.create(rules)
 
         field.makeMove(Position(2, 1), Player.First)
         field.makeMove(Position(1, 2), Player.First)
@@ -160,7 +160,7 @@ class FieldUtilsTests : FieldTests() {
         val width = 4
         val height = 4
         val rules = Rules(width, height, initialMoves = Cross.generateDefaultInitialPositions(width, height)!!)
-        val field = Field(rules)
+        val field = Field.create(rules)
 
         field.makeMove(Position(3, 1), Player.First)
         field.makeMove(Position(4, 2), Player.First)

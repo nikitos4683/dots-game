@@ -317,7 +317,7 @@ class SgfConverter(
         )
 
         val rules = Rules(width, height, initialMoves = initialMoves)
-        val field = Field(rules) { moveInfo, withinBounds, currentMoveNumber ->
+        val field = Field.create(rules) { moveInfo, withinBounds, currentMoveNumber ->
             moveInfo.reportPositionThatViolatesRules(withinBounds, width, height, currentMoveNumber)
         }
 

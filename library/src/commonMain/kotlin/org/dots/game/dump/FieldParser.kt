@@ -28,7 +28,7 @@ object FieldParser {
     ): Field {
         val (width, height, allMoves) = parse(data, diagnosticReporter)
 
-        return Field(initializeRules(width, height)).apply {
+        return Field.create (initializeRules(width, height)).apply {
             for ((number, move) in allMoves) {
                 val position = move.position
                 if (makeMoveUnsafe(position, move.player) == null) {

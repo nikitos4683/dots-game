@@ -31,7 +31,7 @@ fun App() {
     MaterialTheme {
         var start by remember { mutableStateOf(true) }
         var newGameDialogRules by remember { mutableStateOf(loadRules()) }
-        var field: Field by remember {  mutableStateOf(Field(newGameDialogRules)) }
+        var field: Field by remember {  mutableStateOf(Field.create(newGameDialogRules)) }
         var fieldViewData: FieldViewData by remember { mutableStateOf<FieldViewData>(FieldViewData(field)) }
         var gameTree: GameTree by remember { mutableStateOf(GameTree(field)) }
         var gameTreeViewData: GameTreeViewData by remember { mutableStateOf(GameTreeViewData(gameTree)) }
@@ -76,8 +76,8 @@ fun App() {
         }
 
         fun resetFieldAndGameTree(rules: Rules) {
-            val newField = Field(rules)
-            initializeFieldAndGameTree(newField, GameTree(newField))
+            val newField = Field.create(rules)
+            initializeFieldAndGameTree(newField, GameTree(newField), rewindForward = false)
         }
 
         if (showNewGameDialog.value) {
@@ -108,7 +108,7 @@ fun App() {
                 },
                 onConfirmation = { game ->
                     openGameDialog.value = false
-                    initializeFieldAndGameTree(game.gameTree.field, game.gameTree)
+                    initializeFieldAndGameTree(game.gameTree.field, game.gameTree, rewindForward = true)
                 }
             )
         }
@@ -241,6 +241,23 @@ fun App() {
 
                     EndMoveButton(isGrounding = true)
                     EndMoveButton(isGrounding = false)
+                }
+
+                Row(rowModifier) {
+                    @Composable
+                    fun TransformButton(transformType: TransformType, text: String) {
+                        Button(onClick = {
+                            val newGameTree = gameTree.transform(transformType)
+                            initializeFieldAndGameTree(newGameTree.field, newGameTree, rewindForward = false)
+                        }, playerButtonModifier) {
+                            Text(text)
+                        }
+                    }
+
+                    TransformButton(TransformType.RotateCw90, "↻")
+                    TransformButton(TransformType.RotateCw270, "↺")
+                    TransformButton(TransformType.FlipHorizontal, "⇔")
+                    TransformButton(TransformType.FlipVertical, "⇕")
                 }
 
                 GameTreeView(currentGameTreeNode, gameTree, gameTreeViewData, uiSettings, focusRequester) {

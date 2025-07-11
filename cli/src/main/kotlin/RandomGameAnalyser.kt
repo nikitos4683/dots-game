@@ -52,7 +52,7 @@ object RandomGameAnalyser {
             var totalTimeNs = 0L
 
             val startNanos = System.nanoTime()
-            val field = Field(rules)
+            val field = Field.create(rules)
 
             val randomMoves = buildList {
                 for (y in 1..fieldHeight) {

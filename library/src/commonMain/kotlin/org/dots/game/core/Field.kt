@@ -4,7 +4,7 @@ import org.dots.game.core.Position.Companion.COORDINATE_BITS_COUNT
 import render
 import kotlin.jvm.JvmInline
 
-class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }) {
+class Field {
     companion object {
         const val OFFSET: Int = 1
         // Max field size is 62 * 62 (2 positions are reserved for a border)
@@ -13,20 +13,66 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
 
         fun checkWidth(value: Int): Boolean = value in 0..MAX_WIDTH
         fun checkHeight(value: Int): Boolean = value in 0..MAX_HEIGHT
+
+        fun create(rules: Rules, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }): Field {
+            return Field(rules, onIncorrectInitialMove).apply {
+                for (moveInfo in rules.initialMoves) {
+                    val position = moveInfo.position
+                    if (!checkPositionWithinBounds(position)) {
+                        onIncorrectInitialMove(moveInfo, false, currentMoveNumber)
+                        continue
+                    }
+
+                    if (!checkValidMove(position, moveInfo.player)) {
+                        onIncorrectInitialMove(moveInfo, true, currentMoveNumber)
+                        continue
+                    }
+
+                    makeMoveUnsafe(position, moveInfo.player)
+                }
+
+                initialMovesCount = moveResults.size
+            }
+        }
     }
 
-    val width: Int = rules.width
-    val height: Int = rules.height
-    val realWidth: Int = width + OFFSET * 2
-    val realHeight: Int = height + OFFSET * 2
-    val initialMovesCount: Int
+    private constructor(rules: Rules, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit) {
+        this.rules = rules
+        this.width = rules.width
+        this.height = rules.height
+        this.realWidth = width + OFFSET * 2
+        this.realHeight = height + OFFSET * 2
+        this.onIncorrectInitialMove = onIncorrectInitialMove
+        this.dots = IntArray(realWidth * realHeight) { DotState.Empty.value }
+        this.numberOfLegalMoves = width * height
+        require(checkWidth(width) && checkHeight(height))
 
-    // Initialize the field as a primitive int array with expanded borders to get rid of extra range checks and boxing
-    private val dots: IntArray = IntArray(realWidth * realHeight) { DotState.Empty.value }
+        if (rules.captureByBorder) {
+            for (y in 0 until realHeight) {
+                for (x in 0 until realWidth) {
+                    if (!checkPositionWithinBounds(x, y)) {
+                        Position(x, y).setState(DotState.Border)
+                    }
+                }
+            }
+        }
+    }
+
+    val rules: Rules
+    val onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit
+    val width: Int
+    val height: Int
+    val realWidth: Int
+    val realHeight: Int
+    var initialMovesCount: Int = 0
+        private set
+
+    // Use primitive int array with expanded borders to get rid of extra range checks and boxing
+    private val dots: IntArray
 
     private val moveResults = mutableListOf<MoveResult>()
 
-    var numberOfLegalMoves: Int = width * height
+    var numberOfLegalMoves: Int
         private set
 
     var gameResult: GameResult? = null
@@ -41,16 +87,13 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
     private val startPositionsList = ArrayList<Position>(4)
     private val closuresList = ArrayList<ClosureData>(4)
 
-    init {
-        require(checkWidth(width) && checkHeight(height))
-        clear(onIncorrectInitialMove)
-        initialMovesCount = moveResults.size
-    }
+    fun clear() {
+        val numberOfMoveResultsToRemove = moveResults.size - initialMovesCount
+        for (i in 0 until numberOfMoveResultsToRemove) {
+            moveResults.removeLast()
+        }
 
-    fun clear(onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }) {
-        moveResults.clear()
-
-        numberOfLegalMoves = width * height
+        numberOfLegalMoves = width * height - initialMovesCount
         gameResult = null
         player1Score = 0
         player2Score = 0
@@ -65,32 +108,14 @@ class Field(val rules: Rules = Rules.Standard, onIncorrectInitialMove: (MoveInfo
                 )
             }
         }
-
-        for (moveInfo in rules.initialMoves) {
-            val position = moveInfo.position
-            if (!checkPositionWithinBounds(position)) {
-                onIncorrectInitialMove(moveInfo, false, currentMoveNumber)
-                continue
-            }
-
-            if (!checkValidMove(position, moveInfo.player)) {
-                onIncorrectInitialMove(moveInfo, true, currentMoveNumber)
-                continue
-            }
-
-            makeMoveUnsafe(position, moveInfo.player)
-        }
     }
 
     fun clone(): Field {
-        val new = Field(rules)
+        val new = Field(rules, onIncorrectInitialMove)
+        new.initialMovesCount = initialMovesCount
         dots.copyInto(new.dots)
-        var moveResultCounter = 0
-        for (moveResult in moveResults) {
-            if (++moveResultCounter > initialMovesCount) {
-                new.moveResults.add(moveResult)
-            }
-        }
+        new.moveResults.clear()
+        new.moveResults.addAll(moveResults)
         new.numberOfLegalMoves = numberOfLegalMoves
         new.gameResult = gameResult
         new.player1Score = player1Score

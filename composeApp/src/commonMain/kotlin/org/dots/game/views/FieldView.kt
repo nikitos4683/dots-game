@@ -216,7 +216,7 @@ private fun Grid(field: Field) {
 
 @Composable
 private fun Moves(currentMove: MoveResult?, field: Field, uiSettings: UiSettings) {
-    val fieldWithIncrementalUpdate = Field(field.rules) // TODO: rewrite without using temp field
+    val fieldWithIncrementalUpdate = Field.create(field.rules) // TODO: rewrite without using temp field
 
     val gameOverMove = field.moveSequence.lastOrNull()?.takeIf { it.position.isGameOverMove() }
 
