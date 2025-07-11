@@ -3,11 +3,12 @@ package org.dots.game.core
 class GameTree(val field: Field, val player1TimeLeft: Double? = null, val player2TimeLeft: Double? = null) {
     val rootNode: GameTreeNode = GameTreeNode(null, null, 0, mutableMapOf())
     private val allNodes: MutableSet<GameTreeNode> = mutableSetOf(rootNode)
+    private val memoizedNextChild: MutableMap<GameTreeNode, GameTreeNode> = mutableMapOf()
     var currentNode: GameTreeNode = rootNode
         private set
+
     var memoizePaths: Boolean = true
     var loopedSiblingNavigation: Boolean = true
-    private val memoizedNextChild: MutableMap<GameTreeNode, GameTreeNode> = mutableMapOf()
 
     val allNodesCount: Int
         get() = allNodes.size

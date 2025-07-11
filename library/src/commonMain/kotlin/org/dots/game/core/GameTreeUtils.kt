@@ -109,3 +109,73 @@ fun GameTree.getElements(mainBranchIsAlwaysStraight: Boolean = true, diagonalCon
 
     return result
 }
+
+fun GameTree.transform(transformType: TransformType): GameTree {
+    val newWidth: Int
+    val newHeight: Int
+    val rules = field.rules
+    when (transformType) {
+        TransformType.RotateCw90,
+        TransformType.RotateCw270 -> {
+            newWidth = rules.height
+            newHeight = rules.width
+        }
+        TransformType.Rotate180,
+        TransformType.FlipHorizontal,
+        TransformType.FlipVertical -> {
+            newWidth = rules.width
+            newHeight = rules.height
+        }
+    }
+
+    fun Position.transform() = transform(transformType, field.realWidth, field.realHeight)
+
+    val newField = Field.create(Rules(
+        width = newWidth,
+        height = newHeight,
+        captureByBorder = rules.captureByBorder,
+        baseMode = rules.baseMode,
+        suicideAllowed = rules.suicideAllowed,
+        initialMoves = rules.initialMoves.map { (position, player, extraInfo) ->
+            MoveInfo(position.transform(), player, extraInfo)
+        }
+    ))
+
+    val newGameTree = GameTree(newField, player1TimeLeft, player2TimeLeft)
+    newGameTree.memoizePaths = memoizePaths
+    newGameTree.loopedSiblingNavigation = loopedSiblingNavigation
+
+    val savedCurrentNode = currentNode
+    var newCurrentNode = newGameTree.currentNode
+
+    fun GameTreeNode.traverseChildren() {
+        if (!isRoot) {
+            val positionPlayer = moveResult?.positionPlayer
+            val newMoveResult = positionPlayer?.let {
+                newField.makeMove(it.position.transform(), it.player)
+            }
+            newGameTree.add(
+                newMoveResult,
+                timeLeft,
+                comment,
+                labels,
+                circles?.map { it.transform() },
+                squares?.map { it.transform() },
+            )
+        }
+        if (this == savedCurrentNode) {
+            newCurrentNode = newGameTree.currentNode
+        }
+        for (nextNode in nextNodes.values) {
+            nextNode.traverseChildren()
+            back()
+            newGameTree.back()
+        }
+    }
+
+    rootNode.traverseChildren()
+
+    newGameTree.switch(newCurrentNode)
+
+    return newGameTree
+}

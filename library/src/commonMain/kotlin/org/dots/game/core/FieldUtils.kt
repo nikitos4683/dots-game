@@ -176,3 +176,13 @@ fun Field.unmakeAllMovesAndCheck(failFunc: (String) -> Unit) {
     check(initialMovesCount == actualInitialMovesCount, ::initialMovesCount)
 }
 
+fun Position.transform(type: TransformType, width: Int, height: Int): Position {
+    val (x, y) = this
+    return when (type) {
+        TransformType.RotateCw90 -> Position(height - 1 - y, x)
+        TransformType.Rotate180 -> Position(width - 1 - x, height - y - 1)
+        TransformType.RotateCw270 -> Position(y, width - 1 - x)
+        TransformType.FlipHorizontal -> Position(width - 1 - x, y)
+        TransformType.FlipVertical -> Position(x, height - 1 - y)
+    }
+}

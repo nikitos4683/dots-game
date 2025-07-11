@@ -15,7 +15,7 @@ class Field {
         fun checkHeight(value: Int): Boolean = value in 0..MAX_HEIGHT
 
         fun create(rules: Rules, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit = { _, _, _ -> }): Field {
-            return Field(rules, onIncorrectInitialMove).apply {
+            return Field(rules).apply {
                 for (moveInfo in rules.initialMoves) {
                     val position = moveInfo.position
                     if (!checkPositionWithinBounds(position)) {
@@ -36,13 +36,12 @@ class Field {
         }
     }
 
-    private constructor(rules: Rules, onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit) {
+    private constructor(rules: Rules) {
         this.rules = rules
         this.width = rules.width
         this.height = rules.height
         this.realWidth = width + OFFSET * 2
         this.realHeight = height + OFFSET * 2
-        this.onIncorrectInitialMove = onIncorrectInitialMove
         this.dots = IntArray(realWidth * realHeight) { DotState.Empty.value }
         this.numberOfLegalMoves = width * height
         require(checkWidth(width) && checkHeight(height))
@@ -59,7 +58,6 @@ class Field {
     }
 
     val rules: Rules
-    val onIncorrectInitialMove: (MoveInfo, Boolean, Int) -> Unit
     val width: Int
     val height: Int
     val realWidth: Int
@@ -111,7 +109,7 @@ class Field {
     }
 
     fun clone(): Field {
-        val new = Field(rules, onIncorrectInitialMove)
+        val new = Field(rules)
         new.initialMovesCount = initialMovesCount
         dots.copyInto(new.dots)
         new.moveResults.clear()
@@ -121,6 +119,74 @@ class Field {
         new.player1Score = player1Score
         new.player2Score = player2Score
         return new
+    }
+
+    fun transform(transformType: TransformType): Field {
+        val newWidth: Int
+        val newHeight: Int
+        when (transformType) {
+            TransformType.RotateCw90,
+            TransformType.RotateCw270 -> {
+                newWidth = height
+                newHeight = width
+            }
+            TransformType.Rotate180,
+            TransformType.FlipHorizontal,
+            TransformType.FlipVertical -> {
+                newWidth = width
+                newHeight = height
+            }
+        }
+        val newField = Field(Rules(
+            width = newWidth,
+            height = newHeight,
+            captureByBorder = rules.captureByBorder,
+            baseMode = rules.baseMode,
+            suicideAllowed = rules.suicideAllowed,
+            initialMoves = listOf(), // It will be initialized later together with all moves.
+        ))
+        newField.initialMovesCount = initialMovesCount
+
+        fun Position.transform() = transform(transformType, realWidth, realHeight)
+
+        for (y in 0 until realHeight) {
+            for (x in 0 until realWidth) {
+                val oldState = Position(x, y).getState()
+                with(newField) {
+                    Position(x, y).transform().setState(oldState)
+                }
+            }
+        }
+        for (moveResult in moveResults) {
+            val position = moveResult.position
+
+            fun List<PositionState>.transformPositionStates(): List<PositionState> {
+                return map { (position, state) -> PositionState(position.transform(), state) }
+            }
+
+            newField.moveResults.add(MoveResult(
+                position.transform(),
+                moveResult.player,
+                moveResult.previousState,
+                extraPreviousPositionStates = moveResult.extraPreviousPositionStates?.transformPositionStates(),
+                bases = moveResult.bases?.map { base ->
+                    Base(
+                        base.player,
+                        base.playerDiff,
+                        base.oppositePlayerDiff,
+                        closurePositions = base.closurePositions.map { it.transform() },
+                        previousPositionStates = base.previousPositionStates.transformPositionStates(),
+                        isReal = base.isReal
+                    )
+                },
+                previousNumberOfLegalMoves = moveResult.previousNumberOfLegalMoves
+            ))
+        }
+        newField.numberOfLegalMoves = numberOfLegalMoves
+        newField.gameResult = gameResult
+        newField.player1Score = player1Score
+        newField.player2Score = player2Score
+        return newField
     }
 
     fun isGameOver(): Boolean = gameResult != null
