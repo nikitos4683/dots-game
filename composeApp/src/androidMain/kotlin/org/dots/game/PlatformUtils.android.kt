@@ -28,3 +28,14 @@ actual fun fileExists(filePath: String): Boolean = File(filePath).exists()
 actual suspend fun downloadFileText(fileUrl: String): String = URI.create(fileUrl).toURL().openStream().use {
     it.readBytes().decodeToString()
 }
+
+@Composable
+actual fun openFileDialog(
+    title: String,
+    allowedExtensions: List<String>,
+    onFileSelected: (String?) -> Unit
+) {
+    // File dialog is not implemented for Android platform
+    // On Android, file picking should use Activity Result APIs
+    onFileSelected(null)
+}

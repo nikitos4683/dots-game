@@ -38,6 +38,7 @@ import org.dots.game.LoadResult
 import org.dots.game.buildLineOffsets
 import org.dots.game.core.Games
 import org.dots.game.core.Rules
+import org.dots.game.openFileDialog
 import org.dots.game.toLineColumnDiagnostic
 
 @Composable
@@ -55,6 +56,7 @@ fun OpenDialog(
     var loadResult by remember { mutableStateOf<LoadResult?>(null) }
     var rewindToEnd by remember { mutableStateOf(openGameSettings.rewindToEnd) }
     var addFinishingMove by remember { mutableStateOf(openGameSettings.addFinishingMove) }
+    var showFileDialog by remember { mutableStateOf(false) }
 
     var initialization by remember { mutableStateOf(true) }
 
@@ -81,23 +83,48 @@ fun OpenDialog(
         initialization = false
     }
 
+    if (showFileDialog) {
+        openFileDialog(
+            title = "Open SGF File",
+            allowedExtensions = listOf("sgf", "sgfs")
+        ) { selectedPath ->
+            showFileDialog = false
+            selectedPath?.let {
+                pathOrContentTextFieldValue = TextFieldValue(it)
+                openOrLoad()
+            }
+        }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.width(500.dp).wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Path or Content: ", Modifier.fillMaxWidth(0.3f))
-                    TextField(
-                        pathOrContentTextFieldValue,
-                        {
-                            pathOrContentTextFieldValue = it
-                            openOrLoad()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = loadResult?.inputType is InputType.InputTypeWithPath,
-                        maxLines = if (loadResult?.inputType is InputType.InputTypeWithPath) 1 else 5,
-                        textStyle = TextStyle(fontFamily = FontFamily.Monospace),
-                        placeholder = { Text("Enter path to .sgf(s) file of its content") }
-                    )
+                Column {
+                    Text("Path or Content: ")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    ) {
+                        TextField(
+                            pathOrContentTextFieldValue,
+                            {
+                                pathOrContentTextFieldValue = it
+                                openOrLoad()
+                            },
+                            modifier = Modifier.weight(1f),
+                            singleLine = loadResult?.inputType is InputType.InputTypeWithPath,
+                            maxLines = if (loadResult?.inputType is InputType.InputTypeWithPath) 1 else 5,
+                            textStyle = TextStyle(fontFamily = FontFamily.Monospace),
+                            placeholder = { Text("Enter path to .sgf(s) file or its content") }
+                        )
+                        Button(
+                            onClick = { showFileDialog = true },
+                            modifier = Modifier.padding(0.dp)
+                        ) {
+                            Text("Browse")
+                        }
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

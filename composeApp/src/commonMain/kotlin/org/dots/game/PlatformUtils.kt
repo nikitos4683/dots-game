@@ -18,3 +18,10 @@ expect fun readFileText(filePath: String): String
 expect fun fileExists(filePath: String): Boolean
 
 expect suspend fun downloadFileText(fileUrl: String): String
+
+@Composable
+expect fun openFileDialog(
+    title: String = "Open File",
+    allowedExtensions: List<String> = emptyList(),
+    onFileSelected: (String?) -> Unit
+)

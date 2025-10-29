@@ -5,6 +5,8 @@ import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -14,6 +16,10 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import com.russhwolf.settings.PreferencesSettings
 import com.russhwolf.settings.Settings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.awt.FileDialog
+import java.awt.Frame
 import java.io.File
 import java.net.URI
 import java.util.prefs.Preferences
@@ -94,5 +100,35 @@ data class WindowSettings(
 ) {
     companion object {
         val DEFAULT = WindowSettings(0.dp, 0.dp, 1280.dp, 1024.dp, WindowPlacement.Floating)
+    }
+}
+
+@Composable
+actual fun openFileDialog(
+    title: String,
+    allowedExtensions: List<String>,
+    onFileSelected: (String?) -> Unit
+) {
+    val fileDialog = remember {
+        FileDialog(null as Frame?, title, FileDialog.LOAD).apply {
+            if (allowedExtensions.isNotEmpty()) {
+                // FileDialog on different platforms handles this differently
+                // On Windows, we can set file filter
+                val extensionsString = allowedExtensions.joinToString(";") { "*.$it" }
+                file = extensionsString
+            }
+            isVisible = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val selectedFile = if (fileDialog.file != null) {
+                File(fileDialog.directory, fileDialog.file).absolutePath
+            } else {
+                null
+            }
+            onFileSelected(selectedFile)
+        }
     }
 }

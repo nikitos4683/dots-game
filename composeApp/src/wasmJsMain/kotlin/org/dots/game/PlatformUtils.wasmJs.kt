@@ -30,3 +30,13 @@ actual fun fileExists(filePath: String): Boolean = false
 actual suspend fun downloadFileText(fileUrl: String): String {
     error("File downloading by url is not supported") // TODO: return window.fetch(fileUrl).await<Response>().text().await()
 }
+
+@Composable
+actual fun openFileDialog(
+    title: String,
+    allowedExtensions: List<String>,
+    onFileSelected: (String?) -> Unit
+) {
+    // File dialog is not implemented for WebAssembly platform
+    onFileSelected(null)
+}

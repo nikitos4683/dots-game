@@ -24,3 +24,13 @@ actual fun readFileText(filePath: String): String = error("File loading is not s
 actual fun fileExists(filePath: String): Boolean = false
 
 actual suspend fun downloadFileText(fileUrl: String): String = error("File downloading by url is not supported")
+
+@Composable
+actual fun openFileDialog(
+    title: String,
+    allowedExtensions: List<String>,
+    onFileSelected: (String?) -> Unit
+) {
+    // File dialog is not implemented for native platforms (iOS)
+    onFileSelected(null)
+}
