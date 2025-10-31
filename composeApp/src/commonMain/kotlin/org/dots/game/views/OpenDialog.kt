@@ -38,6 +38,7 @@ import org.dots.game.LoadResult
 import org.dots.game.buildLineOffsets
 import org.dots.game.core.Games
 import org.dots.game.core.Rules
+import org.dots.game.localization.LocalStrings
 import org.dots.game.openFileDialog
 import org.dots.game.toLineColumnDiagnostic
 
@@ -48,6 +49,7 @@ fun OpenDialog(
     onDismiss: () -> Unit,
     onConfirmation: (games: Games, newOpenGameSettings: OpenGameSettings, refinedPath: String?, content: String) -> Unit,
 ) {
+    val strings = LocalStrings
     val coroutineScope = rememberCoroutineScope()
     var pathOrContentTextFieldValue by remember { mutableStateOf(TextFieldValue(openGameSettings.pathOrContent ?: "")) }
     var contentTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -85,7 +87,7 @@ fun OpenDialog(
 
     if (showFileDialog) {
         openFileDialog(
-            title = "Open SGF File",
+            title = strings.openSgfFile,
             allowedExtensions = listOf("sgf", "sgfs")
         ) { selectedPath ->
             showFileDialog = false
@@ -100,7 +102,7 @@ fun OpenDialog(
         Card(modifier = Modifier.width(500.dp).wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Column {
-                    Text("Path or Content: ")
+                    Text("${strings.pathOrContent}: ")
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -116,13 +118,13 @@ fun OpenDialog(
                             singleLine = loadResult?.inputType is InputType.InputTypeWithPath,
                             maxLines = if (loadResult?.inputType is InputType.InputTypeWithPath) 1 else 5,
                             textStyle = TextStyle(fontFamily = FontFamily.Monospace),
-                            placeholder = { Text("Enter path to .sgf(s) file or its content") }
+                            placeholder = { Text(strings.pathOrContentPlaceholder) }
                         )
                         Button(
                             onClick = { showFileDialog = true },
                             modifier = Modifier.padding(0.dp)
                         ) {
-                            Text("Browse")
+                            Text(strings.browse)
                         }
                     }
                 }
@@ -131,14 +133,14 @@ fun OpenDialog(
                     Checkbox(rewindToEnd, onCheckedChange = {
                         rewindToEnd = it
                     })
-                    Text("Rewind to End")
+                    Text(strings.rewindToEnd)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(addFinishingMove, onCheckedChange = {
                         addFinishingMove = it
                     })
-                    Text("Add Finishing Move")
+                    Text(strings.addFinishingMove)
                 }
 
                 if (loadResult?.inputType is InputType.InputTypeWithPath && diagnostics.isNotEmpty()) {
@@ -226,7 +228,7 @@ fun OpenDialog(
                     modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 10.dp),
                     enabled = loadResult?.games?.isNotEmpty() == true
                 ) {
-                    Text("Open")
+                    Text(strings.open)
                 }
             }
         }

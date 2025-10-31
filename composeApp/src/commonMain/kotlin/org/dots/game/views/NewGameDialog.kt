@@ -10,6 +10,7 @@ import androidx.compose.ui.window.Dialog
 import org.dots.game.UiSettings
 import org.dots.game.core.InitPosType
 import org.dots.game.core.Rules
+import org.dots.game.localization.LocalStrings
 import org.dots.game.maxFieldDimension
 import org.dots.game.minFieldDimension
 import kotlin.random.Random
@@ -21,6 +22,7 @@ fun NewGameDialog(
     onDismiss: () -> Unit,
     onConfirmation: (newGameRules: Rules) -> Unit,
 ) {
+    val strings = LocalStrings
     var width by remember { mutableStateOf(rules.width.coerceIn(minFieldDimension, maxFieldDimension)) }
     var height by remember { mutableStateOf(rules.height.coerceIn(minFieldDimension, maxFieldDimension)) }
     var captureByBorder by remember { mutableStateOf(rules.captureByBorder) }
@@ -39,46 +41,55 @@ fun NewGameDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.width(470.dp).wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
-                DiscreteSliderConfig("Width", width, minFieldDimension, maxFieldDimension) {
+                DiscreteSliderConfig(strings.width, width, minFieldDimension, maxFieldDimension) {
                     width = it
                 }
-                DiscreteSliderConfig("Height", height, minFieldDimension, maxFieldDimension) {
+                DiscreteSliderConfig(strings.height, height, minFieldDimension, maxFieldDimension) {
                     height = it
                 }
 
-                ModeConfig(initPosType, ignoredEntries = setOf(InitPosType.Custom)) {
+                ModeConfig(
+                    initPosType,
+                    ignoredEntries = setOf(InitPosType.Custom),
+                    typeLabelProvider = { strings.initPosType },
+                    labelProvider = { strings.initPosTypeLabel(it) }
+                ) {
                     initPosType = it
                 }
-                ModeConfig(baseMode) {
+                ModeConfig(
+                    baseMode,
+                    typeLabelProvider = { strings.baseMode },
+                    labelProvider = { strings.baseModeLabel(it) }
+                ) {
                     baseMode = it
                 }
 
                 if (initPosType.selected == InitPosType.QuadrupleCross) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Random start position", Modifier.fillMaxWidth(configKeyTextFraction))
+                        Text(strings.randomStartPosition, Modifier.fillMaxWidth(configKeyTextFraction))
                         Checkbox(initPosIsRandom, onCheckedChange = { initPosIsRandom = it })
                     }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Capture by border", Modifier.fillMaxWidth(configKeyTextFraction))
+                    Text(strings.captureByBorder, Modifier.fillMaxWidth(configKeyTextFraction))
                     Checkbox(captureByBorder, onCheckedChange = { captureByBorder = it })
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Suicide allowed", Modifier.fillMaxWidth(configKeyTextFraction))
+                    Text(strings.suicideAllowed, Modifier.fillMaxWidth(configKeyTextFraction))
                     Checkbox(suicideAllowed, onCheckedChange = { suicideAllowed = it })
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (uiSettings.developerMode) {
-                        DiscreteSliderConfig("Komi", integerKomi, -5, 5,
+                        DiscreteSliderConfig(strings.komi, integerKomi, -5, 5,
                             valueRenderer = { (it.toDouble() / 2.0).toString() }
                         ) {
                             integerKomi = it
                         }
                     } else {
-                        Text("Round Draw", Modifier.fillMaxWidth(configKeyTextFraction))
+                        Text(strings.roundDraw, Modifier.fillMaxWidth(configKeyTextFraction))
                         Checkbox(integerKomi == 0, onCheckedChange = { integerKomi = if (it) 0 else 1  })
                     }
                 }
@@ -100,7 +111,7 @@ fun NewGameDialog(
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
-                    Text("Create new game")
+                    Text(strings.createNewGame)
                 }
             }
         }

@@ -23,18 +23,54 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.dots.game.core.*
+import org.dots.game.localization.LocalLocalizationManager
+import org.dots.game.localization.LocalStrings
+import org.dots.game.localization.LocalizationManager
 import org.dots.game.views.*
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
 @Preview
 fun App(currentGameSettings: CurrentGameSettings = loadCurrentGameSettings(), onGamesChange: (games: Games?) -> Unit = { }) {
-    MaterialTheme {
-        var uiSettings by remember { mutableStateOf(loadUiSettings()) }
-        var newGameDialogRules by remember { mutableStateOf(loadRules()) }
-        var openGameSettings by remember { mutableStateOf(loadOpenGameSettings()) }
+    val localizationManager = remember {
+        appSettings?.let { LocalizationManager(it) } ?: LocalizationManager(
+            object : com.russhwolf.settings.Settings {
+                private val map = mutableMapOf<String, Any>()
+                override val keys: Set<String> get() = map.keys
+                override val size: Int get() = map.size
+                override fun clear() = map.clear()
+                override fun remove(key: String) { map.remove(key) }
+                override fun hasKey(key: String) = map.containsKey(key)
+                override fun putInt(key: String, value: Int) { map[key] = value }
+                override fun getInt(key: String, defaultValue: Int) = map[key] as? Int ?: defaultValue
+                override fun getIntOrNull(key: String) = map[key] as? Int
+                override fun putLong(key: String, value: Long) { map[key] = value }
+                override fun getLong(key: String, defaultValue: Long) = map[key] as? Long ?: defaultValue
+                override fun getLongOrNull(key: String) = map[key] as? Long
+                override fun putString(key: String, value: String) { map[key] = value }
+                override fun getString(key: String, defaultValue: String) = map[key] as? String ?: defaultValue
+                override fun getStringOrNull(key: String) = map[key] as? String
+                override fun putFloat(key: String, value: Float) { map[key] = value }
+                override fun getFloat(key: String, defaultValue: Float) = map[key] as? Float ?: defaultValue
+                override fun getFloatOrNull(key: String) = map[key] as? Float
+                override fun putDouble(key: String, value: Double) { map[key] = value }
+                override fun getDouble(key: String, defaultValue: Double) = map[key] as? Double ?: defaultValue
+                override fun getDoubleOrNull(key: String) = map[key] as? Double
+                override fun putBoolean(key: String, value: Boolean) { map[key] = value }
+                override fun getBoolean(key: String, defaultValue: Boolean) = map[key] as? Boolean ?: defaultValue
+                override fun getBooleanOrNull(key: String) = map[key] as? Boolean
+            }
+        )
+    }
 
-        val coroutineScope = rememberCoroutineScope()
+    CompositionLocalProvider(LocalLocalizationManager provides localizationManager) {
+        MaterialTheme {
+            val strings = LocalStrings
+            var uiSettings by remember { mutableStateOf(loadUiSettings()) }
+            var newGameDialogRules by remember { mutableStateOf(loadRules()) }
+            var openGameSettings by remember { mutableStateOf(loadOpenGameSettings()) }
+
+            val coroutineScope = rememberCoroutineScope()
 
         var startOrReset by remember { mutableStateOf(true) }
         var games by remember { mutableStateOf(Games.fromField(Field.create(newGameDialogRules))) }
@@ -245,10 +281,10 @@ fun App(currentGameSettings: CurrentGameSettings = loadCurrentGameSettings(), on
                 }
                 Row {
                     val gameNumberText = if (games.size > 1)
-                        "Game: ${games.indexOf(currentGame)}; "
+                        "${strings.game}: ${games.indexOf(currentGame)}; "
                     else
                         ""
-                    Text( gameNumberText + "Move: " + moveNumber.toString())
+                    Text(gameNumberText + "${strings.move}: $moveNumber")
                 }
             }
             Column(Modifier.padding(start = 5.dp)) {
@@ -259,19 +295,19 @@ fun App(currentGameSettings: CurrentGameSettings = loadCurrentGameSettings(), on
 
                 Row(rowModifier) {
                     Button(onClick = { showNewGameDialog = true }, controlButtonModifier) {
-                        Text("New")
+                        Text(strings.new)
                     }
                     Button(onClick = { reset(newGame = false) }, controlButtonModifier) {
-                        Text("Reset")
+                        Text(strings.reset)
                     }
                     Button(onClick = { openGameDialog = true }, controlButtonModifier) {
-                        Text("Load")
+                        Text(strings.load)
                     }
                     Button(onClick = { showSaveGameDialog = true }, controlButtonModifier) {
-                        Text("Save")
+                        Text(strings.save)
                     }
                     Button(onClick = { showUiSettingsForm = true }, controlButtonModifier) {
-                        Text("Settings")
+                        Text(strings.settings)
                     }
                 }
 
@@ -369,6 +405,7 @@ fun App(currentGameSettings: CurrentGameSettings = loadCurrentGameSettings(), on
                     updateCurrentNode()
                 }
             }
+        }
         }
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import org.dots.game.core.Field
 import org.dots.game.core.Games
+import org.dots.game.localization.LocalStrings
 import org.dots.game.sgf.SgfWriter
 import render
 
@@ -22,6 +23,7 @@ fun SaveDialog(
     dumpParameters: DumpParameters,
     onDismiss: (DumpParameters) -> Unit,
 ) {
+    val strings = LocalStrings
     var minX = field.realWidth - 1
     var maxX = 0
     var minY = field.realHeight - 1
@@ -74,14 +76,14 @@ fun SaveDialog(
         Card(modifier = Modifier.wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("SGF", Modifier.fillMaxWidth(configKeyTextFraction))
+                    Text(strings.sgf, Modifier.fillMaxWidth(configKeyTextFraction))
                     Switch(isSgf, onCheckedChange = {
                         isSgf = it
                         updateFieldRepresentation()
                     })
                 }
 
-                Text("Field Representation")
+                Text(strings.fieldRepresentation)
 
                 TextField(
                     fieldRepresentation,
@@ -94,20 +96,20 @@ fun SaveDialog(
 
                 if (!isSgf) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Print numbers", Modifier.fillMaxWidth(configKeyTextFraction))
+                        Text(strings.printNumbers, Modifier.fillMaxWidth(configKeyTextFraction))
                         Checkbox(printNumbers, onCheckedChange = {
                             printNumbers = it
                             updateFieldRepresentation()
                         })
                     }
 
-                    DiscreteSliderConfig("Padding", padding, 0, maxPadding) {
+                    DiscreteSliderConfig(strings.padding, padding, 0, maxPadding) {
                         padding = it
                         updateFieldRepresentation()
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Print coordinates", Modifier.fillMaxWidth(configKeyTextFraction))
+                        Text(strings.printCoordinates, Modifier.fillMaxWidth(configKeyTextFraction))
                         Checkbox(printCoordinates, onCheckedChange = {
                             printCoordinates = it
                             updateFieldRepresentation()
@@ -115,7 +117,7 @@ fun SaveDialog(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Debug info", Modifier.fillMaxWidth(configKeyTextFraction))
+                        Text(strings.debugInfo, Modifier.fillMaxWidth(configKeyTextFraction))
                         Checkbox(debugInfo, onCheckedChange = {
                             debugInfo = it
                             updateFieldRepresentation()

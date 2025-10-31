@@ -19,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import org.dots.game.UiSettings
+import org.dots.game.localization.Language
+import org.dots.game.localization.LocalLocalizationManager
+import org.dots.game.localization.LocalStrings
 
 @Composable
 fun UiSettingsForm(
@@ -26,47 +29,68 @@ fun UiSettingsForm(
     onUiSettingsChange: (UiSettings) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val strings = LocalStrings
+    val localizationManager = LocalLocalizationManager.current
     var connectionDrawMode by remember { mutableStateOf(EnumMode(uiSettings.connectionDrawMode)) }
     var baseDrawMode by remember { mutableStateOf(EnumMode(uiSettings.baseDrawMode)) }
+    var currentLanguageMode by remember { mutableStateOf(EnumMode(localizationManager.currentLanguage)) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.width(470.dp).wrapContentHeight()) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ModeConfig(connectionDrawMode) {
+                    ModeConfig(
+                        connectionDrawMode,
+                        typeLabelProvider = { strings.connectionDrawMode },
+                        labelProvider = { strings.connectionDrawModeLabel(it) }
+                    ) {
                         connectionDrawMode = it
                         onUiSettingsChange(uiSettings.copy(connectionDrawMode = connectionDrawMode.selected))
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ModeConfig(baseDrawMode) {
+                    ModeConfig(
+                        baseDrawMode,
+                        typeLabelProvider = { strings.polygonDrawMode },
+                        labelProvider = { strings.polygonDrawModeLabel(it) }
+                    ) {
                         baseDrawMode = it
                         onUiSettingsChange(uiSettings.copy(baseDrawMode = it.selected))
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Diagonal Connections", Modifier.fillMaxWidth(configKeyTextFraction))
+                    Text(strings.diagonalConnections, Modifier.fillMaxWidth(configKeyTextFraction))
                     Switch(uiSettings.showDiagonalConnections, onCheckedChange = {
                         onUiSettingsChange(uiSettings.copy(showDiagonalConnections = it))
                     })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Threats", Modifier.fillMaxWidth(configKeyTextFraction))
+                    Text(strings.threats, Modifier.fillMaxWidth(configKeyTextFraction))
                     Switch(uiSettings.showThreats, onCheckedChange = {
                         onUiSettingsChange(uiSettings.copy(showThreats = it))
                     })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Surroundings", Modifier.fillMaxWidth(configKeyTextFraction))
+                    Text(strings.surroundings, Modifier.fillMaxWidth(configKeyTextFraction))
                     Switch(uiSettings.showSurroundings, onCheckedChange = {
                         onUiSettingsChange(uiSettings.copy(showSurroundings = it))
                     })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Developer Mode", Modifier.fillMaxWidth(configKeyTextFraction))
+                    Text(strings.developerMode, Modifier.fillMaxWidth(configKeyTextFraction))
                     Switch(uiSettings.developerMode, onCheckedChange = {
                         onUiSettingsChange(uiSettings.copy(developerMode = it))
                     })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ModeConfig(
+                        currentLanguageMode,
+                        typeLabelProvider = { strings.language },
+                        labelProvider = { it.displayName }
+                    ) {
+                        currentLanguageMode = it
+                        localizationManager.setLanguage(it.selected)
+                    }
                 }
             }
         }
