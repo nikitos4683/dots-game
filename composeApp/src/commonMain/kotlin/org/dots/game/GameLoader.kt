@@ -119,7 +119,8 @@ object GameLoader {
         }
 
         val refinedPath = input.removeSurrounding("\"")
-        if (refinedPath.endsWith(".sgf") || refinedPath.endsWith(".sgfs")) {
+        val lower = refinedPath.lowercase()
+        if (lower.endsWith(".sgf") || lower.endsWith(".sgfs")) {
             return InputType.SgfFile(refinedPath, extractFileName(refinedPath))
         }
 

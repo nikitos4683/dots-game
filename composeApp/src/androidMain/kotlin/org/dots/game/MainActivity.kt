@@ -12,6 +12,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         appSettings = SharedPreferencesSettings(getSharedPreferences("DotsGamePrefs", MODE_PRIVATE))
+        AndroidContextHolder.appContext = applicationContext
 
         setContent {
             App()
