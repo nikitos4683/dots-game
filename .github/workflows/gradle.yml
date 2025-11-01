@@ -57,6 +57,9 @@ jobs:
     - name: Execute ComposeApp desktop tests
       run: ${{ runner.os == 'Windows' && '.\gradlew.bat' || './gradlew' }} :composeApp:desktopTest --no-daemon --stacktrace
 
+    - name: Execute WASM tests
+      run: ${{ runner.os == 'Windows' && '.\gradlew.bat' || './gradlew' }} :library:wasmJsTest --no-daemon --stacktrace
+
     - name: Publish test report
       if: always()
       uses: actions/upload-artifact@v4
@@ -67,5 +70,7 @@ jobs:
           library/build/reports/tests/jvmTest/
           composeApp/build/test-results/desktopTest/
           composeApp/build/reports/tests/desktopTest/
+          library/build/test-results/wasmJsTest/
+          library/build/reports/tests/wasmJsTest/
         retention-days: 7
         if-no-files-found: ignore
