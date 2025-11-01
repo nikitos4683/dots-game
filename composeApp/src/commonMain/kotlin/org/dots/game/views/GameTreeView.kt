@@ -1,3 +1,5 @@
+@file:OptIn(org.jetbrains.compose.resources.ExperimentalResourceApi::class)
+
 package org.dots.game.views
 
 import androidx.compose.foundation.*
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Text
+import androidx.compose.material.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,6 +33,15 @@ import org.dots.game.HorizontalScrollbar
 import org.dots.game.UiSettings
 import org.dots.game.VerticalScrollbar
 import org.dots.game.core.*
+import org.jetbrains.compose.resources.painterResource
+import dotsgame.composeapp.generated.resources.Res
+import dotsgame.composeapp.generated.resources.ic_grounding
+import dotsgame.composeapp.generated.resources.ic_resign
+import dotsgame.composeapp.generated.resources.ic_finish
+import dotsgame.composeapp.generated.resources.ic_timer
+import dotsgame.composeapp.generated.resources.ic_unknown
+import dotsgame.composeapp.generated.resources.ic_interrupt
+import dotsgame.composeapp.generated.resources.ic_illegal
 import kotlin.math.round
 import kotlin.math.sqrt
 
@@ -282,8 +294,33 @@ private fun ConnectionsAndNodes(
                                 })
                             }
                     ) {
-                        val text = node.moveResults.singleOrNull()?.takeIf { it is GameResult }?.mark ?: moveNumber.toString()
-                        Text(text, Modifier.align(Alignment.Center), textColor)
+                        val singleResult = node.moveResults.singleOrNull()
+                        val iconResource = when (singleResult) {
+                            is GameResult.Draw, is GameResult.ScoreWin -> {
+                                if ((singleResult as EndGameResult).endGameKind == EndGameKind.Grounding)
+                                    Res.drawable.ic_grounding
+                                else
+                                    Res.drawable.ic_finish
+                            }
+                            is GameResult.ResignWin -> Res.drawable.ic_resign
+                            is GameResult.TimeWin -> Res.drawable.ic_timer
+                            is GameResult.UnknownWin -> Res.drawable.ic_unknown
+                            is GameResult.InterruptWin -> Res.drawable.ic_interrupt
+                            is IllegalMove -> Res.drawable.ic_illegal
+                            else -> null
+                        }
+
+                        if (iconResource != null) {
+                            Icon(
+                                painter = painterResource(iconResource),
+                                contentDescription = null,
+                                tint = textColor,
+                                modifier = Modifier.align(Alignment.Center).size(14.dp)
+                            )
+                        } else {
+                            val text = (singleResult as? GameResult)?.mark ?: moveNumber.toString()
+                            Text(text, Modifier.align(Alignment.Center), textColor)
+                        }
                     }
                 }
 
