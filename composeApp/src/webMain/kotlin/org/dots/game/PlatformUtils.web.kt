@@ -10,9 +10,18 @@ import androidx.compose.ui.Modifier
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.await
+import org.w3c.dom.HTMLAnchorElement
 import org.w3c.dom.HTMLInputElement
 import org.w3c.files.FileReader
 import org.w3c.fetch.Response
+
+/**
+ * External JavaScript function to encode a URI component.
+ * Used for properly encoding file content in data URLs.
+ */
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun("encodeURIComponent")
+external fun encodeURIComponent(value: String): String
 
 @Composable
 actual fun HorizontalScrollbar(
@@ -38,6 +47,7 @@ actual suspend fun downloadFileText(fileUrl: String): String {
     return response.text().await()
 }
 
+@OptIn(ExperimentalWasmJsInterop::class)
 @Composable
 actual fun SaveFileDialog(
     title: String?,
@@ -46,7 +56,43 @@ actual fun SaveFileDialog(
     onFileSelected: (String?) -> Unit,
     content: String
 ) {
-    // TODO: See https://github.com/KvanTTT/dots-game/issues/65
+    // Trigger file download using browser's download mechanism
+    LaunchedEffect(Unit) {
+        try {
+            // Determine file name: use selectedFile if provided, otherwise generate a default name
+            val fileName = when {
+                !selectedFile.isNullOrBlank() -> {
+                    // If selectedFile doesn't have the extension, add it
+                    if (selectedFile.endsWith(".$extension")) {
+                        selectedFile
+                    } else {
+                        "$selectedFile.$extension"
+                    }
+                }
+                else -> "document.$extension"
+            }
+
+            // Create a data URL with the content
+            val dataUrl = "data:text/plain;charset=utf-8," + encodeURIComponent(content)
+
+            // Create a temporary anchor element
+            val anchor = document.createElement("a") as HTMLAnchorElement
+            anchor.href = dataUrl
+            anchor.download = fileName
+            anchor.style.display = "none"
+
+            // Add to document, click, and remove
+            document.body?.appendChild(anchor)
+            anchor.click()
+            document.body?.removeChild(anchor)
+
+            // Notify success by passing the file name
+            onFileSelected(fileName)
+        } catch (e: Throwable) {
+            println("Error saving file: ${e.message}")
+            onFileSelected(null)
+        }
+    }
 }
 
 @OptIn(ExperimentalWasmJsInterop::class)
